@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7f598/media/images/d7f598-021.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 953 3183 3058 3281">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 953 3183 3058 3281">
+     <span class='ocr_line' id='line_1_1' title="bbox 988 3183 3053 3268; baseline 0.018 -38; x_size 63.636364; x_descenders 15.909091; x_ascenders 15.909091"><span class='ocrx_word' id='word_1_1' title='bbox 988 3183 1144 3233; x_wconf 79'>THE</span> <span class='ocrx_word' id='word_1_2' title='bbox 1199 3186 1706 3241; x_wconf 95'>IMPORTANT</span> <span class='ocrx_word' id='word_1_3' title='bbox 1768 3194 2315 3251; x_wconf 95'>CHAMPAGNE</span> <span class='ocrx_word' id='word_1_4' title='bbox 2373 3207 2636 3258; x_wconf 95'>EVENT</span> <span class='ocrx_word' id='word_1_5' title='bbox 2697 3214 2799 3264; x_wconf 77'>OF</span> <span class='ocrx_word' id='word_1_6' title='bbox 2865 3218 3053 3268; x_wconf 47'>1975</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 953 3237 3058 3281; baseline 0.018 -36; x_size 63.636364; x_descenders 15.909091; x_ascenders 15.909091"><span class='ocrx_word' id='word_1_7' title='bbox 0 0 4000 6000; x_wconf 35'>ee</span> <span class='ocrx_word' id='word_1_8' title='bbox 953 3237 3058 3281; x_wconf 39'>EN</span> <span class='ocrx_word' id='word_1_9' title='bbox 0 0 4000 6000; x_wconf 52'>NE</span> <span class='ocrx_word' id='word_1_10' title='bbox 0 0 4000 6000; x_wconf 85'>EVENT</span> <span class='ocrx_word' id='word_1_11' title='bbox 0 0 4000 6000; x_wconf 88'>OF</span> <span class='ocrx_word' id='word_1_12' title='bbox 0 0 4000 6000; x_wconf 88'>1975</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 2320 4302 2693 4441">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 2320 4302 2693 4441">
+     <span class='ocr_line' id='line_1_3' title="bbox 2321 4302 2611 4362; baseline 0.024 -12; x_size 56; x_descenders 8; x_ascenders 15"><span class='ocrx_word' id='word_1_13' title='bbox 2321 4302 2611 4362; x_wconf 96'>Imported</span> 
+     </span>
+     <span class='ocr_line' id='line_1_4' title="bbox 2320 4384 2693 4441; baseline 0.024 -9; x_size 57.311111; x_descenders 8.3111115; x_ascenders 15"><span class='ocrx_word' id='word_1_14' title='bbox 2320 4384 2393 4435; x_wconf 95'>To</span> <span class='ocrx_word' id='word_1_15' title='bbox 2430 4387 2556 4437; x_wconf 96'>Sell</span> <span class='ocrx_word' id='word_1_16' title='bbox 2588 4390 2693 4441; x_wconf 96'>For</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 2322 4551 2508 4605">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 2322 4551 2508 4605">
+     <span class='ocr_line' id='line_1_5' title="bbox 2322 4551 2508 4605; baseline 0.016 -8; x_size 62.333332; x_descenders 15.583333; x_ascenders 15.583333"><span class='ocrx_word' id='word_1_17' title='bbox 2322 4551 2508 4605; x_wconf 77'>11,45</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 0 0 4000 6000">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 0 0 4000 6000">
+     <span class='ocr_line' id='line_1_6' title="bbox 0 0 4000 6000; baseline 0 0; x_size 3000; x_descenders -1500; x_ascenders 1500"><span class='ocrx_word' id='word_1_18' title='bbox 0 0 4000 6000; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

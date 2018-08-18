@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7j303/media/images/d7j303-000.jpg"; bbox 0 0 6000 4000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 1825 3009 2225 3223">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 1825 3006 2225 3223">
+     <span class='ocr_line' id='line_1_1' title="bbox 1825 3009 2174 3105; baseline 0.06 -25; x_size 65; x_descenders 14; x_ascenders 22"><span class='ocrx_word' id='word_1_1' title='bbox 1825 3034 1914 3082; x_wconf 96'>Ins</span> <span class='ocrx_word' id='word_1_2' title='bbox 1919 3009 2007 3105; x_wconf 96'>pir</span> <span class='ocrx_word' id='word_1_3' title='bbox 2010 3006 2085 3083; x_wconf 96'>ed</span> <span class='ocrx_word' id='word_1_4' title='bbox 2098 3030 2174 3100; x_wconf 96'>by</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 1827 3123 2225 3223; baseline 0.053 -17; x_size 90.494118; x_descenders 14.494119; x_ascenders 20"><span class='ocrx_word' id='word_1_5' title='bbox 1827 3123 2225 3223; x_wconf 96'>SHERRY</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 3161 3629 4155 3737">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 3161 3596 4155 3755">
+     <span class='ocr_line' id='line_1_3' title="bbox 3161 3629 4155 3737; baseline -0.017 -22; x_size 156; x_descenders 37; x_ascenders 48"><span class='ocrx_word' id='word_1_6' title='bbox 3161 3596 3452 3755; x_wconf 7'>sadilly,</span> <span class='ocrx_word' id='word_1_7' title='bbox 3501 3632 3947 3709; x_wconf 93'>LONDON,</span> <span class='ocrx_word' id='word_1_8' title='bbox 3993 3629 4155 3700; x_wconf 89'>W.1</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 1568 206 4422 3818">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 1568 206 4422 3818">
+     <span class='ocr_line' id='line_1_4' title="bbox 1568 206 4422 3818; baseline 0 0; x_size 1806; x_descenders -903; x_ascenders 903"><span class='ocrx_word' id='word_1_9' title='bbox 1568 206 4422 3818; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7m012/media/images/d7m012-035.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 3767 2329 3788 2568">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 3767 2329 3788 2568">
+     <span class='ocr_line' id='line_1_1' title="bbox 3767 2329 3788 2568; textangle 180; x_size 25.625; x_descenders 5.625; x_ascenders 5"><span class='ocrx_word' id='word_1_1' title='bbox 3785 2526 3787 2568; x_wconf 1'>pau</span> <span class='ocrx_word' id='word_1_2' title='bbox 3767 2432 3788 2512; x_wconf 18'>AEs,</span> <span class='ocrx_word' id='word_1_3' title='bbox 3772 2329 3788 2428; x_wconf 27'>=a</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 0 500 3832 5444">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 0 500 3832 5444">
+     <span class='ocr_line' id='line_1_2' title="bbox 0 500 3832 5444; textangle 180; x_size 1916; x_descenders -958; x_ascenders 958"><span class='ocrx_word' id='word_1_4' title='bbox 0 500 3832 5444; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

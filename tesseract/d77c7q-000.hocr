@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d77c7q/media/images/d77c7q-000.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 377 4759 2514 5099">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 377 4759 2514 5099">
+     <span class='ocr_line' id='line_1_1' title="bbox 377 4759 2514 4932; baseline -0.019 -18; x_size 157.17046; x_descenders 21.170454; x_ascenders 28"><span class='ocrx_word' id='word_1_1' title='bbox 377 4776 1170 4932; x_wconf 64'>SHERRY-</span> <span class='ocrx_word' id='word_1_2' title='bbox 1172 4763 2134 4913; x_wconf 6'>LEHMANN,</span> <span class='ocrx_word' id='word_1_3' title='bbox 2167 4759 2514 4874; x_wconf 6'>INC.</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 451 4900 2503 5060; baseline -0.021 -46; x_size 132.85228; x_descenders 27; x_ascenders 36.852276"><span class='ocrx_word' id='word_1_4' title='bbox 451 4951 619 5060; x_wconf 34'>fy</span> <span class='ocrx_word' id='word_1_5' title='bbox 680 4934 1029 5010; x_wconf 92'>WINE</span> <span class='ocrx_word' id='word_1_6' title='bbox 1069 4932 1158 5003; x_wconf 92'>&amp;</span> <span class='ocrx_word' id='word_1_7' title='bbox 1197 4917 1692 5001; x_wconf 95'>SPIRITS</span> <span class='ocrx_word' id='word_1_8' title='bbox 1736 4900 2503 4986; x_wconf 96'>MERCHANTS</span> 
+     </span>
+     <span class='ocr_line' id='line_1_3' title="bbox 509 5003 2503 5099; baseline -0.019 3; x_size 100.36932; x_descenders 11.369318; x_ascenders 31"><span class='ocrx_word' id='word_1_9' title='bbox 509 5012 629 5069; x_wconf 0'>EY)</span> <span class='ocrx_word' id='word_1_10' title='bbox 689 5042 786 5099; x_wconf 26'>79</span> <span class='ocrx_word' id='word_1_11' title='bbox 805 5039 1012 5097; x_wconf 91'>Madison</span> <span class='ocrx_word' id='word_1_12' title='bbox 1032 5039 1141 5093; x_wconf 95'>Ave.</span> <span class='ocrx_word' id='word_1_13' title='bbox 1161 5036 1227 5090; x_wconf 81'>At</span> <span class='ocrx_word' id='word_1_14' title='bbox 1244 5033 1296 5088; x_wconf 70'>6l</span> <span class='ocrx_word' id='word_1_15' title='bbox 1317 5032 1397 5089; x_wconf 93'>St.</span> <span class='ocrx_word' id='word_1_16' title='bbox 1414 5023 1673 5084; x_wconf 83'>NewYork,</span> <span class='ocrx_word' id='word_1_17' title='bbox 1689 5019 1751 5076; x_wconf 66'>No</span> <span class='ocrx_word' id='word_1_18' title='bbox 1771 5018 1830 5075; x_wconf 69'>Y.</span> <span class='ocrx_word' id='word_1_19' title='bbox 1854 5016 1984 5073; x_wconf 92'>10021</span> <span class='ocrx_word' id='word_1_20' title='bbox 2009 5040 2023 5054; x_wconf 88'>-</span> <span class='ocrx_word' id='word_1_21' title='bbox 2043 5009 2320 5087; x_wconf 67'>TEmpleton</span> <span class='ocrx_word' id='word_1_22' title='bbox 2337 5003 2503 5065; x_wconf 71'>8:7500</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 0 0 4000 6000">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 0 0 4000 6000">
+     <span class='ocr_line' id='line_1_4' title="bbox 0 0 4000 6000; baseline 0 0; x_size 3000; x_descenders -1500; x_ascenders 1500"><span class='ocrx_word' id='word_1_23' title='bbox 0 0 4000 6000; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

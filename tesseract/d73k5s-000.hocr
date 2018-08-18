@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d73k5s/media/images/d73k5s-000.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 605 4827 3640 5060">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 605 4827 3640 5060">
+     <span class='ocr_line' id='line_1_1' title="bbox 605 4827 3640 5060; baseline -0.009 0; x_size 277; x_descenders 69.25; x_ascenders 69.25"><span class='ocrx_word' id='word_1_1' title='bbox 605 4829 3082 5060; x_wconf 65'>SHERRY-LEHMANN,</span> <span class='ocrx_word' id='word_1_2' title='bbox 3104 4827 3640 5058; x_wconf 93'>Inc.</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 595 5100 3651 5242">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 595 5100 3651 5249">
+     <span class='ocr_line' id='line_1_2' title="bbox 595 5100 3651 5242; baseline -0.012 1; x_size 138; x_descenders 28; x_ascenders 26"><span class='ocrx_word' id='word_1_3' title='bbox 595 5131 857 5242; x_wconf 95'>679</span> <span class='ocrx_word' id='word_1_4' title='bbox 896 5127 1441 5236; x_wconf 95'>Madison</span> <span class='ocrx_word' id='word_1_5' title='bbox 1488 5124 1714 5229; x_wconf 95'>Ave</span> <span class='ocrx_word' id='word_1_6' title='bbox 1816 5116 2041 5222; x_wconf 94'>N.Y.</span> <span class='ocrx_word' id='word_1_7' title='bbox 2094 5112 2460 5221; x_wconf 94'>10021</span> <span class='ocrx_word' id='word_1_8' title='bbox 2555 5104 2897 5215; x_wconf 90'>(212)</span> <span class='ocrx_word' id='word_1_9' title='bbox 2934 5100 3651 5249; x_wconf 11'>838°75C</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 186 882 3808 5318">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 186 882 3808 5318">
+     <span class='ocr_line' id='line_1_3' title="bbox 186 882 3808 5318; baseline 0 0; x_size 2218; x_descenders -1109; x_ascenders 1109"><span class='ocrx_word' id='word_1_10' title='bbox 186 882 3808 5318; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

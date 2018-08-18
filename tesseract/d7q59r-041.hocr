@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7q59r/media/images/d7q59r-041.jpg"; bbox 0 0 6000 4000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 2197 3667 4384 3887">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 2197 3667 4384 3887">
+     <span class='ocr_line' id='line_1_1' title="bbox 2197 3667 4384 3887; baseline 0.019 -107; x_size 95.398376; x_descenders 12.398374; x_ascenders 22"><span class='ocrx_word' id='word_1_1' title='bbox 2197 3700 2600 3786; x_wconf 96'>Macbeth</span> <span class='ocrx_word' id='word_1_2' title='bbox 2630 3708 3342 3887; x_wconf 82'>ColorChecker&quot;</span> <span class='ocrx_word' id='word_1_3' title='bbox 3370 3667 3626 3804; x_wconf 25'>ee</span> <span class='ocrx_word' id='word_1_4' title='bbox 3653 3726 4097 3814; x_wconf 96'>Rendition</span> <span class='ocrx_word' id='word_1_5' title='bbox 4125 3735 4384 3820; x_wconf 96'>Chart</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 631 143 5923 3727">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 631 143 5923 3727">
+     <span class='ocr_line' id='line_1_2' title="bbox 631 143 5923 3727; baseline 0 0; x_size 1792; x_descenders -896; x_ascenders 896"><span class='ocrx_word' id='word_1_6' title='bbox 631 143 5923 3727; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

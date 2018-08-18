@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7g59k/media/images/d7g59k-000.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 1231 4209 2692 4702">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 1231 4145 2692 4702">
+     <span class='ocr_line' id='line_1_1' title="bbox 1231 4209 2692 4467; baseline 0.014 -55; x_size 256; x_descenders 50; x_ascenders 68"><span class='ocrx_word' id='word_1_1' title='bbox 1231 4221 1423 4412; x_wconf 92'>A</span> <span class='ocrx_word' id='word_1_2' title='bbox 1451 4209 2088 4467; x_wconf 20'>Report</span> <span class='ocrx_word' id='word_1_3' title='bbox 2125 4293 2364 4430; x_wconf 94'>on</span> <span class='ocrx_word' id='word_1_4' title='bbox 2404 4235 2692 4430; x_wconf 96'>the</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 1256 4478 2649 4702; baseline 0.009 -20; x_size 242.65381; x_descenders 28.653801; x_ascenders 81"><span class='ocrx_word' id='word_1_5' title='bbox 1256 4478 1730 4693; x_wconf 96'>Wine</span> <span class='ocrx_word' id='word_1_6' title='bbox 1771 4480 2649 4702; x_wconf 90'>Market...</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 1301 4758 2603 4936">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 1301 4758 2603 4936">
+     <span class='ocr_line' id='line_1_3' title="bbox 1301 4758 2603 4851; baseline 0.014 -34; x_size 81; x_descenders 19; x_ascenders 23"><span class='ocrx_word' id='word_1_7' title='bbox 1301 4758 1426 4819; x_wconf 95'>and</span> <span class='ocrx_word' id='word_1_8' title='bbox 1481 4781 1558 4821; x_wconf 94'>an</span> <span class='ocrx_word' id='word_1_9' title='bbox 1614 4773 2030 4847; x_wconf 94'>opportunity</span> <span class='ocrx_word' id='word_1_10' title='bbox 2082 4781 2148 4830; x_wconf 96'>to</span> <span class='ocrx_word' id='word_1_11' title='bbox 2203 4769 2332 4851; x_wconf 96'>buy</span> <span class='ocrx_word' id='word_1_12' title='bbox 2384 4785 2445 4833; x_wconf 96'>at</span> <span class='ocrx_word' id='word_1_13' title='bbox 2496 4774 2603 4835; x_wconf 96'>the</span> 
+     </span>
+     <span class='ocr_line' id='line_1_4' title="bbox 1302 4845 2126 4936; baseline 0.016 -29; x_size 81; x_descenders 19; x_ascenders 23"><span class='ocrx_word' id='word_1_14' title='bbox 1302 4845 1529 4910; x_wconf 96'>lowest</span> <span class='ocrx_word' id='word_1_15' title='bbox 1574 4853 1857 4931; x_wconf 95'>possible</span> <span class='ocrx_word' id='word_1_16' title='bbox 1904 4862 2126 4936; x_wconf 95'>prices!</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 1026 1002 2944 5234">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 1026 1002 2944 5234">
+     <span class='ocr_line' id='line_1_5' title="bbox 1026 1002 2944 5234; baseline 0 0; x_size 2116; x_descenders -1058; x_ascenders 1058"><span class='ocrx_word' id='word_1_17' title='bbox 1026 1002 2944 5234; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

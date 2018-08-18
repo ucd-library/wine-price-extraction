@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7qs3p/media/images/d7qs3p-000.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 1413 507 2124 524">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 1413 507 2124 524">
+     <span class='ocr_line' id='line_1_1' title="bbox 1413 507 2124 524; x_size 355.5; x_descenders -177.75; x_ascenders 177.75"><span class='ocrx_word' id='word_1_1' title='bbox 1413 507 2124 524; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 461 4537 476 4801">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 461 4537 476 4801">
+     <span class='ocr_line' id='line_1_2' title="bbox 461 4537 476 4801; x_size 20; x_descenders 5; x_ascenders 5"><span class='ocrx_word' id='word_1_2' title='bbox 462 4537 474 4602; x_wconf 15'>ete</span> <span class='ocrx_word' id='word_1_3' title='bbox 467 4617 475 4642; x_wconf 48'>te</span> <span class='ocrx_word' id='word_1_4' title='bbox 467 4657 476 4707; x_wconf 32'>ek.</span> <span class='ocrx_word' id='word_1_5' title='bbox 461 4727 472 4801; x_wconf 22'>Si</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 402 4532 421 4808">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 402 4532 421 4808">
+     <span class='ocr_line' id='line_1_3' title="bbox 402 4532 421 4808; baseline 92 -276; x_size 22.5; x_descenders 5.5; x_ascenders 6"><span class='ocrx_word' id='word_1_6' title='bbox 402 4532 410 4559; x_wconf 0'>«ee</span> <span class='ocrx_word' id='word_1_7' title='bbox 403 4569 421 4808; x_wconf 0'>@eOOOOGen..</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 308 4496 329 4763">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 308 4496 329 4763">
+     <span class='ocr_line' id='line_1_4' title="bbox 308 4496 329 4763; baseline 267 -2670; x_size 18; x_descenders 4; x_ascenders 3"><span class='ocrx_word' id='word_1_8' title='bbox 308 4496 329 4734; x_wconf 7'>&quot;*#2e4G6004%</span> <span class='ocrx_word' id='word_1_9' title='bbox 321 4752 329 4763; x_wconf 90'>*</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_5' title="bbox 226 4470 257 4767">
+    <p class='ocr_par' id='par_1_5' lang='eng' title="bbox 226 4470 257 4767">
+     <span class='ocr_line' id='line_1_5' title="bbox 242 4470 257 4767; baseline -297 2079; x_size 23.5; x_descenders 6.5; x_ascenders 5.5"><span class='ocrx_word' id='word_1_10' title='bbox 242 4470 257 4509; x_wconf 34'>ee,</span> <span class='ocrx_word' id='word_1_11' title='bbox 245 4742 254 4767; x_wconf 41'>oe</span> 
+     </span>
+     <span class='ocr_line' id='line_1_6' title="bbox 226 4520 247 4730; baseline -210 1260; x_size 21; x_descenders 6; x_ascenders 4"><span class='ocrx_word' id='word_1_12' title='bbox 226 4520 244 4613; x_wconf 0'>Peep</span> <span class='ocrx_word' id='word_1_13' title='bbox 231 4628 247 4730; x_wconf 1'>eeer®</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_6' title="bbox 164 494 3940 5260">
+    <p class='ocr_par' id='par_1_6' lang='eng' title="bbox 164 494 3940 5260">
+     <span class='ocr_line' id='line_1_7' title="bbox 164 494 3940 5260; x_size 1888; x_descenders -944; x_ascenders 944"><span class='ocrx_word' id='word_1_14' title='bbox 164 494 3940 5260; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

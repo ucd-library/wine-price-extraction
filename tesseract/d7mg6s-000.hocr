@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7mg6s/media/images/d7mg6s-000.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 3381 1675 3492 1694">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 3381 1675 3492 1694">
+     <span class='ocr_line' id='line_1_1' title="bbox 3381 1675 3492 1694; baseline -0.054 0; x_size 25.75; x_descenders 5.5; x_ascenders 6.75"><span class='ocrx_word' id='word_1_1' title='bbox 3381 1675 3492 1694; x_wconf 22'>wisi</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 3021 2609 3638 2712">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 3021 2609 3638 2712">
+     <span class='ocr_line' id='line_1_2' title="bbox 3021 2609 3638 2678; baseline 0.006 -28; x_size 72.722221; x_descenders 9; x_ascenders 26.722221"><span class='ocrx_word' id='word_1_2' title='bbox 3021 2655 3024 2660; x_wconf 0'>,</span> <span class='ocrx_word' id='word_1_3' title='bbox 3177 2609 3188 2644; x_wconf 22'>Tee</span> <span class='ocrx_word' id='word_1_4' title='bbox 3291 2612 3443 2678; x_wconf 31'>doll)</span> <span class='ocrx_word' id='word_1_5' title='bbox 3451 2613 3537 2651; x_wconf 19'>Sal</span> <span class='ocrx_word' id='word_1_6' title='bbox 3545 2610 3638 2654; x_wconf 22'>1</span> 
+     </span>
+     <span class='ocr_line' id='line_1_3' title="bbox 3321 2659 3605 2712; baseline 0.004 -3; x_size 100.11111; x_descenders 14; x_ascenders 36.111111"><span class='ocrx_word' id='word_1_7' title='bbox 3321 2659 3605 2712; x_wconf 12'>eel</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 3038 2648 3281 2692">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 3038 2648 3281 2692">
+     <span class='ocr_line' id='line_1_4' title="bbox 3038 2648 3281 2692; baseline 0.016 -4; x_size 51.111111; x_descenders 12.777778; x_ascenders 12.777778"><span class='ocrx_word' id='word_1_8' title='bbox 3038 2648 3119 2682; x_wconf 17'>ee</span> <span class='ocrx_word' id='word_1_9' title='bbox 3130 2650 3281 2692; x_wconf 27'>tee</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 149 487 3848 5249">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 149 487 3848 5249">
+     <span class='ocr_line' id='line_1_5' title="bbox 149 487 3848 5249; baseline 0 0; x_size 2381; x_descenders -1190.5; x_ascenders 1190.5"><span class='ocrx_word' id='word_1_10' title='bbox 149 487 3848 5249; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_5' title="bbox 1672 5225 2452 5236">
+    <p class='ocr_par' id='par_1_5' lang='eng' title="bbox 1672 5225 2452 5236">
+     <span class='ocr_line' id='line_1_6' title="bbox 1672 5225 2452 5236; baseline 0 0; x_size 5.5; x_descenders -2.75; x_ascenders 2.75"><span class='ocrx_word' id='word_1_11' title='bbox 1672 5225 2452 5236; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

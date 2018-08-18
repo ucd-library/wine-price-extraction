@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7rw2n/media/images/d7rw2n-004.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 1815 774 2192 823">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 1815 774 2192 823">
+     <span class='ocr_line' id='line_1_1' title="bbox 1815 774 2188 792; baseline -0.005 -6; x_size 24; x_descenders 6; x_ascenders 6"><span class='ocrx_word' id='word_1_1' title='bbox 1815 775 1830 792; x_wconf 31'>e</span> <span class='ocrx_word' id='word_1_2' title='bbox 1895 774 1906 786; x_wconf 46'>he</span> <span class='ocrx_word' id='word_1_3' title='bbox 1921 776 1971 788; x_wconf 24'>PN,</span> <span class='ocrx_word' id='word_1_4' title='bbox 2012 776 2050 791; x_wconf 1'>tee</span> <span class='ocrx_word' id='word_1_5' title='bbox 2062 776 2116 789; x_wconf 22'>a</span> <span class='ocrx_word' id='word_1_6' title='bbox 2179 780 2188 787; x_wconf 0'>-</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 1821 776 2192 814; baseline 0 -5; x_size 19; x_descenders 4; x_ascenders 5"><span class='ocrx_word' id='word_1_7' title='bbox 1821 798 1831 809; x_wconf 88'>ye</span> <span class='ocrx_word' id='word_1_8' title='bbox 1880 794 1887 814; x_wconf 32'>fh</span> <span class='ocrx_word' id='word_1_9' title='bbox 1920 782 1928 805; x_wconf 0'>p</span> <span class='ocrx_word' id='word_1_10' title='bbox 1959 776 1965 793; x_wconf 15'>j</span> <span class='ocrx_word' id='word_1_11' title='bbox 2087 780 2108 809; x_wconf 45'>¢</span> <span class='ocrx_word' id='word_1_12' title='bbox 2119 779 2137 810; x_wconf 51'>h</span> <span class='ocrx_word' id='word_1_13' title='bbox 2147 779 2192 809; x_wconf 46'>Pat</span> 
+     </span>
+     <span class='ocr_line' id='line_1_3' title="bbox 1839 805 2189 823; baseline 0.003 -4; x_size 19; x_descenders 5; x_ascenders 3"><span class='ocrx_word' id='word_1_14' title='bbox 1839 809 1896 819; x_wconf 43'>=</span> <span class='ocrx_word' id='word_1_15' title='bbox 2064 809 2067 818; x_wconf 51'>if</span> <span class='ocrx_word' id='word_1_16' title='bbox 2115 814 2117 818; x_wconf 0'>?</span> <span class='ocrx_word' id='word_1_17' title='bbox 2147 805 2189 823; x_wconf 57'>NG</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 1891 1900 2007 1932">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 1891 1900 2007 1932">
+     <span class='ocr_line' id='line_1_4' title="bbox 1904 1900 2007 1910; baseline -0.019 0; x_size 19.294117; x_descenders 4; x_ascenders 5.2941179"><span class='ocrx_word' id='word_1_18' title='bbox 1904 1900 1909 1906; x_wconf 13'>’</span> <span class='ocrx_word' id='word_1_19' title='bbox 1941 1900 2007 1910; x_wconf 33'>oF</span> 
+     </span>
+     <span class='ocr_line' id='line_1_5' title="bbox 1891 1900 1999 1932; baseline -0.019 -7; x_size 28; x_descenders 4; x_ascenders 8"><span class='ocrx_word' id='word_1_20' title='bbox 1891 1900 1999 1932; x_wconf 36'>*Ja-</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 0 0 4000 6000">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 0 0 4000 6000">
+     <span class='ocr_line' id='line_1_6' title="bbox 0 0 4000 6000; baseline 0 0; x_size 3000; x_descenders -1500; x_ascenders 1500"><span class='ocrx_word' id='word_1_21' title='bbox 0 0 4000 6000; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

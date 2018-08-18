@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7160g/media/images/d7160g-016.jpg"; bbox 0 0 6000 4000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 2058 3155 3882 3379">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 2058 3155 3882 3379">
+     <span class='ocr_line' id='line_1_1' title="bbox 2058 3155 3877 3263; baseline -0.027 1; x_size 72.933334; x_descenders 18.233334; x_ascenders 18.233334"><span class='ocrx_word' id='word_1_1' title='bbox 2058 3214 2106 3263; x_wconf 94'>A</span> <span class='ocrx_word' id='word_1_2' title='bbox 2135 3200 2441 3263; x_wconf 94'>CORNER</span> <span class='ocrx_word' id='word_1_3' title='bbox 2472 3200 2571 3256; x_wconf 96'>OF</span> <span class='ocrx_word' id='word_1_4' title='bbox 2597 3194 2755 3254; x_wconf 96'>OUR</span> <span class='ocrx_word' id='word_1_5' title='bbox 2791 3194 2996 3250; x_wconf 96'>NEWLY</span> <span class='ocrx_word' id='word_1_6' title='bbox 3081 3179 3526 3243; x_wconf 96'>UNEARTHED</span> <span class='ocrx_word' id='word_1_7' title='bbox 3556 3155 3877 3231; x_wconf 96'>CENTURY</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 2059 3273 3882 3379; baseline -0.027 0; x_size 72.933334; x_descenders 18.233334; x_ascenders 18.233334"><span class='ocrx_word' id='word_1_8' title='bbox 2059 3322 2226 3379; x_wconf 95'>OLD</span> <span class='ocrx_word' id='word_1_9' title='bbox 2275 3317 2467 3374; x_wconf 96'>DEEP</span> <span class='ocrx_word' id='word_1_10' title='bbox 2518 3304 3203 3370; x_wconf 96'>UNDERGROUND</span> <span class='ocrx_word' id='word_1_11' title='bbox 3249 3299 3482 3355; x_wconf 96'>WINE</span> <span class='ocrx_word' id='word_1_12' title='bbox 3527 3273 3882 3350; x_wconf 96'>CELLARS</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 1774 134 4089 3852">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 1774 134 4089 3852">
+     <span class='ocr_line' id='line_1_3' title="bbox 1774 134 4089 3852; baseline 0 0; x_size 1859; x_descenders -929.5; x_ascenders 929.5"><span class='ocrx_word' id='word_1_13' title='bbox 1774 134 4089 3852; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>
