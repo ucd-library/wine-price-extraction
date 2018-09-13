@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7rw2n/media/images/d7rw2n-009.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 703 949 1063 979">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 703 949 1063 979">
+     <span class='ocr_line' id='line_1_1' title="bbox 703 949 1063 979; baseline -0.014 -4; x_size 30; x_descenders 8; x_ascenders 5"><span class='ocrx_word' id='word_1_1' title='bbox 703 953 835 975; x_wconf 95'>White</span> <span class='ocrx_word' id='word_1_2' title='bbox 857 949 1063 979; x_wconf 60'>Burgundy)</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 840 2417 1079 2441">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 840 2417 1079 2441">
+     <span class='ocr_line' id='line_1_2' title="bbox 1058 2417 1079 2439; x_size 36; x_descenders 6; x_ascenders 10"><span class='ocrx_word' id='word_1_3' title='bbox 1058 2417 1079 2439; x_wconf 65'>Ww</span> 
+     </span>
+     <span class='ocr_line' id='line_1_3' title="bbox 1019 2417 1045 2439; x_size 30; x_descenders 5; x_ascenders 8.333334"><span class='ocrx_word' id='word_1_4' title='bbox 1019 2417 1045 2439; x_wconf 34'>z</span> 
+     </span>
+     <span class='ocr_line' id='line_1_4' title="bbox 981 2417 1008 2440; x_size 36; x_descenders 6; x_ascenders 10"><span class='ocrx_word' id='word_1_5' title='bbox 981 2417 1008 2440; x_wconf 45'>©</span> 
+     </span>
+     <span class='ocr_line' id='line_1_5' title="bbox 949 2418 973 2440; x_size 36; x_descenders 6; x_ascenders 10"><span class='ocrx_word' id='word_1_6' title='bbox 949 2418 973 2440; x_wconf 0'>&lt;</span> 
+     </span>
+     <span class='ocr_line' id='line_1_6' title="bbox 916 2419 940 2439; x_size 28.799999; x_descenders 4.8000002; x_ascenders 8"><span class='ocrx_word' id='word_1_7' title='bbox 916 2419 940 2439; x_wconf 34'>a</span> 
+     </span>
+     <span class='ocr_line' id='line_1_7' title="bbox 873 2419 905 2440; x_size 36; x_descenders 6; x_ascenders 10"><span class='ocrx_word' id='word_1_8' title='bbox 873 2419 905 2440; x_wconf 0'>e</span> 
+     </span>
+     <span class='ocr_line' id='line_1_8' title="bbox 840 2419 864 2441; x_size 36; x_descenders 6; x_ascenders 10"><span class='ocrx_word' id='word_1_9' title='bbox 840 2419 864 2441; x_wconf 23'>¢</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 823 2431 829 2440">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 823 2431 829 2440">
+     <span class='ocr_line' id='line_1_9' title="bbox 823 2431 829 2440; baseline 0 0; x_size 20; x_descenders 5; x_ascenders 5"><span class='ocrx_word' id='word_1_10' title='bbox 823 2431 829 2440; x_wconf 35'>,</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 765 2419 790 2442">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 765 2419 790 2442">
+     <span class='ocr_line' id='line_1_10' title="bbox 765 2419 790 2442; baseline 0 -2; x_size 29.333334; x_descenders 7.3333335; x_ascenders 7.3333335"><span class='ocrx_word' id='word_1_11' title='bbox 765 2419 790 2442; x_wconf 73'>Cc</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_5' title="bbox 0 0 4000 6000">
+    <p class='ocr_par' id='par_1_5' lang='eng' title="bbox 0 0 4000 6000">
+     <span class='ocr_line' id='line_1_11' title="bbox 0 0 4000 6000; x_size 2000; x_descenders -1000; x_ascenders 1000"><span class='ocrx_word' id='word_1_12' title='bbox 0 0 4000 6000; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7dg6x/media/images/d7dg6x-000.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 1098 2233 1159 2451">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 1098 2233 1159 2451">
+     <span class='ocr_line' id='line_1_1' title="bbox 1098 2295 1142 2451; textangle 180; x_size 39; x_descenders 9; x_ascenders 13"><span class='ocrx_word' id='word_1_1' title='bbox 1102 2373 1142 2451; x_wconf 19'>sues</span> <span class='ocrx_word' id='word_1_2' title='bbox 1098 2295 1116 2369; x_wconf 43'>pee</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 1100 2233 1159 2389; textangle 180; x_size 62; x_descenders 12; x_ascenders 20"><span class='ocrx_word' id='word_1_3' title='bbox 1120 2328 1159 2389; x_wconf 30'>ne</span> <span class='ocrx_word' id='word_1_4' title='bbox 1100 2233 1126 2294; x_wconf 27'>ONE</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 1125 2215 1172 2332">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 1125 2215 1172 2332">
+     <span class='ocr_line' id='line_1_3' title="bbox 1125 2222 1156 2332; textangle 180; x_size 22.666666; x_descenders 5.6666665; x_ascenders 5.666667"><span class='ocrx_word' id='word_1_5' title='bbox 1135 2325 1142 2332; x_wconf 40'>+</span> <span class='ocrx_word' id='word_1_6' title='bbox 1125 2222 1156 2301; x_wconf 25'>YX</span> 
+     </span>
+     <span class='ocr_line' id='line_1_4' title="bbox 1138 2215 1172 2285; textangle 180; x_size 45.333332; x_descenders 11.333333; x_ascenders 11.333334"><span class='ocrx_word' id='word_1_7' title='bbox 1138 2215 1172 2285; x_wconf 21'>“a</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 209 542 3852 5275">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 209 542 3852 5275">
+     <span class='ocr_line' id='line_1_5' title="bbox 209 542 3852 5275; textangle 180; x_size 1821.5; x_descenders -910.75; x_ascenders 910.75"><span class='ocrx_word' id='word_1_8' title='bbox 209 542 3852 5275; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

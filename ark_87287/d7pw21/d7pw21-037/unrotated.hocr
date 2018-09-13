@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7pw21/media/images/d7pw21-037.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 1444 436 3261 448">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 1444 436 3261 448">
+     <span class='ocr_line' id='line_1_1' title="bbox 1444 436 3261 448; baseline -0.002 -4; x_size 20; x_descenders 5; x_ascenders 5"><span class='ocrx_word' id='word_1_1' title='bbox 1444 437 2382 448; x_wconf 0'>EINE</span> <span class='ocrx_word' id='word_1_2' title='bbox 2385 437 2497 439; x_wconf 0'>InInemmmnnmesnsaananenettEnaEEIES</span> <span class='ocrx_word' id='word_1_3' title='bbox 2584 436 3170 440; x_wconf 41'>es</span> <span class='ocrx_word' id='word_1_4' title='bbox 3240 438 3261 440; x_wconf 42'>—_</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 35 454 3391 2557">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 35 454 3391 2557">
+     <span class='ocr_line' id='line_1_2' title="bbox 35 454 3391 2557; baseline 0 0; x_size 1051.5; x_descenders -525.75; x_ascenders 525.75"><span class='ocrx_word' id='word_1_5' title='bbox 35 454 3391 2557; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 272 3900 3486 5492">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 272 3900 3486 5492">
+     <span class='ocr_line' id='line_1_3' title="bbox 272 3900 3486 5492; baseline 0 0; x_size 796; x_descenders -398; x_ascenders 398"><span class='ocrx_word' id='word_1_6' title='bbox 272 3900 3486 5492; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

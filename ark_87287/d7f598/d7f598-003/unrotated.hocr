@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7f598/media/images/d7f598-003.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 2981 1156 3167 1207">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 2981 1156 3167 1207">
+     <span class='ocr_line' id='line_1_1' title="bbox 2981 1156 3167 1207; baseline 0 -3; x_size 55.777779; x_descenders 7.7777777; x_ascenders 13"><span class='ocrx_word' id='word_1_1' title='bbox 2981 1156 3167 1207; x_wconf 96'>Bottle</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 2997 1318 3136 1372">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 2997 1318 3136 1372">
+     <span class='ocr_line' id='line_1_2' title="bbox 2997 1318 3136 1372; baseline -0.022 -4; x_size 63.333332; x_descenders 15.833333; x_ascenders 15.833333"><span class='ocrx_word' id='word_1_2' title='bbox 2997 1318 3136 1372; x_wconf 0'>Sout</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 2690 3789 2901 3841">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 2588 3786 2901 3853">
+     <span class='ocr_line' id='line_1_3' title="bbox 2690 3789 2901 3841; baseline -0.01 -0.978; x_size 67; x_descenders 15; x_ascenders 20"><span class='ocrx_word' id='word_1_3' title='bbox 2588 3786 2901 3853; x_wconf 92'>(Pauillac)</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 0 0 4000 6000">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 0 0 4000 6000">
+     <span class='ocr_line' id='line_1_4' title="bbox 0 0 4000 6000; baseline 0 0; x_size 3000; x_descenders -1500; x_ascenders 1500"><span class='ocrx_word' id='word_1_4' title='bbox 0 0 4000 6000; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

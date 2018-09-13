@@ -1,106 +1,8 @@
-#+PROPERTY: header-args:sql :engine postgresql :cmdline "postgres://postgres@localhost:5433/postgres"
+M#+PROPERTY: header-args:sql :engine postgresql :cmdline "postgres://postgres@localhost:5433/postgres"
 
-** Getting ARKs
+* Image Manipulation / Text Manipulation
 
-The first order of business will be to get ARKs for each catalog.  Following the
-guidelines we have laid out, we'll make these temporary, so we can remove them
-if needed.  In addition, I am keeping this out of the Makefile so we don't
-remake them too many times.
-
-*** Collection ARK
-
-The collection ARK, ark:/87287/d7wc7m, needs to be completed.
-
-*** Item ARKS
-
-First we need to login
-
-#+BEGIN_SRC bash :results scalar
- http --session=qjhart -a ucd-qjhart:${PASSWORD} https://ezid.cdlib.org/login
-#+END_SRC
-
-Then we can use our catalog to run over each of these items;
-#+BEGIN_SRC bash
-alias mint='http --session=qjhart --print=b POST https://ezid.cdlib.org/shoulder/ark:/87287/d7 Content-Type:text/plain'
-dc exec -u postgres -T postgres psql -A -F"|" -t --pset=footer \
--c "select catalog_id,mint(c) as ezid from catalogs c" |\
-while IFS='|' read -r catalog_id ezid ; do \
-  echo -e "$ezid" | mint | tee $catalog_id.ark ; echo '' | tee --append $catalog_id.ark;
-done
-#+END_SRC
-
-Now, let's GET the records locally,  just so we have them;
-\
-#+BEGIN_SRC bash
-mkdir -p ark:/87287
-for i in ark/*.ark; do
- ark=$(cat $i | sed -e 's/success: //');
- http --session=qjhart --print=b GET https://ezid.cdlib.org/id/${ark} | \
- tee ${ark} ;
-done
-#+END_SRC
-
-Then, let's get a csv file for input into our catalog table
-
-#+BEGIN_SRC
-for i in ark/*.ark; do
- n=$(basename $i .ark);
- ark=$(cat $i | sed -e 's/success: //');
- echo $n,$ark;
-done > io/ark_xref.csv
-#+END_SRC
-
-
-#+BEGIN_SRC psql
-create temp table xref (catalog_id uuid,ark text);
-\COPY xref from /io/ark_xref.csv with csv
-update catalogs as c set ark=x.ark from xref x where c.catalog_id=x.catalog_id;
-#+END_SRC
-
-** Create Catalog Record files
-
-This time, I'm going to try and create the ttl files, using the javascript n3
-data.
-
-** copy the pages to their appropriate filename
-
-This uses the postgres database, and a format statement to create a file copy to
-the ARK filename.
-
-#+BEGIN_SRC psql
-select format('cp %s %s/media/images/%s-%3s.jpg',file,ark,regexp_replace(ark,'ark:.*/',''),LPAD(page::text,3,'0')) from jwalk;
-#+END_SRC
-
-We can also do the same thing with the DNGs. First, do the same ln -s trick,
-
-#+BEGIN_SRC
-ln -s /media/quinn/Seagate\ Expansion\ Drive/UCD_LEHMANN/UC_Sherry_Lehman/UCD_Lehman_Pics/UCD_Lehman dng
-#+END_SRC
-
-#+BEGIN_SRC
-select format('cp dng/%s.dng %s/media/dngs/%s-%3s.dng',file,regexp_replace(ark,'ark:/','ark_'),
-  regexp_replace(ark,'ark:.*/',''),LPAD(page::text,3,'0'))
-from jwalk limit;
-#+END_SRC
-
-** Get the original OCR as a temporary fix.
-
-api=https://wine-api.library.ucdavis.edu/
-http '${api}/media?select=ocr&media_id=eq.${cat_$*}' > $@
-
-#+BEGIN_SRC psql
-format('curl ''https://wine-api.library.ucdavis.edu/media?select=ocr&media_id=eq.%s'' > %s/media/ocr.txt',catalog_id,ark,regexp_replace(ark,'ark:.*/','')) from jwalk where page=0;
-#+END_SRC
-
-** Get the current page images, so we can transfer the marks if possible.
-
-
-#+BEGIN_SRC psql
-select format('curl ''https://wine-api.library.ucdavis.edu/media?select=contents&media_id=eq.%s'' > %s/media/page_images/%s-%3s.png',page_id,regexp_replace(ark,'ark:/','ark_'),regexp_replace(ark,'ark:.*/',''),LPAD(page::text,3,'0')) from jwalk join pages using (catalog_id,page);
-#+END_SRC
-
-
-* Image Manipulation
+** Image Outlines
 
 Justin identified this potential helper documents on the Hough Filter,
 https://www.imagemagick.org/discourse-server/viewtopic.php?t=25476
@@ -123,24 +25,29 @@ to convert to a simple json format.  This includes the filename, so I can import
 easily with
 
 #+BEGIN_SRC bash
-for i in *.hocr ; do
- echo $i;
- pup 'div.ocr_page json{}' < $i | jq -c . | sed -e 's/\\/\\\\/g' >> hocr.json ;
-done
+  rm unrotated.json;
+  for i in $(find ark_87287 -name unrotated.hocr); do
+  if [[ -s $i ]]; then
+   ark=$(basename $(dirname $i));
+   echo $ark;
+   echo -n -e "$ark\t0\t" >> unrotated.json;
+   pup 'div.ocr_page json{}' < $i | jq -c . | sed -e 's/\\/\\\\/g' >> unrotated.json;
+  fi;
+  done
 #+END_SRC
+
+#+RESULTS:
 
 Now that we have all the hocr in the database as JSON, we can start to look at
 the words and lines that are in there.  Remember, we did NOT use any color
 thresholding on these data yet.
 
 #+BEGIN_SRC
-create table hocr ( hocr jsonb);
-\COPY hocr from ark_87287/tesseract/hocr.json
+create table hocr ( hocr jsonb,rotation float);
+\COPY hocr(hocr) from unrotated.json
 #+END_SRC
 
-
 ** Get the original marks.
-
 *** Needed the original sizes of the images
 
 Argh, I need the size of the images to do the maths.
@@ -347,7 +254,6 @@ update crowd_source set pt=st_setsrid(st_makepoint(xy[1],xy[2]),3310);
 
 #+END_SRC
 
-
 * Price Finding Functions
 
 This query finds potential prices
@@ -415,6 +321,13 @@ select * from a;
 | CREATE VIEW |
 |-------------|
 
+** Image Rotation
+
+Once we have an original set of text extractions, we can use this to try and
+find what rotations we might use.  For example, if we find columns of numbers,
+we can see if those columns are really vertical.  From this we can build some
+potential rotations.
+
 #+BEGIN_SRC sql
   create or replace view rotate as
   with a as (
@@ -449,7 +362,8 @@ select * from a;
 | CREATE VIEW |
 |-------------|
 
-Creating our rotated datasets.
+From our rotation estimates, we can then use the iiif and tesseract services to
+rotate the images.
 
 #+BEGIN_SRC bash
 for i in $(psql -At postgres://postgres@localhost:5433/postgres \
@@ -474,7 +388,7 @@ case when(r<0) THEN 360+r ELSE r END as r
 from a where type='price' order by a.r asc
 SQL
 
-for i in $(psql $PG -c "$sql" | head -2); do
+for i in $(psql $PG -c "$sql"); do
   IFS='|' read ark r <<<"$i";
   d=${ark%-*};
   o=ark_87287/tesseract/rotate/$ark;
@@ -482,11 +396,46 @@ for i in $(psql $PG -c "$sql" | head -2); do
   echo $ark $r;
   echo "r=$r" > $o.r;
   echo $url >>$o.r;
-  http --output=$o.hocr $url;
+  http --output=$d/$ark/rotated.hocr $url;
 done
 #+END_SRC
 
 #+RESULTS:
+
+*** Importing the rotated data
+
+Now, like with the unrotated date, we will get that into the JSON format that
+we can update.  I'll use the same method as for the unrotated, b
+
+#+BEGIN_SRC bash
+rm rotated.json;
+for i in $(find ark_87287 -name rotated.hocr); do
+if [[ -s $i ]]; then
+ ark=$(basename $(dirname $i));
+ echo $ark;
+ b=${i%.hocr};
+ eval $(head -1 $b.r);
+ echo -n -e "$ark\t$r\t" >> rotated.json;
+ pup 'div.ocr_page json{}' < $i | jq -c . | sed -e 's/\\/\\\\/g' >> rotated.json;
+fi;
+done
+#+END_SRC
+
+Then import these into hocr with
+#+BEGIN_SRC sql
+ \COPY hocr (ark¸rotation,hocr) from rotated.json
+#+END_SRC
+
+*** Translating the rotated data
+
+OK, but now the tesseract images are with respect to another frame of reference,
+we need to rotate the image back to that frame.  Fortunately, we have the image
+sizes,
+
+
+    w_returned = abs(w*cos(n)) + abs(h*sin(n))
+    h_returned = abs(h*cos(n)) + abs(w*sin(n))
+
 
 * Extracting title,date from metadata.ttl
 

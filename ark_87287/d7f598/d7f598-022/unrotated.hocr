@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7f598/media/images/d7f598-022.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 564 1251 1633 1570">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 185 1251 1633 1579">
+     <span class='ocr_line' id='line_1_1' title="bbox 564 1251 1633 1570; baseline -0.008 -46.879; x_size 323; x_descenders 58; x_ascenders 61"><span class='ocrx_word' id='word_1_1' title='bbox 564 1251 1633 1570; x_wconf 93'>Announcing</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 887 2007 3154 2292">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 883 1908 3154 2400">
+     <span class='ocr_line' id='line_1_2' title="bbox 887 2007 3154 2292; baseline -0.009 -33.035; x_size 483; x_descenders 132; x_ascenders 118"><span class='ocrx_word' id='word_1_2' title='bbox 887 2035 1230 2183; x_wconf 93'>The</span> <span class='ocrx_word' id='word_1_3' title='bbox 1239 2021 2008 2292; x_wconf 88'>JOYS</span> <span class='ocrx_word' id='word_1_4' title='bbox 2073 2013 2243 2166; x_wconf 37'>!</span> <span class='ocrx_word' id='word_1_5' title='bbox 2298 2007 3154 2248; x_wconf 96'>WINE</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 0 0 4000 6000">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 0 0 4000 6000">
+     <span class='ocr_line' id='line_1_3' title="bbox 0 0 4000 6000; baseline 0 0; x_size 3000; x_descenders -1500; x_ascenders 1500"><span class='ocrx_word' id='word_1_6' title='bbox 0 0 4000 6000; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

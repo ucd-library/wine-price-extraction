@@ -1,0 +1,29 @@
+version: '2'
+
+volumes:
+  db:
+
+services:
+  postgres:
+    build: ./postgres
+    volumes:
+      - db:/var/lib/postgresql/data
+      - ./io:/io
+    ports:
+      - 5434:5432
+  tesseract:
+    image: tesseractshadow/tesseract4re
+    command: tail -f /dev/null
+    volumes:
+      - ./ark_87287:/home/work
+  # pgt:
+  #   build: ./pgt
+  #   ports:
+  #     - "${PORT}:80"
+  #   environment:
+  #     - PGT_JWT=${PGT_JWT}
+  #     - PGT_HOST=localhost
+  #   links:
+  #     - postgres:postgres
+  #   depends_on:
+  #     - postgres

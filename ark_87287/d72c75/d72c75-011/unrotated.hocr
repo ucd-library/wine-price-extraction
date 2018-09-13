@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d72c75/media/images/d72c75-011.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 596 5072 1058 5179">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 596 5072 1058 5179">
+     <span class='ocr_line' id='line_1_1' title="bbox 657 5072 1058 5137; baseline 0.02 -30; x_size 42; x_descenders 9; x_ascenders 14"><span class='ocrx_word' id='word_1_1' title='bbox 657 5072 843 5120; x_wconf 93'>SHERRY</span> <span class='ocrx_word' id='word_1_2' title='bbox 876 5089 1001 5132; x_wconf 92'>WINE</span> <span class='ocrx_word' id='word_1_3' title='bbox 1046 5112 1058 5137; x_wconf 43'>¢&amp;</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 596 5136 671 5179; baseline 0.08 -6; x_size 85.256409; x_descenders 19; x_ascenders 28.256411"><span class='ocrx_word' id='word_1_4' title='bbox 596 5136 671 5179; x_wconf 96'>679</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 1098 5105 1387 5149">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 1098 5105 1387 5156">
+     <span class='ocr_line' id='line_1_3' title="bbox 1098 5105 1387 5149; baseline 0.007 -3; x_size 32; x_descenders 6; x_ascenders 11"><span class='ocrx_word' id='word_1_5' title='bbox 1098 5105 1278 5149; x_wconf 95'>SPIRITS</span> <span class='ocrx_word' id='word_1_6' title='bbox 1314 5122 1387 5156; x_wconf 82'>CQO</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 1382 5143 1387 5150">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 1382 5143 1387 5150">
+     <span class='ocr_line' id='line_1_4' title="bbox 1382 5143 1387 5150; baseline 0 -3; x_size 20; x_descenders 5; x_ascenders 5"><span class='ocrx_word' id='word_1_7' title='bbox 1382 5143 1387 5150; x_wconf 39'>}</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 697 5146 1377 5231">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 697 5146 1377 5231">
+     <span class='ocr_line' id='line_1_5' title="bbox 697 5146 1377 5231; baseline 0.037 -47; x_size 50; x_descenders 12; x_ascenders 15"><span class='ocrx_word' id='word_1_8' title='bbox 697 5146 891 5197; x_wconf 95'>Madison</span> <span class='ocrx_word' id='word_1_9' title='bbox 918 5163 1003 5205; x_wconf 89'>Ave</span> <span class='ocrx_word' id='word_1_10' title='bbox 1058 5184 1098 5213; x_wconf 96'>at</span> <span class='ocrx_word' id='word_1_11' title='bbox 1126 5180 1218 5222; x_wconf 60'>Gist</span> <span class='ocrx_word' id='word_1_12' title='bbox 1246 5188 1314 5231; x_wconf 92'>St.</span> <span class='ocrx_word' id='word_1_13' title='bbox 1347 5195 1377 5230; x_wconf 92'>N</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_5' title="bbox 0 0 4000 6000">
+    <p class='ocr_par' id='par_1_5' lang='eng' title="bbox 0 0 4000 6000">
+     <span class='ocr_line' id='line_1_6' title="bbox 0 0 4000 6000; baseline 0 0; x_size 3000; x_descenders -1500; x_ascenders 1500"><span class='ocrx_word' id='word_1_14' title='bbox 0 0 4000 6000; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

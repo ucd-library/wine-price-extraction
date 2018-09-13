@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7fk5w/media/images/d7fk5w-025.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 447 2836 3496 2946">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 447 2836 3496 2946">
+     <span class='ocr_line' id='line_1_1' title="bbox 2374 2836 3496 2885; baseline -0.022 4; x_size 45; x_descenders 11; x_ascenders 9"><span class='ocrx_word' id='word_1_1' title='bbox 2374 2839 2547 2882; x_wconf 93'>Martin</span> <span class='ocrx_word' id='word_1_2' title='bbox 2579 2839 2786 2880; x_wconf 91'>Baccarat</span> <span class='ocrx_word' id='word_1_3' title='bbox 2816 2838 3331 2880; x_wconf 0'>Decantef.....::-..-...:....-</span> <span class='ocrx_word' id='word_1_4' title='bbox 3337 2836 3496 2885; x_wconf 96'>$37.60</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 447 2891 1038 2946; baseline -0.019 -7; x_size 47.695236; x_descenders 5.6952381; x_ascenders 16"><span class='ocrx_word' id='word_1_5' title='bbox 447 2899 566 2939; x_wconf 96'>Haut</span> <span class='ocrx_word' id='word_1_6' title='bbox 600 2897 748 2937; x_wconf 96'>Baron</span> <span class='ocrx_word' id='word_1_7' title='bbox 781 2891 1014 2946; x_wconf 92'>Armagnac</span> <span class='ocrx_word' id='word_1_8' title='bbox 1018 2902 1128 2929; x_wconf 84'>....</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 472 4596 2496 4670">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 472 4596 2496 4670">
+     <span class='ocr_line' id='line_1_3' title="bbox 472 4596 2496 4670; baseline -0.023 -4; x_size 62; x_descenders 16; x_ascenders 19"><span class='ocrx_word' id='word_1_9' title='bbox 472 4617 764 4659; x_wconf 92'>Ballantine’s</span> <span class='ocrx_word' id='word_1_10' title='bbox 803 4616 890 4657; x_wconf 96'>Cut</span> <span class='ocrx_word' id='word_1_11' title='bbox 930 4611 1105 4670; x_wconf 92'>Crystal</span> <span class='ocrx_word' id='word_1_12' title='bbox 1143 4609 1609 4650; x_wconf 53'>Decanter.............---</span> <span class='ocrx_word' id='word_1_13' title='bbox 1615 4596 1777 4647; x_wconf 95'>$32.96</span> <span class='ocrx_word' id='word_1_14' title='bbox 2209 4598 2496 4641; x_wconf 0'>Conoiner</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 1036 4805 1207 4865">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 1036 4805 1207 4865">
+     <span class='ocr_line' id='line_1_4' title="bbox 1036 4805 1207 4865; baseline -0.023 -16; x_size 81; x_descenders 18; x_ascenders 21"><span class='ocrx_word' id='word_1_15' title='bbox 1036 4805 1207 4865; x_wconf 62'>[G-18]</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 118 1178 3784 5004">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 118 1178 3784 5004">
+     <span class='ocr_line' id='line_1_5' title="bbox 118 1178 3784 5004; baseline 0 0; x_size 1913; x_descenders -956.5; x_ascenders 956.5"><span class='ocrx_word' id='word_1_16' title='bbox 118 1178 3784 5004; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

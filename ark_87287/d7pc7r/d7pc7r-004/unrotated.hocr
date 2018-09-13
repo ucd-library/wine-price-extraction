@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7pc7r/media/images/d7pc7r-004.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 664 733 3292 946">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 664 733 3295 946">
+     <span class='ocr_line' id='line_1_1' title="bbox 664 733 3292 946; baseline 0.011 -68; x_size 157; x_descenders 22; x_ascenders 49"><span class='ocrx_word' id='word_1_1' title='bbox 664 746 1314 881; x_wconf 93'>Advance</span> <span class='ocrx_word' id='word_1_2' title='bbox 1323 733 2519 887; x_wconf 23'>Offeringo—1969</span> <span class='ocrx_word' id='word_1_3' title='bbox 2623 887 2626 889; x_wconf 83'>[</span> <span class='ocrx_word' id='word_1_4' title='bbox 2688 771 3292 946; x_wconf 91'>urgundy</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 1267 975 1282 988">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 1267 975 1282 988">
+     <span class='ocr_line' id='line_1_2' title="bbox 1267 975 1282 988; baseline 0.133 -2; x_size 20; x_descenders 5; x_ascenders 5"><span class='ocrx_word' id='word_1_5' title='bbox 1267 975 1282 988; x_wconf 53'>4</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 839 939 3351 1097">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 839 939 3351 1097">
+     <span class='ocr_line' id='line_1_3' title="bbox 839 939 3351 1097; baseline 0.013 -49; x_size 143; x_descenders 35; x_ascenders 38"><span class='ocrx_word' id='word_1_6' title='bbox 839 960 1333 1050; x_wconf 96'>greatest</span> <span class='ocrx_word' id='word_1_7' title='bbox 1393 939 1984 1072; x_wconf 96'>burgundy</span> <span class='ocrx_word' id='word_1_8' title='bbox 1986 955 2489 1097; x_wconf 96'>vintage</span> <span class='ocrx_word' id='word_1_9' title='bbox 2532 960 2652 1066; x_wconf 96'>of</span> <span class='ocrx_word' id='word_1_10' title='bbox 2695 962 2880 1071; x_wconf 96'>the</span> <span class='ocrx_word' id='word_1_11' title='bbox 2923 966 3351 1079; x_wconf 96'>decade</span> 
+     </span>
+     <span class='ocr_line' id='line_1_4' title="bbox 841 1048 1956 1089; baseline 0.02 -33; x_size 144.5; x_descenders 35.5; x_ascenders 38.5"><span class='ocrx_word' id='word_1_12' title='bbox 841 1048 899 1089; x_wconf 54'>9</span> <span class='ocrx_word' id='word_1_13' title='bbox 1612 1061 1956 1083; x_wconf 35'>guna)</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 0 0 4000 6000">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 0 0 4000 6000">
+     <span class='ocr_line' id='line_1_5' title="bbox 0 0 4000 6000; baseline 0 0; x_size 3000; x_descenders -1500; x_ascenders 1500"><span class='ocrx_word' id='word_1_14' title='bbox 0 0 4000 6000; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

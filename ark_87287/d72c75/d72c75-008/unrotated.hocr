@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d72c75/media/images/d72c75-008.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 496 3030 515 3408">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 496 3030 515 3408">
+     <span class='ocr_line' id='line_1_1' title="bbox 496 3030 515 3408; baseline 378 -1890; x_size 24.25; x_descenders 5.5; x_ascenders 6.25"><span class='ocrx_word' id='word_1_1' title='bbox 500 3030 515 3063; x_wconf 31'>Newt</span> <span class='ocrx_word' id='word_1_2' title='bbox 501 3076 508 3108; x_wconf 16'>peer</span> <span class='ocrx_word' id='word_1_3' title='bbox 497 3110 509 3160; x_wconf 17'>Nase)</span> <span class='ocrx_word' id='word_1_4' title='bbox 497 3175 509 3210; x_wconf 0'>fuk]</span> <span class='ocrx_word' id='word_1_5' title='bbox 496 3223 505 3260; x_wconf 0'>folind</span> <span class='ocrx_word' id='word_1_6' title='bbox 497 3272 509 3308; x_wconf 21'>peed</span> <span class='ocrx_word' id='word_1_7' title='bbox 496 3327 512 3408; x_wconf 33'>Vd</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 0 0 4000 6000">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 0 0 4000 6000">
+     <span class='ocr_line' id='line_1_2' title="bbox 0 0 4000 6000; x_size 2000; x_descenders -1000; x_ascenders 1000"><span class='ocrx_word' id='word_1_8' title='bbox 0 0 4000 6000; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7101s/media/images/d7101s-044.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 1 3047 42 3337">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 1 3047 42 3337">
+     <span class='ocr_line' id='line_1_1' title="bbox 20 3047 42 3337; baseline -48.333 145; x_size 17; x_descenders 3; x_ascenders 3"><span class='ocrx_word' id='word_1_1' title='bbox 29 3047 42 3137; x_wconf 0'>VoCur</span> <span class='ocrx_word' id='word_1_2' title='bbox 25 3154 40 3231; x_wconf 39'>&lt;&lt;t&lt;t</span> <span class='ocrx_word' id='word_1_3' title='bbox 20 3237 34 3337; x_wconf 0'>‘or.</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 1 3052 21 3165; baseline -37.667 75.333; x_size 20; x_descenders 5; x_ascenders 5"><span class='ocrx_word' id='word_1_4' title='bbox 6 3052 21 3086; x_wconf 32'>tre</span> <span class='ocrx_word' id='word_1_5' title='bbox 1 3110 16 3165; x_wconf 13'>etewns</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 0 398 3756 5494">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 0 398 3756 5494">
+     <span class='ocr_line' id='line_1_3' title="bbox 0 398 3756 5494; x_size 1878; x_descenders -939; x_ascenders 939"><span class='ocrx_word' id='word_1_6' title='bbox 0 398 3756 5494; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 8 2845 28 3034">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 8 2845 28 3034">
+     <span class='ocr_line' id='line_1_4' title="bbox 8 2845 28 3034; baseline -94.5 189; x_size 19; x_descenders 3; x_ascenders 4"><span class='ocrx_word' id='word_1_7' title='bbox 12 2845 27 2918; x_wconf 85'>You</span> <span class='ocrx_word' id='word_1_8' title='bbox 8 2935 28 3034; x_wconf 23'>thaws</span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

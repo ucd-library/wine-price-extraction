@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7d30v/media/images/d7d30v-000.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 1824 4744 2757 4826">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 1824 4744 2757 4826">
+     <span class='ocr_line' id='line_1_1' title="bbox 1824 4744 2757 4826; textangle 270; x_size 77.75; x_descenders 18.5; x_ascenders 19.75"><span class='ocrx_word' id='word_1_1' title='bbox 2384 4744 2757 4807; x_wconf 0'>syuRYIIZ|I</span> <span class='ocrx_word' id='word_1_2' title='bbox 2130 4752 2351 4826; x_wconf 0'>S}WIdG</span> <span class='ocrx_word' id='word_1_3' title='bbox 2050 4764 2096 4815; x_wconf 15'>8B</span> <span class='ocrx_word' id='word_1_4' title='bbox 1824 4759 2020 4819; x_wconf 16'>BUI,</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 1472 4575 3107 4710">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 1472 4575 3107 4710">
+     <span class='ocr_line' id='line_1_2' title="bbox 1472 4575 3107 4710; textangle 270; x_size 141.61905; x_descenders 35.404762; x_ascenders 35.404762"><span class='ocrx_word' id='word_1_5' title='bbox 2886 4575 3107 4678; x_wconf 0'>‘oU]</span> <span class='ocrx_word' id='word_1_6' title='bbox 1472 4577 2844 4710; x_wconf 0'>‘NNVINHATAYaAHS</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 1864 4470 2711 4534">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 1864 4470 2711 4534">
+     <span class='ocr_line' id='line_1_3' title="bbox 1864 4470 2711 4534; textangle 270; x_size 67.199997; x_descenders 16.799999; x_ascenders 16.799999"><span class='ocrx_word' id='word_1_7' title='bbox 2624 4470 2711 4520; x_wconf 88'>Ad</span> <span class='ocrx_word' id='word_1_8' title='bbox 2213 4472 2595 4527; x_wconf 0'>GALNaSdaadd</span> <span class='ocrx_word' id='word_1_9' title='bbox 1864 4479 2187 4534; x_wconf 27'>ATAUNOUd</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 190 528 3877 5256">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 190 528 3877 5256">
+     <span class='ocr_line' id='line_1_4' title="bbox 190 528 3877 5256; textangle 270; x_size 2364; x_descenders -1182; x_ascenders 1182"><span class='ocrx_word' id='word_1_10' title='bbox 190 528 3877 5256; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

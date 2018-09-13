@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d78k5b/media/images/d78k5b-000.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 138 258 142 928">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 138 258 142 928">
+     <span class='ocr_line' id='line_1_1' title="bbox 138 258 142 928; baseline 0 5072; x_size 750; x_descenders 187.5; x_ascenders 187.5"><span class='ocrx_word' id='word_1_1' title='bbox 138 258 142 928; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 193 265 2690 962">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 142 265 3798 1148">
+     <span class='ocr_line' id='line_1_2' title="bbox 193 265 2690 962; baseline 0.014 -561.303; x_size 420; x_descenders 116; x_ascenders 108"><span class='ocrx_word' id='word_1_2' title='bbox 193 265 1430 962; x_wconf 2'>SIKIN</span> <span class='ocrx_word' id='word_1_3' title='bbox 1351 275 2268 808; x_wconf 27'>(itt</span> <span class='ocrx_word' id='word_1_4' title='bbox 2293 285 2690 866; x_wconf 0'>$</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 146 1030 3794 5678">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 146 1030 3794 5678">
+     <span class='ocr_line' id='line_1_3' title="bbox 146 1030 3794 5678; baseline 0 0; x_size 2324; x_descenders -1162; x_ascenders 1162"><span class='ocrx_word' id='word_1_5' title='bbox 146 1030 3794 5678; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 312 4881 3655 5640">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 139 4881 3655 5640">
+     <span class='ocr_line' id='line_1_4' title="bbox 603 4881 3655 5285; baseline -0.024 13.651; x_size 184; x_descenders 32; x_ascenders 51"><span class='ocrx_word' id='word_1_6' title='bbox 1813 5155 1848 5186; x_wconf 51'>i</span> <span class='ocrx_word' id='word_1_7' title='bbox 2741 5095 3031 5260; x_wconf 88'>679</span> <span class='ocrx_word' id='word_1_8' title='bbox 3045 4888 3655 5285; x_wconf 30'>a</span> 
+     </span>
+     <span class='ocr_line' id='line_1_5' title="bbox 312 5098 3636 5640; baseline -0.03 -113.88; x_size 185.5; x_descenders 32.5; x_ascenders 51.5"><span class='ocrx_word' id='word_1_9' title='bbox 312 5098 1448 5524; x_wconf 0'>SHERRY</span> <span class='ocrx_word' id='word_1_10' title='bbox 1416 5144 2199 5640; x_wconf 0'>Si:</span> <span class='ocrx_word' id='word_1_11' title='bbox 2182 5336 2321 5462; x_wconf 70'>(6.</span> <span class='ocrx_word' id='word_1_12' title='bbox 2490 5320 2723 5496; x_wconf 31'>TE</span> <span class='ocrx_word' id='word_1_13' title='bbox 2696 5264 3205 5520; x_wconf 31'>mplelon</span> <span class='ocrx_word' id='word_1_14' title='bbox 3197 5260 3563 5537; x_wconf 35'>$150</span> <span class='ocrx_word' id='word_1_15' title='bbox 3568 5377 3636 5491; x_wconf 58'>0</span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

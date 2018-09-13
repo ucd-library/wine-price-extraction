@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7jp4g/media/images/d7jp4g-030.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 53 2736 85 2743">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 53 2736 85 2743">
+     <span class='ocr_line' id='line_1_1' title="bbox 53 2736 85 2743; textangle 270; x_size 20; x_descenders 5; x_ascenders 5"><span class='ocrx_word' id='word_1_1' title='bbox 53 2736 85 2743; x_wconf 64'>CW</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 120 2661 173 2702">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 11 2661 205 2704">
+     <span class='ocr_line' id='line_1_2' title="bbox 120 2661 173 2702; textangle 270; x_size 77.75; x_descenders 21.5; x_ascenders 18.75"><span class='ocrx_word' id='word_1_2' title='bbox 11 2661 205 2704; x_wconf 49'>Le</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 17 2586 163 2616">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 17 2586 163 2616">
+     <span class='ocr_line' id='line_1_3' title="bbox 17 2591 131 2616; textangle 270; x_size 20; x_descenders 5; x_ascenders 5"><span class='ocrx_word' id='word_1_3' title='bbox 17 2591 131 2616; x_wconf 0'>QOUPIOM</span> 
+     </span>
+     <span class='ocr_line' id='line_1_4' title="bbox 37 2586 163 2603; textangle 270; x_size 20; x_descenders 5; x_ascenders 5"><span class='ocrx_word' id='word_1_4' title='bbox 149 2598 163 2602; x_wconf 35'>WY</span> <span class='ocrx_word' id='word_1_5' title='bbox 79 2586 144 2599; x_wconf 0'>POCUC</span> <span class='ocrx_word' id='word_1_6' title='bbox 37 2591 71 2603; x_wconf 30'>WU</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 16 2579 30 2592">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 16 2579 30 2592">
+     <span class='ocr_line' id='line_1_5' title="bbox 16 2579 30 2592; textangle 270; x_size 17.333332; x_descenders 4.333333; x_ascenders 4.3333335"><span class='ocrx_word' id='word_1_7' title='bbox 16 2579 30 2592; x_wconf 62'>Q</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_5' title="bbox 0 0 4000 6000">
+    <p class='ocr_par' id='par_1_5' lang='eng' title="bbox 0 0 4000 6000">
+     <span class='ocr_line' id='line_1_6' title="bbox 0 0 4000 6000; textangle 270; x_size 3000; x_descenders -1500; x_ascenders 1500"><span class='ocrx_word' id='word_1_8' title='bbox 0 0 4000 6000; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

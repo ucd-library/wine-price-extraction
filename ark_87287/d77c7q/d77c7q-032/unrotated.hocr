@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d77c7q/media/images/d77c7q-032.jpg"; bbox 0 0 6000 4000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 78 125 5512 2732">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 78 125 5512 2732">
+     <span class='ocr_line' id='line_1_1' title="bbox 78 125 5512 2732; baseline 0 0; x_size 1303.5; x_descenders -651.75; x_ascenders 651.75"><span class='ocrx_word' id='word_1_1' title='bbox 78 125 5512 2732; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 3531 2822 3532 3602">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 3531 2822 3532 3602">
+     <span class='ocr_line' id='line_1_2' title="bbox 3531 2822 3532 3602; baseline 0 398; x_size 249.33333; x_descenders 62.333332; x_ascenders 62.333336"><span class='ocrx_word' id='word_1_2' title='bbox 3531 2822 3532 3602; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 1662 3645 3839 3728">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 1662 3645 3839 3728">
+     <span class='ocr_line' id='line_1_3' title="bbox 1662 3645 3839 3728; baseline 0 -2; x_size 94.396698; x_descenders 12.396694; x_ascenders 22"><span class='ocrx_word' id='word_1_3' title='bbox 1662 3646 2063 3727; x_wconf 93'>Macbeth</span> <span class='ocrx_word' id='word_1_4' title='bbox 2093 3645 2801 3727; x_wconf 89'>ColorChecker™</span> <span class='ocrx_word' id='word_1_5' title='bbox 2830 3645 3084 3727; x_wconf 95'>Color</span> <span class='ocrx_word' id='word_1_6' title='bbox 3111 3646 3553 3727; x_wconf 96'>Rendition</span> <span class='ocrx_word' id='word_1_7' title='bbox 3582 3646 3839 3728; x_wconf 96'>Chart</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 612 3801 5339 3921">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 612 3801 5339 3921">
+     <span class='ocr_line' id='line_1_4' title="bbox 612 3801 5339 3921; baseline 0 79; x_size 49.333336; x_descenders 12.333334; x_ascenders 12.333333"><span class='ocrx_word' id='word_1_8' title='bbox 612 3801 5339 3921; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

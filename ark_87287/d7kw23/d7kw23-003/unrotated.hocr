@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7kw23/media/images/d7kw23-003.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 3906 2524 4000 2660">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 3906 2524 4000 2660">
+     <span class='ocr_line' id='line_1_1' title="bbox 3909 2524 3997 2557; baseline 0.057 -9; x_size 35; x_descenders 6; x_ascenders 9"><span class='ocrx_word' id='word_1_1' title='bbox 3909 2528 3920 2548; x_wconf 87'>a</span> <span class='ocrx_word' id='word_1_2' title='bbox 3934 2524 3997 2557; x_wconf 94'>Wine</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 3907 2572 4000 2605; baseline 0.054 -8; x_size 35; x_descenders 6; x_ascenders 7"><span class='ocrx_word' id='word_1_3' title='bbox 3907 2575 3960 2600; x_wconf 91'>mer</span> <span class='ocrx_word' id='word_1_4' title='bbox 3976 2572 4000 2605; x_wconf 70'>d;</span> 
+     </span>
+     <span class='ocr_line' id='line_1_3' title="bbox 3906 2611 3994 2660; baseline 0.091 -17; x_size 38; x_descenders 6; x_ascenders 12"><span class='ocrx_word' id='word_1_5' title='bbox 3906 2611 3994 2660; x_wconf 96'>beauty</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 2549 3247 2550 3265">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 2549 3247 2550 3265">
+     <span class='ocr_line' id='line_1_4' title="bbox 2549 3247 2550 3265; baseline 0 0; x_size 9; x_descenders -4.5; x_ascenders 4.5"><span class='ocrx_word' id='word_1_6' title='bbox 2549 3247 2550 3265; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 2443 3294 2444 3314">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 2443 3294 2444 3314">
+     <span class='ocr_line' id='line_1_5' title="bbox 2443 3294 2444 3314; baseline 0 0; x_size 10; x_descenders -5; x_ascenders 5"><span class='ocrx_word' id='word_1_7' title='bbox 2443 3294 2444 3314; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 202 670 4000 5402">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 202 670 4000 5402">
+     <span class='ocr_line' id='line_1_6' title="bbox 202 670 4000 5402; baseline 0 0; x_size 2366; x_descenders -1183; x_ascenders 1183"><span class='ocrx_word' id='word_1_8' title='bbox 202 670 4000 5402; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7mg6s/media/images/d7mg6s-031.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 3157 2803 3633 2980">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 3157 2794 3633 2980">
+     <span class='ocr_line' id='line_1_1' title="bbox 3287 2803 3607 2873; baseline -0.022 -11.086; x_size 74; x_descenders 13; x_ascenders 25"><span class='ocrx_word' id='word_1_1' title='bbox 3283 2794 3447 2859; x_wconf 29'>‘oe</span> <span class='ocrx_word' id='word_1_2' title='bbox 3465 2799 3607 2873; x_wconf 0'>em)</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 3157 2922 3633 2980; baseline -0.038 -15; x_size 35.773586; x_descenders 5.7735848; x_ascenders 13"><span class='ocrx_word' id='word_1_3' title='bbox 3157 2922 3444 2980; x_wconf 12'>eee</span> <span class='ocrx_word' id='word_1_4' title='bbox 3454 2931 3565 2976; x_wconf 13'>ieee</span> <span class='ocrx_word' id='word_1_5' title='bbox 3614 2938 3633 2948; x_wconf 28'>=</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 3361 3051 3510 3077">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 3361 3051 3510 3077">
+     <span class='ocr_line' id='line_1_3' title="bbox 3361 3051 3510 3077; baseline -0.02 0; x_size 33; x_descenders 8.25; x_ascenders 8.25"><span class='ocrx_word' id='word_1_6' title='bbox 3361 3051 3417 3077; x_wconf 15'>ell</span> <span class='ocrx_word' id='word_1_7' title='bbox 3472 3051 3510 3075; x_wconf 12'>ced</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 3358 3078 3609 3131">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 3358 3078 3609 3131">
+     <span class='ocr_line' id='line_1_4' title="bbox 3358 3078 3609 3131; baseline -0.032 -2; x_size 55.5; x_descenders 13.875; x_ascenders 13.875"><span class='ocrx_word' id='word_1_8' title='bbox 3358 3078 3609 3131; x_wconf 0'>Ldedilhd</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 3020 3178 3565 3232">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 2970 3178 3565 3232">
+     <span class='ocr_line' id='line_1_5' title="bbox 3020 3178 3565 3232; baseline 0 0; x_size 96.370369; x_descenders 26; x_ascenders 20.370371"><span class='ocrx_word' id='word_1_9' title='bbox 2970 3189 3032 3213; x_wconf 28'>el</span> <span class='ocrx_word' id='word_1_10' title='bbox 3044 3183 3149 3222; x_wconf 0'>dedi</span> <span class='ocrx_word' id='word_1_11' title='bbox 3158 3184 3251 3223; x_wconf 38'>Jet</span> <span class='ocrx_word' id='word_1_12' title='bbox 3252 3188 3333 3228; x_wconf 48'>tel</span> <span class='ocrx_word' id='word_1_13' title='bbox 3367 3178 3407 3212; x_wconf 56'>fol</span> <span class='ocrx_word' id='word_1_14' title='bbox 3415 3181 3565 3232; x_wconf 39'>tol]</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_5' title="bbox 155 710 3844 5483">
+    <p class='ocr_par' id='par_1_5' lang='eng' title="bbox 155 710 3844 5483">
+     <span class='ocr_line' id='line_1_6' title="bbox 155 710 3844 5483; baseline 0 0; x_size 2386.5; x_descenders -1193.25; x_ascenders 1193.25"><span class='ocrx_word' id='word_1_15' title='bbox 155 710 3844 5483; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

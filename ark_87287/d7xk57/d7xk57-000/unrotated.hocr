@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7xk57/media/images/d7xk57-000.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 660 567 2642 1087">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 660 567 2642 1087">
+     <span class='ocr_line' id='line_1_1' title="bbox 2266 567 2642 752; baseline -0.081 -36.814; x_size 251.37268; x_descenders 55; x_ascenders 68.372673"><span class='ocrx_word' id='word_1_1' title='bbox 2266 567 2650 798; x_wconf 36'>We</span> 
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 660 579 2633 1087; baseline -0.047 11; x_size 576; x_descenders 84; x_ascenders 171"><span class='ocrx_word' id='word_1_2' title='bbox 660 579 2633 1087; x_wconf 18'>SUMMER™:;</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 496 1149 1083 1316">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 496 1149 1083 1316">
+     <span class='ocr_line' id='line_1_3' title="bbox 496 1149 1083 1316; baseline -0.017 -3; x_size 184.40784; x_descenders 23.407845; x_ascenders 34"><span class='ocrx_word' id='word_1_3' title='bbox 496 1149 1083 1316; x_wconf 95'>ANNUAL</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 2390 4742 3622 4925">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 2390 4742 3622 4925">
+     <span class='ocr_line' id='line_1_4' title="bbox 2390 4742 3622 4925; baseline -0.072 -11; x_size 92.653847; x_descenders 17.653847; x_ascenders 24"><span class='ocrx_word' id='word_1_4' title='bbox 2390 4796 2519 4909; x_wconf 91'>&amp;</span> <span class='ocrx_word' id='word_1_5' title='bbox 2558 4761 3117 4925; x_wconf 93'>Spirits</span> <span class='ocrx_word' id='word_1_6' title='bbox 3158 4742 3354 4857; x_wconf 96'>Co.</span> <span class='ocrx_word' id='word_1_7' title='bbox 3358 4762 3622 4845; x_wconf 90'>ine.</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 1254 4816 2351 4986">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 1254 4804 2351 4986">
+     <span class='ocr_line' id='line_1_5' title="bbox 1254 4816 2351 4986; baseline -0.069 1; x_size 137; x_descenders 19; x_ascenders 47"><span class='ocrx_word' id='word_1_8' title='bbox 1254 4863 1856 4986; x_wconf 96'>Sherry</span> <span class='ocrx_word' id='word_1_9' title='bbox 1908 4816 2351 4941; x_wconf 96'>Wine</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_5' title="bbox 20 464 3766 5276">
+    <p class='ocr_par' id='par_1_5' lang='eng' title="bbox 20 464 3766 5276">
+     <span class='ocr_line' id='line_1_6' title="bbox 20 464 3766 5276; baseline 0 0; x_size 2406; x_descenders -1203; x_ascenders 1203"><span class='ocrx_word' id='word_1_10' title='bbox 20 464 3766 5276; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

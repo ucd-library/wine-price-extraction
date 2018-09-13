@@ -1,0 +1,257 @@
+#+PROPERTY: header-args:sql :engine postgresql :cmdline "postgres://postgres@localhost:5434/postgres" :tangle yes
+
+-- create extension fuzzystrmatch;
+
+** HOCR
+
+We need some materialized views from our text extraction. These will really be
+what we end up using in our database stuff.
+
+#+BEGIN_SRC sql
+create table hocr (
+ark text,
+rotation float,
+hocr jsonb
+);
+#+END_SRC
+
+
+#+RESULTS:
+| CREATE TABLE |
+|--------------|
+
+#+BEGIN_SRC sql
+COPY hocr (ark,rotation,hocr) from /io/unrotated.json;
+COPY hocr (ark,rotation,hocr) from /io/rotated.json;
+#+END_SRC
+
+#+BEGIN_SRC sql
+--  refresh materialized view carea;
+refresh materialized view par;
+refresh materialized view line;
+refresh materialized view words;
+#+END_SRC
+
+#+RESULTS:
+| REFRESH MATERIALIZED VIEW |
+|---------------------------|
+| REFRESH MATERIALIZED VIEW |
+| REFRESH MATERIALIZED VIEW |
+
+#+BEGIN_SRC sql
+create materialized view rotation_deltas as
+with a as (
+ select
+ ark,rotation,
+ regexp_split_to_array((regexp_matches(hocr->0->>'title','(bbox([\s\d])+);'))[1],' ') as b,
+ hocr->0 as json
+ from hocr
+),
+b as (
+ select ark,
+ rotation,
+ b[4]::integer as x,
+ -b[5]::integer as y
+ from a
+)
+select ark,b2.rotation,
+ b2.rotation*pi()/180 as rad,
+-(b2.x-b1.x)/2 as dx,
+-(b2.y-b1.y)/2 as dy,
+b2.x as x,
+b2.y as y,
+b2.x/2 as cx,
+b2.y/2 as cy
+from (select * from b where rotation=0) b1
+join b b2 using (ark);
+#+END_SRC
+
+#+RESULTS:
+| SELECT 5550 |
+|-------------|
+
+
+#+BEGIN_SRC sql
+create materialized view pages as
+with c as ( select
+ ark,rotation,
+ regexp_split_to_array((regexp_matches(hocr->0->>'title','(bbox([\s\d])+);'))[1],' ') as b,
+ hocr->0 as json
+ from hocr
+)
+a as (select *,
+ regexp_split_to_array((regexp_matches(json->>'title','(bbox([\s\d])+)'))[1],' ') as b
+ from c
+)
+select
+ row_number() over () as page_id,
+ ark,rotation,json->>'id' as page,json,
+ case when (rad != 0) THEN
+ st_translate(
+ st_rotate(
+   st_setsrid(st_makebox2d(st_makepoint(b[2]::integer,-b[3]::integer),
+   st_makepoint(b[4]::integer,-b[5]::integer)),32662),rad,cx,cy),dx,dy)
+ else
+   st_setsrid(st_makebox2d(st_makepoint(b[2]::integer,-b[3]::integer),
+   st_makepoint(b[4]::integer,-b[5]::integer)),32662)
+end as bbox
+from a join rotation_deltas using (ark,rotation);
+#+END_SRC
+
+#+RESULTS:
+| SELECT 5536 |
+|-------------|
+
+*** JSON to postgis
+
+#+BEGIN_SRC sql
+  create materialized view carea as
+  with c as ( select
+   page_id,ark,rotation,
+   jsonb_array_elements(json->'children') as json
+   from pages
+  ),
+  a as (select *,
+   regexp_split_to_array((regexp_matches(json->>'title','(bbox([\s\d])+)'))[1],' ') as b
+   from c
+  )
+  select
+   row_number() over () as carea_id,
+   page_id,ark,rotation,json->>'id' as carea,json,
+   case when (rad != 0) THEN
+   st_translate(
+   st_rotate(
+     st_setsrid(st_makebox2d(st_makepoint(b[2]::integer,-b[3]::integer),
+     st_makepoint(b[4]::integer,-b[5]::integer)),32662),rad,cx,cy),dx,dy)
+   else
+     st_setsrid(st_makebox2d(st_makepoint(b[2]::integer,-b[3]::integer),
+     st_makepoint(b[4]::integer,-b[5]::integer)),32662)
+	 end as bbox
+  from a join rotation_deltas using (ark,rotation);
+#+END_SRC
+
+#+RESULTS:
+| SELECT 201401 |
+|---------------|
+
+#+BEGIN_SRC sql
+create materialized view par as
+with c as (select
+ page_id,carea_id,ark,rotation,
+ jsonb_array_elements(json->'children') as json
+from carea
+),
+a as (select *,
+ regexp_split_to_array((regexp_matches(json->>'title','(bbox([\s\d])+)'))[1],' ') as b
+ from c
+)
+select
+row_number() over () as par_id,
+page_id,carea_id,ark,rotation,json->>'id' as par,
+json,
+ case when (rad != 0) THEN
+ st_translate(
+ st_rotate(
+   st_setsrid(st_makebox2d(st_makepoint(b[2]::integer,-b[3]::integer),
+   st_makepoint(b[4]::integer,-b[5]::integer)),32662),rad,cx,cy),dx,dy)
+ else
+   st_setsrid(st_makebox2d(st_makepoint(b[2]::integer,-b[3]::integer),
+   st_makepoint(b[4]::integer,-b[5]::integer)),32662)
+end as bbox
+from a join rotation_deltas using (ark,rotation);
+#+END_SRC
+
+#+RESULTS:
+| SELECT 244296 |
+|---------------|
+
+#+BEGIN_SRC sql
+create materialized view line as
+with c as (select
+ page_id,carea_id,par_id,ark,rotation,
+ jsonb_array_elements(json->'children') as json
+from par),
+a as (select *,
+ regexp_split_to_array((regexp_matches(json->>'title','(bbox([\s\d])+)'))[1],' ') as b
+ from c
+)
+select
+ row_number() over () as line_id,
+ page_id,carea_id,par_id,ark,rotation,json->>'id' as line,
+ (regexp_matches(json->>'title','baseline ((-?[.\d]+) (-?[.\d]+))'))[1] as baseline,
+ json,
+ case when (rad != 0) THEN
+ st_translate(
+ st_rotate(
+   st_setsrid(st_makebox2d(st_makepoint(b[2]::integer,-b[3]::integer),
+   st_makepoint(b[4]::integer,-b[5]::integer)),32662),rad,cx,cy),dx,dy)
+ else
+   st_setsrid(st_makebox2d(st_makepoint(b[2]::integer,-b[3]::integer),
+   st_makepoint(b[4]::integer,-b[5]::integer)),32662)
+end as bbox
+from a join rotation_deltas using (ark,rotation);
+#+END_SRC
+
+#+RESULTS:
+| SELECT 694971 |
+|---------------|
+
+#+BEGIN_SRC sql
+  -- drop function if exists ocr_title_parm(in l json,in key text,out v text[]);
+  -- create function ocr_title_parm(in l json,in key text,out v text[])
+  -- LANGUAGE SQL AS $$
+  -- with a as (
+  --  select regexp_split_to_array(unnest(t),' ') as v
+  --  from line,regexp_split_to_array($1->>'title','\s*;\s*') as t
+  -- )
+  -- select v[2:100] as v from a where v[1]=$2
+  $$;
+
+#+END_SRC
+
+#+RESULTS:
+| DROP FUNCTION   |
+|-----------------|
+| CREATE FUNCTION |
+
+
+#+BEGIN_SRC sql
+create materialized view words as
+with c as (
+select
+ page_id,carea_id,par_id,line_id,ark,rotation,
+ jsonb_array_elements(json->'children') as json
+from line
+),
+a as (select *,
+ json->>'text' as text,
+ (regexp_matches(json->>'title','x_wconf (\d+)'))[1] as x_wconf,
+ regexp_split_to_array((regexp_matches(json->>'title','(bbox([\s\d])+)'))[1],' ') as b
+ from c
+)
+select
+ row_number() over () as word_id,
+ page_id,carea_id,par_id,line_id,ark,rotation,json->>'id' as word,
+ text,
+ x_wconf,
+ json,
+ case when (rad != 0) THEN
+ st_translate(
+ st_rotate(
+   st_setsrid(st_makebox2d(st_makepoint(b[2]::integer,-b[3]::integer),
+   st_makepoint(b[4]::integer,-b[5]::integer)),32662),rad,cx,cy),dx,dy)
+ else
+   st_setsrid(st_makebox2d(st_makepoint(b[2]::integer,-b[3]::integer),
+   st_makepoint(b[4]::integer,-b[5]::integer)),32662)
+end as bbox
+from a join rotation_deltas using (ark,rotation)
+where text is not null;
+
+create index words_ark on words(ark);
+create index words_line_id on words(line_id);
+
+#+END_SRC
+
+#+RESULTS:
+| SELECT 5464769 |
+|----------------|

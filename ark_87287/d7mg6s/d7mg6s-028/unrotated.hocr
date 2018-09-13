@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 4.0.0-beta.1-262-g555f' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word'/>
+</head>
+<body>
+  <div class='ocr_page' id='page_1' title='image "../d7mg6s/media/images/d7mg6s-028.jpg"; bbox 0 0 4000 6000; ppageno 0'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 2346 998 2458 1013">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 2346 997 2458 1013">
+     <span class='ocr_line' id='line_1_1' title="bbox 2346 998 2458 1013; baseline -0.054 -4; x_size 25.5; x_descenders 6; x_ascenders 6.5"><span class='ocrx_word' id='word_1_1' title='bbox 2346 997 2412 1013; x_wconf 15'>DT</span> <span class='ocrx_word' id='word_1_2' title='bbox 2414 999 2458 1012; x_wconf 18'>nn</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 3470 3043 3478 3056">
+    <p class='ocr_par' id='par_1_2' lang='eng' title="bbox 3470 3043 3478 3056">
+     <span class='ocr_line' id='line_1_2' title="bbox 3470 3043 3478 3056; baseline 0 0; x_size 17.333332; x_descenders 4.333333; x_ascenders 4.3333335"><span class='ocrx_word' id='word_1_3' title='bbox 3470 3043 3478 3056; x_wconf 14'>io</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 3470 3073 3485 3168">
+    <p class='ocr_par' id='par_1_3' lang='eng' title="bbox 3470 3073 3485 3168">
+     <span class='ocr_line' id='line_1_3' title="bbox 3470 3073 3485 3168; textangle 90; x_size 20; x_descenders 5; x_ascenders 5"><span class='ocrx_word' id='word_1_4' title='bbox 3476 3158 3484 3168; x_wconf 28'>asi</span> <span class='ocrx_word' id='word_1_5' title='bbox 3470 3073 3485 3144; x_wconf 0'>uatbnaauion</span> 
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_4' title="bbox 0 432 4000 5294">
+    <p class='ocr_par' id='par_1_4' lang='eng' title="bbox 0 432 4000 5294">
+     <span class='ocr_line' id='line_1_4' title="bbox 0 432 4000 5294; baseline 0 0; x_size 2431; x_descenders -1215.5; x_ascenders 1215.5"><span class='ocrx_word' id='word_1_6' title='bbox 0 432 4000 5294; x_wconf 95'> </span> 
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>
