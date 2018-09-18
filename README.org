@@ -1,4 +1,135 @@
-M#+PROPERTY: header-args:sql :engine postgresql :cmdline "postgres://postgres@localhost:5433/postgres"
+#+PROPERTY: header-args:sql :engine postgresql :cmdline "postgres://postgres@localhost:5434/postgres"
+
+* Rotation
+
+When extracting images that have some distortation based on a input rotation
+error, you can some pretty significant changes to your OCR.
+
+** How much rotation
+
+The following command generates a histograom that shows how much rotation we
+think we are seeing in our images.  This is based on looking for columns of
+numbers as described below.  This histogram is on tenths of a degree.  You can
+see that about half of the images are affected by some rotation, as estimated by
+our method.
+
+#+BEGIN_SRC sql
+create view rotation_histogram as
+with a as (
+ select (CASE when (rotation > 180) THEN rotation-360 ELSE rotation END)::decimal(6,1) as rotation
+from (
+ select ark,max(rotation) as rotation
+ from rotation_deltas group by 1) as r
+)
+select
+rotation,
+count(*)
+from a
+group by 1 order by 1;
+#+END_SRC
+
+#+BEGIN_SRC sql
+  select * from rotation_histogram;
+#+END_SRC
+
+#+PLOT: labels:("Rotation" "Count") ind:1
+#+RESULTS:
+| rotation | count |
+|----------+-------|
+|     -2.4 |     1 |
+|     -2.2 |     1 |
+|     -2.1 |     1 |
+|     -2.0 |     1 |
+|     -1.8 |     1 |
+|     -1.7 |     2 |
+|     -1.6 |     3 |
+|     -1.5 |     4 |
+|     -1.4 |     9 |
+|     -1.3 |    11 |
+|     -1.2 |    15 |
+|     -1.1 |    18 |
+|     -1.0 |    25 |
+|     -0.9 |    33 |
+|     -0.8 |    33 |
+|     -0.7 |    45 |
+|     -0.6 |    60 |
+|     -0.5 |    52 |
+|     -0.4 |    97 |
+|     -0.3 |   118 |
+|     -0.2 |    85 |
+|     -0.1 |   123 |
+|      0.0 |  2371 |
+|      0.1 |    87 |
+|      0.2 |    94 |
+|      0.3 |   110 |
+|      0.4 |    87 |
+|      0.5 |    64 |
+|      0.6 |    83 |
+|      0.7 |    62 |
+|      0.8 |    50 |
+|      0.9 |    45 |
+|      1.0 |    25 |
+|      1.1 |    17 |
+|      1.2 |    20 |
+|      1.3 |    14 |
+|      1.4 |     7 |
+|      1.5 |     9 |
+|      1.6 |     6 |
+|      1.7 |     5 |
+|      1.8 |     3 |
+|      1.9 |     1 |
+|      2.0 |     4 |
+|      2.1 |     2 |
+|      2.3 |     1 |
+
+The average rotation is pretty small, only about 0.209 degrees
+
+#+BEGIN_SRC sql
+select (sum(abs(rotation)*count)/sum(count))::decimal(6,3) as average_rotation
+from rotation_histogram;
+#+END_SRC
+
+#+RESULTS:
+| average_rotation |
+|------------------|
+|            0.209 |
+
+For any image, you can see what kind difference this makes using the iiif
+service in the dams.  For example, lets look for some example images that are
+right around that average rotation.  We'll pick some images that are close to
+that rotation parameter, in both clockwise and counter-clockwise direction.
+
+#+BEGIN_SRC sql
+with a as (
+ select sum(abs(rotation)*count)/sum(count) as r
+ from rotation_histogram
+),
+m as (
+ select ark,r,rotation,abs(rotation-r)
+ from a,rotation_deltas
+ order by 4 limit 2
+),
+x as (
+ select ark,r,rotation,abs(rotation-(360-r))
+ from a,rotation_deltas
+ order by 4 limit 2
+)
+select * from m union select * from x;
+#+END_SRC
+
+#+RESULTS:
+| ark        |                      r | rotation |                  abs |
+|------------+------------------------+----------+----------------------|
+| d7jc7h-013 | 0.20937259923175416133 |     0.21 | 0.000627400768245828 |
+| d77c7q-071 | 0.20937259923175416133 |   359.79 | 0.000627400768223652 |
+| d7dk5k-008 | 0.20937259923175416133 |   359.79 | 0.000627400768223652 |
+| d7v88n-001 | 0.20937259923175416133 |     0.21 | 0.000627400768245828 |
+
+
+
+[[https://digital.ucdavis.edu/fcrepo/rest/collection/sherry-lehmann/catalogs/d7jc7h/media/images/d7jc7h-013/svc:iiif/full/full/0/default.jpg][unrotated]]
+[[https://digital.ucdavis.edu/fcrepo/rest/collection/sherry-lehmann/catalogs/d7jc7h/media/images/d7jc7h-013/svc:iiif/full/full/0.21/default.jpg][rotated]]
+
 
 * Image Manipulation / Text Manipulation
 
@@ -435,6 +566,7 @@ sizes,
 
     w_returned = abs(w*cos(n)) + abs(h*sin(n))
     h_returned = abs(h*cos(n)) + abs(w*sin(n))
+
 
 
 * Extracting title,date from metadata.ttl

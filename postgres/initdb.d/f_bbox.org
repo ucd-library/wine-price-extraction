@@ -255,3 +255,23 @@ create index words_line_id on words(line_id);
 #+RESULTS:
 | SELECT 5464769 |
 |----------------|
+
+** Helper views
+
+#+BEGIN_SRC
+
+#+END_SRC
+
+** Authorization
+
+#+BEGIN_SRC sql
+GRANT USAGE ON SCHEMA catalogs to PUBLIC;
+GRANT SELECT ON ALL TABLES IN SCHEMA catalogs to PUBLIC;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA catalogs to PUBLIC;
+#+END_SRC
+
+#+RESULTS:
+| GRANT |
+|-------|
+| GRANT |
+| GRANT |
