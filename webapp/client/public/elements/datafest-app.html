@@ -1,0 +1,81 @@
+<style>
+  :host {
+    display: block;
+    height: 100vh;
+  }
+
+  .root {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .root .row {
+    flex: 1;
+    display: flex;
+  }
+
+  .root .header {
+    display: flex;
+  }
+
+  .root .row > * {
+    flex: 1;
+  }
+
+  .root .header > * {
+    text-align: center;
+    font-size: 16px;
+    flex: 1;
+  }
+
+  #info {
+    padding: 10px;
+  }
+</style>
+
+<div style="height: 100%; display:flex">
+  <div class="root">
+    <div class="header">
+      <div>Unrotated</div>
+      <div>Rotated</div>
+    </div>
+    <div class="row">
+      <app-box-map 
+        class="map" 
+        image$="[[image]]" 
+        data="[[data]]" 
+        on-feature-clicked="_onFeatureClicked"
+        on-map-move="_onMapMove">
+      </app-box-map>
+      <app-box-map 
+        class="map" 
+        image$="[[image]]" 
+        data="[[data]]"
+        on-feature-clicked="_onFeatureClicked"
+        on-map-move="_onMapMove" 
+        rotated>
+      </app-box-map>
+    </div>
+    <div class="row">
+      <app-heat-map 
+        class="map" 
+        image$="[[image]]" 
+        data="[[data]]" 
+        on-map-move="_onMapMove">
+      </app-heat-map>
+      <app-heat-map 
+        class="map" 
+        image$="[[image]]" 
+        data="[[data]]" 
+        on-map-move="_onMapMove" 
+        rotated>
+      </app-heat-map>
+    </div>
+  </div>
+  <div>
+    <div>Info</div>
+    <div id="info"></div>
+  </div>
+</div>

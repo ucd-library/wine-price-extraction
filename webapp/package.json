@@ -1,0 +1,23 @@
+{
+  "name": "@ucd-lib/datafest-2018-webapp",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "watch": "cd client && webpack --config webpack-watch.config.js --watch",
+    "deploy": "gcloud app deploy --project digital-ucdavis-edu",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ucd-lib/spa-router-middleware": "0.0.2",
+    "express": "^4.16.3",
+    "pg": "^7.4.3"
+  },
+  "devDependencies": {
+    "@ucd-lib/cork-app-build": "^0.1.5",
+    "webpack": "^4.19.1",
+    "webpack-cli": "^3.1.0"
+  }
+}
