@@ -40,7 +40,8 @@ export default class AppBoxMap extends PolymerElement {
     this.viewer = L.map(this.$.map, {
       crs: L.CRS.Simple,
       minZoom: -4,
-      zoomControl : false
+      zoomControl : false,
+      attributionControl: false
     });
 
     this.viewer.on('move', e => this._handleMove(e));
@@ -107,6 +108,10 @@ export default class AppBoxMap extends PolymerElement {
         "opacity": ofactor,
         fillOpacity : ofactor,
       };
+
+      if( f.word_id === '1040545' ) {
+        style.color = 'blue';
+      }
  
       f.geojson.coordinates[0] = f.geojson.coordinates[0].map(c => {
         return [c[0], this.imageHeight + c[1]];
@@ -121,6 +126,15 @@ export default class AppBoxMap extends PolymerElement {
       f = L.geoJSON(feature, {style}).addTo(this.viewer);
       f.on('click', (e) => {
         let detail = clone(e.layer.feature.properties);
+        
+        // console.log(detail.geojson);
+        let c = detail.geojson.coordinates[0];
+        let x = c[0][0]-10;
+        let y = this.imageHeight-c[0][1]-60;
+        let w = c[2][0]-c[1][0]+10;
+        let h = c[1][1]-c[0][1]+10;
+        console.log(`${x},${y},${w},${h}`);
+
         delete detail.geojson;
         this.dispatchEvent(new CustomEvent('feature-clicked', {detail}));
       });

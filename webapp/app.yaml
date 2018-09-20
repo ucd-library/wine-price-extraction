@@ -1,2 +1,4 @@
 service: default
 runtime: nodejs8
+env_variables:
+  INSTANCE_CONNECTION_NAME: digital-ucdavis-edu:us-west1:datafest

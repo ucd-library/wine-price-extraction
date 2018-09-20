@@ -14,7 +14,10 @@ export default class DatafestApp extends PolymerElement {
 
   static get properties() {
     return {
-      
+      hideInfo : {
+        type : Boolean,
+        value : false
+      }
     }
   }
 
@@ -31,6 +34,7 @@ export default class DatafestApp extends PolymerElement {
     let base = ark.split('-')[0];
 
     this.image = `${ROOT_URL}${base}/media/images/${ark}`;
+    console.log(this.image);
 
     let response = await fetch(`/api/words/${ark}`);
     
@@ -56,6 +60,10 @@ export default class DatafestApp extends PolymerElement {
     setTimeout(() => {
       this.maps.forEach(map => map._resize());
     }, 100);
+  }
+
+  hideInfoPanel() {
+    this.hideInfo = true;
   }
 
 }

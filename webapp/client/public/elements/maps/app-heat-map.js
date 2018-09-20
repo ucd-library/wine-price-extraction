@@ -39,7 +39,8 @@ export default class AppHeatMap extends PolymerElement {
     this.viewer = L.map(this.$.map, {
       crs: L.CRS.Simple,
       minZoom: -4,
-      zoomControl : false
+      zoomControl : false,
+      attributionControl: false
     });
 
     this.viewer.on('move', e => this._handleMove(e));

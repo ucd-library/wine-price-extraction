@@ -1,5 +1,5 @@
-const pg = require('./lib/pg');
-const config = require('./config');
+const pg = require('../lib/pg');
+const config = require('../config');
 const path = require('path');
 const fs = require('fs');
 

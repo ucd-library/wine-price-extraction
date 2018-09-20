@@ -1,6 +1,8 @@
 .DS_Store
 count-results.json
 node_modules
+screenshots
+node/patch/tmp/*
 
 #emacs
 *~
