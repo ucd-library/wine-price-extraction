@@ -536,7 +536,7 @@ with
 p as (
 select
 page_id,file,
-format('%s-%s',regexp_replace(ark,'ark:/87287',''),lpad(page::text,3,'0')) as page_ark
+format('%s-%s',regexp_replace(ark,'ark:/87287/',''),lpad(page::text,3,'0')) as page_ark
 from ptv_pages join jwalk using (catalog_id,page)
 )
 select
@@ -554,7 +554,7 @@ order by file,xy[2];
 
 alter table crowd_source add column mark_id serial primary key;
 alter table crowd_source add column pt geometry(POINT,32662);
-update crowd_source set pt=st_setsrid(st_makepoint(xy[1],xy[2]),32662);
+update crowd_source set pt=st_setsrid(st_makepoint(xy[1],-xy[2]),32662);
 
 #+END_SRC
 
