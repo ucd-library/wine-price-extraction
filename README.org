@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:sql :engine postgresql :cmdline "postgres://postgres@localhost:5434/postgres"
+#+PROPERTY: header-args:sql :engine postgresql :cmdline "service=datafest" :tangle yes
 
 * Rotation
 
@@ -125,10 +125,183 @@ select * from m union select * from x;
 | d7dk5k-008 | 0.20937259923175416133 |   359.79 | 0.000627400768223652 |
 | d7v88n-001 | 0.20937259923175416133 |     0.21 | 0.000627400768245828 |
 
-
-
 [[https://digital.ucdavis.edu/fcrepo/rest/collection/sherry-lehmann/catalogs/d7jc7h/media/images/d7jc7h-013/svc:iiif/full/full/0/default.jpg][unrotated]]
 [[https://digital.ucdavis.edu/fcrepo/rest/collection/sherry-lehmann/catalogs/d7jc7h/media/images/d7jc7h-013/svc:iiif/full/full/0.21/default.jpg][rotated]]
+
+
+** How does rotation affect the text extration
+
+#+BEGIN_SRC sql
+create materialized view word_intersection as
+with r as (
+ select w.* from words w
+ join (select ark from rotation_deltas where rotation !=0) as a
+ using (ark)
+),
+i as (
+ select r0,r1,
+ st_intersection(r0.bbox,r1.bbox) as intersection
+ from r r0
+ join r r1 on (r0.rotation=0 and r1.rotation != 0 and r0.ark=r1.ark and st_intersects(r0.bbox,r1.bbox) is true)
+),
+c as (
+ select
+ (r0).ark,
+ (r1).rotation,
+ (r0).text as r0_text,
+ (r1).text as r1_text,
+ (st_area(intersection)/st_area((r0).bbox))::decimal(6,2) as r0_fraction,
+ (st_area(intersection)/st_area((r1).bbox))::decimal(6,2) as r1_fraction,
+ (r0).word_id as r0_id,
+ (r1).word_id as r1_id
+ from i
+)
+select *
+from c
+where r0_fraction>0.1 and r1_fraction>0.1;
+#+END_SRC
+
+#+RESULTS:
+| SELECT 1010706 |
+|----------------|
+
+**** Same word Levinstein Distance
+
+If we define same words as a significant overlap, we can see how far off the
+words are by average, when we have rotations.  We will pick a few definitions of
+the notion of "same word" Basically, that they have some % of overlap.
+
+#+BEGIN_SRC sql
+with f as (
+ select * from (VALUES (.8),(0.85),(0.9),(0.95)) as v(frac)
+)
+select
+frac,count(*)
+from f,word_intersection
+where r0_fraction > f.frac and r1_fraction > f.frac
+group by frac order by frac;
+#+END_SRC
+
+#+RESULTS:
+| frac |  count |
+|------+--------|
+|  0.8 | 847943 |
+| 0.85 | 831829 |
+|  0.9 | 808228 |
+| 0.95 | 688630 |
+
+
+Then we can calculate the average levenshtein distance from the words for each
+rotation angle.
+
+#+BEGIN_SRC sql
+create or replace view same_word_lev as
+with f as (
+ select * from (VALUES (.8),(0.85),(0.9),(0.95)) as v(frac)
+),
+s as (
+ select
+ frac,(CASE WHEN (rotation>180) THEN rotation-360 ELSE rotation END)::decimal(6,1),r0_id,r0_text,r1_id,r1_text
+ from f,word_intersection
+ where r0_fraction > f.frac and r1_fraction > f.frac
+)
+select frac,rotation,
+(avg(levenshtein(r0_text,r1_text)))::decimal(6,2) as d
+from s
+group by 1,2
+order by 1,2
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+And we can create a nice cross tab of this data for copying into CSV
+
+#+BEGIN_SRC sql
+create view same_word_lev_ct as
+select * from
+crosstab('select rotation,frac,d From same_word_lev order by rotation,frac',
+         'select distinct frac from same_word_lev order by 1')
+as ct(
+rotation decimal(6,2),s80 decimal(6,2),s85 decimal(6,2),s90 decimal(6,2),s95 decimal(6,2));
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+#+BEGIN_SRC sql
+\COPY (select * from same_word_lev_ct) to io/same_word_lev_ct.csv with csv header
+#+END_SRC
+
+#+RESULTS:
+| COPY 45 |
+|---------|
+
+
+**** Word Similarity
+
+One thing we can count is similar the words are from one rotation to the next.
+One way to do this is to count how many words are found for each page, at each
+rotation, and then how many of these are the same_word.
+
+We can use the above defintions of same_word, then we jsut need to count the
+words.
+
+#+BEGIN_SRC sql
+create view rotation_word_similarity as
+with r as (
+ select ark,
+ (CASE WHEN (rotation > 180) THEN rotation-360 ELSE rotation END)::decimal(6,1) as rotation
+ from rotation_deltas
+where rotation !=0
+),
+r0 as (select
+ark,count(*)
+from words w join r using (ark)
+where w.rotation=0
+group by ark
+),
+r1 as (select
+ark,
+count(*)
+from words w join r using (ark) where w.rotation!=0
+group by ark
+),
+rot as (
+ select ark,r0.count as r0,r1.count as r1
+ from r0 join r1 using (ark)
+),
+a as (
+ select rotation,sum(r0) as r0,sum(r1) as r1
+ from rot join r using (ark)
+ group by rotation
+ order by rotation
+),
+s as (
+ select
+ (CASE WHEN (rotation > 180) THEN rotation-360 ELSE rotation END)::decimal(6,1) as rotation,
+ count(*) as same
+ from word_intersection where r0_fraction > 0.85 and r1_fraction > 0.85
+ group by 1
+)
+select rotation,r0,r1,same
+from a join s using (rotation)
+order by rotation
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+#+BEGIN_SRC sql
+\COPY (select * from rotation_word_similarity) to csv/rotation_word_similarity.csv with csv header
+#+END_SRC
+
+#+RESULTS:
+| COPY 45 |
+|---------|
 
 
 * Image Manipulation / Text Manipulation
@@ -141,6 +314,7 @@ https://www.imagemagick.org/discourse-server/viewtopic.php?t=25476
 However, we really need to do a better job of getting the outline of the images.
 My amerine menu script might be a good starting point. Searching for background
 removal in imagemagick brings up some interesting stuff as well.
+
 
 ** Tesseract
 
@@ -178,6 +352,7 @@ create table hocr ( hocr jsonb,rotation float);
 \COPY hocr(hocr) from unrotated.json
 #+END_SRC
 
+
 ** Get the original marks.
 *** Needed the original sizes of the images
 
@@ -197,7 +372,7 @@ done >> size.csv
 
 #+BEGIN_SRC sql
 create table image_size (size char,page_ark text,x integer,y integer);
-\COPY image_size from size.csv with csv;
+\COPY image_size from io/size.csv with csv;
 
 create table image_extent as
 select l.page_ark,
@@ -207,6 +382,12 @@ from image_size l
 join image_size x
 on (l.size='L' and x.size='X' and l.page_ark=x.page_ark);
 #+END_SRC
+
+#+RESULTS:
+| CREATE TABLE |
+|--------------|
+| COPY 7628    |
+| SELECT 3723  |
 
 #+BEGIN_SRC
 with a as (select page_id,count(*) from marks group by 1 order by 1) select
@@ -220,7 +401,6 @@ This is an example to start each in gimp
 i=d78g6p-022; n=${i%-*}; gimp $n/media/images/$i.jpg $n/media/page_images/$i.png
 #+END_SRC
 
-#+header: :engine postgresql :cmdline "postgres://postgres@localhost:5433/postgres"
 #+BEGIN_SRC sql
 create table mark_xwalk (
 page_ark text,
@@ -231,8 +411,11 @@ lit_ur integer[2]
 );
 #+END_SRC
 
+#+RESULTS:
+| CREATE TABLE |
+|--------------|
 
-#+header: :engine postgresql :cmdline "postgres://postgres@localhost:5433/postgres"
+
 #+BEGIN_SRC sql
 copy mark_xwalk from stdin with csv header;
 page_ark,big_ll,big_ur,little_ll,little_ur
@@ -347,15 +530,14 @@ d7z30t-008,"{96,5424}","{3760,592}","{30,1465}","{1116,39}"
 | COPY 105 |
 |----------|
 
-#+header: :engine postgresql :cmdline "postgres://postgres@localhost:5433/postgres"
 #+BEGIN_SRC sql
-create table crowd_source_marks as
+create table crowd_source as
 with
 p as (
 select
 page_id,file,
-format('%s-%s',regexp_replace(ark,'ark:/','ark_'),lpad(page::text,3,'0')) as page_ark
-from pages join jwalk using (catalog_id,page)
+format('%s-%s',regexp_replace(ark,'ark:/87287',''),lpad(page::text,3,'0')) as page_ark
+from ptv_pages join jwalk using (catalog_id,page)
 )
 select
 file,page_ark,
@@ -371,19 +553,23 @@ left join image_extent e using (page_ark)
 order by file,xy[2];
 
 alter table crowd_source add column mark_id serial primary key;
-alter table crowd_source add column pt geometry(POINT,3310);
-update crowd_source set pt=st_setsrid(st_makepoint(xy[1],xy[2]),3310);
+alter table crowd_source add column pt geometry(POINT,32662);
+update crowd_source set pt=st_setsrid(st_makepoint(xy[1],xy[2]),32662);
 
 #+END_SRC
 
 #+RESULTS:
-| CREATE VIEW |
+| SELECT 1343 |
 |-------------|
+| ALTER TABLE |
+| ALTER TABLE |
+| UPDATE 1343 |
 
 #+BEGIN_SRC
  \COPY (select file,page_ark,type,wine_type,color,country,name,section,vintage,bottle_type,perprice,caseprice,st_x(pt),-st_y(pt) from crowd_source order by file,(st_x(pt)/200)::integer,st_y(pt) desc) to crowd_source with csv header;
 
 #+END_SRC
+
 
 * Price Finding Functions
 
@@ -401,8 +587,9 @@ select * from a;
 #+END_SRC
 
 #+RESULTS:
-| DROP VIEW   |
+| SET         |
 |-------------|
+| DROP VIEW   |
 | CREATE VIEW |
 
 #+BEGIN_SRC sql
@@ -415,7 +602,6 @@ order by 3 desc;
 This query trys to find non-price numbers that aren't vintages.  The idea here
 is that these have identifiers in them.
 
-#+header: :engine postgresql :cmdline "postgres://postgres@localhost:5433/postgres"
 #+BEGIN_SRC sql
 drop view if exists identifiers cascade;
 create view identifiers as
@@ -428,10 +614,15 @@ select * from a;
 #+END_SRC
 
 #+RESULTS:
-| DROP VIEW   |
+| SET         |
 |-------------|
+| DROP VIEW   |
 | CREATE VIEW |
 
+This function looks at organizing the prices into columns.  This is done by
+clustering the prices on their x axis, and then finding the best line with the
+RHS to the values within the prices.  We can use this to calculate our rotations
+in the next step.
 
 #+BEGIN_SRC sql
   create or replace view price_cols as
@@ -449,8 +640,222 @@ select * from a;
 #+END_SRC
 
 #+RESULTS:
-| CREATE VIEW |
+| SET         |
 |-------------|
+| CREATE VIEW |
+
+*** Word Tokens
+
+We are going to try and extend this idea of extracting prices into a more
+general idea.  In this case, we are going to create a more simple symbol set for
+each of our words.  The basic idea is to simplify our regexp searches on lines.
+
+#+BEGIN_SRC sql
+
+WHEN (w.text~'^\d\d*\.\d\d$') THEN
+'P'
+WHEN (w.text~'^(\d\d*\.)((\d[^\d])|([^\d]\d))$') THEN
+'Q'
+WHEN (w.text ~'^19\d\d$') THEN
+'Y'
+WHEN (w.text ~'^\d\d\d+$') THEN
+'C'
+WHEN (w.text ~'^[.]+$') THEN
+'.'
+ELSE
+'N'
+END)::char
+$$ LANGUAGE SQL IMMUTABLE;
+
+create or replace function
+word_token( IN w words, IN z int,OUT char) as $$
+select
+(CASE WHEN (w.height::float/z::float < 0.2) THEN
+'_'
+WHEN (w.height::float/z < 0.8 ) THEN
+lower(word_token(w))
+ELSE
+word_token(w)
+END)::char;
+$$ LANGUAGE SQL IMMUTABLE;
+
+select text,word_token(w),word_token(w,(w.height*1.1)::integer) from words w where word_token(w) in ('Q') limit 3;
+#+END_SRC
+
+#+RESULTS:
+| CREATE FUNCTION |            |            |
+|-----------------+------------+------------|
+| CREATE FUNCTION |            |            |
+| text            | word_token | word_token |
+| 2.2.            | Q          | Q          |
+| 22.6.           | Q          | Q          |
+| 23.4,           | Q          | Q          |
+
+That's not perfect, but we are getting somewhere, let's see what sort of line
+tokens we have with this symbol set.
+
+
+#+BEGIN_SRC sql
+ with d as (
+   select ark,text,
+   regexp_replace(regexp_replace(text,'[\(\)]','','g'),'^\$','') as n$,
+--   regexp_replace(text,'[\(\)]','','g') as n$,
+--   regexp_replace(text,'^\$','') as n$,
+   regexp_replace(text,'[^\d\.]','','g') as digits
+ from words),
+ s as (
+  select * from d
+  where (length(n$)-length(digits)>1)
+  and (length(n$)-length(digits) <3)
+  and (length(n$)>3) and (text~'\.\d')
+)
+select * from s where ark='d7fw2v-024' limit 10
+--select * from s where ark='d77g6c-004' limit 10
+--select ark,count(*) from s group by ark order by count desc limit 5;
+#+END_SRC
+
+#+RESULTS:
+
+| ark        | text                        | n$                          |                    digits |
+|------------+-----------------------------+-----------------------------+---------------------------|
+| d72p44-032 | Yr...........10.96          | Yr...........10.96          |          ...........10.96 |
+| d72p44-032 | Yr......9.86                | Yr......9.86                |                ......9.86 |
+| d72p44-032 | Yr.................10.00    | Yr.................10.00    |    .................10.00 |
+| d72p44-032 | Yr.............11.20        | Yr.............11.20        |        .............11.20 |
+| d72p44-032 | Yr.................11.50    | Yr.................11.50    |    .................11.50 |
+| d72p44-032 | Yr......11.14               | Yr......11.14               |               ......11.14 |
+| d72p44-032 | Yr............11.56         | Yr............11.56         |         ............11.56 |
+| d72p44-032 | Yr.....18.46                | Yr.....18.46                |                .....18.46 |
+| d72p44-032 | Yr.....11.50                | Yr.....11.50                |                .....11.50 |
+| d72p44-032 | Yr....................11.60 | Yr....................11.60 | ....................11.60 |
+
+
+| ark        | text   | n$     | digits |
+|------------+--------+--------+--------|
+| d77g6c-004 | AB.50  | AB.50  |    .50 |
+| d77g6c-004 | A.7D   | A.7D   |     .7 |
+| d77g6c-004 | AB.50  | AB.50  |    .50 |
+| d77g6c-004 | A.7D   | A.7D   |     .7 |
+| d77g6c-004 | o1l.75 | o1l.75 |   1.75 |
+| d77g6c-004 | A.99D  | A.99D  |    .99 |
+| d77g6c-004 | AS.10  | AS.10  |    .10 |
+| d77g6c-004 | o1l.75 | o1l.75 |   1.75 |
+| d77g6c-004 | AS.10  | AS.10  |    .10 |
+| d77g6c-004 | AS.10  | AS.10  |    .10 |
+
+
+| ark        | count |
+|------------+-------|
+| d72p44-032 |    15 | => Word Break
+| d77g6c-004 |    14 | => Patch technique
+| d79591-012 |    12 | => patch
+| d74k53-002 |    12 | => patch
+| d7fw2v-024 |    11 | => patch
+
+#+BEGIN_SRC sql
+create materialized view line_pattern as
+with
+p as (
+select line_id,rotation,(avg(w.height))::integer as height,count(*) from words w
+where word_token(w) in ('P')
+group by line_id,rotation
+),
+l as (
+select
+line_id,rotation,
+string_agg(word_token(w,p.height),'' ORDER by word) as pattern
+from words w join p using (line_id,rotation)
+group by line_id,rotation
+)
+select * from l;
+#+END_SRC
+
+#+RESULTS:
+| SELECT 125568 |
+|---------------|
+
+#+BEGIN_SRC sql
+with lp as (select line_id,rotation,regexp_replace(pattern,'N+','N+','g') as pattern from line_pattern),
+r0 as (
+select pattern,count(*) as r0_count from lp
+where pattern ~ 'P$' and rotation=0
+group by pattern
+),
+r1 as (
+select pattern,count(*) as r1_count from lp
+where pattern ~ 'P$' and rotation!=0
+group by pattern
+),
+u as (
+select *,coalesce(r0_count,r1_count) as count from r0 full outer join r1 using (pattern)
+)
+select * from u
+order by count desc
+limit 10
+#+END_SRC
+
+#+RESULTS:
+| pattern | r0_count | r1_count | count |
+|---------+----------+----------+-------|
+| P       |    15886 |    13579 | 15886 |
+| N+P     |     4494 |     3007 |  4494 |
+| N+PP    |     3373 |     2701 |  3373 |
+| N+_P    |     1096 |     1171 |  1096 |
+| CN+PP   |     1092 |      756 |  1092 |
+| PP      |     1043 |      585 |  1043 |
+| N+_PP   |      842 |      873 |   842 |
+| N+nP    |      643 |      440 |   643 |
+| N+.PP   |      640 |      689 |   640 |
+| N+nPP   |      549 |      404 |   549 |
+
+Wow, I did not expect to see those.  Let me investigate that
+in some more detail
+
+#+BEGIN_SRC sql
+select line_id,rotation,
+string_agg(w.text,'-' order by word) as line
+from line_pattern
+join words w using (line_id,rotation)
+where pattern='NNNNNNNNNNNNPPPPPPPP'
+group by line_id,rotation
+order by line_id,rotation
+limit 1;
+#+END_SRC
+
+#+RESULTS:
+| line_id | rotation | line                                                                                                                                                                    |
+|---------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|  200098 |        0 | CHATEAU-CHATEAU-CHATEAU-CHATEAU-HAUT-HAUT-HAUT-HAUT-BRION..........-BRION..........-BRION..........-BRION..........-12.50-12.50-12.50-12.50-135.00-135.00-135.00-135.00 |
+
+#+BEGIN_SRC sql
+select * from words where
+line_id=200098
+order by word,word_id
+#+END_SRC
+
+#+RESULTS:
+| word_id | page_id | carea_id | par_id | line_id | ark        | rotation | word       | text            | x_wconf | json                                                                                                                                  | height | length | bbox                                                                                                                                                                                               |
+|---------+---------+----------+--------+---------+------------+----------+------------+-----------------+---------+---------------------------------------------------------------------------------------------------------------------------------------+--------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1299265 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_594 | CHATEAU         |      96 | {"id": "word_1_594", "tag": "span", "text": "CHATEAU", "class": "ocrx_word", "title": "bbox 2147 2416 2402 2450; x_wconf 96"}         |     34 |    255 | 0103000020967F000001000000050000000000000000C6A040000000000024A3C00000000000C6A0400000000000E0A2C00000000000C4A2400000000000E0A2C00000000000C4A240000000000024A3C00000000000C6A040000000000024A3C0 |
+| 1299266 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_594 | CHATEAU         |      96 | {"id": "word_1_594", "tag": "span", "text": "CHATEAU", "class": "ocrx_word", "title": "bbox 2147 2416 2402 2450; x_wconf 96"}         |     34 |    255 | 0103000020967F000001000000050000000000000000C6A040000000000024A3C00000000000C6A0400000000000E0A2C00000000000C4A2400000000000E0A2C00000000000C4A240000000000024A3C00000000000C6A040000000000024A3C0 |
+| 1299267 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_594 | CHATEAU         |      96 | {"id": "word_1_594", "tag": "span", "text": "CHATEAU", "class": "ocrx_word", "title": "bbox 2147 2416 2402 2450; x_wconf 96"}         |     34 |    255 | 0103000020967F000001000000050000000000000000C6A040000000000024A3C00000000000C6A0400000000000E0A2C00000000000C4A2400000000000E0A2C00000000000C4A240000000000024A3C00000000000C6A040000000000024A3C0 |
+| 1299268 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_594 | CHATEAU         |      96 | {"id": "word_1_594", "tag": "span", "text": "CHATEAU", "class": "ocrx_word", "title": "bbox 2147 2416 2402 2450; x_wconf 96"}         |     34 |    255 | 0103000020967F000001000000050000000000000000C6A040000000000024A3C00000000000C6A0400000000000E0A2C00000000000C4A2400000000000E0A2C00000000000C4A240000000000024A3C00000000000C6A040000000000024A3C0 |
+| 1299325 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_595 | HAUT            |      92 | {"id": "word_1_595", "tag": "span", "text": "HAUT", "class": "ocrx_word", "title": "bbox 2430 2416 2578 2450; x_wconf 92"}            |     34 |    148 | 0103000020967F000001000000050000000000000000FCA240000000000024A3C00000000000FCA2400000000000E0A2C0000000000024A4400000000000E0A2C0000000000024A440000000000024A3C00000000000FCA240000000000024A3C0 |
+| 1299326 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_595 | HAUT            |      92 | {"id": "word_1_595", "tag": "span", "text": "HAUT", "class": "ocrx_word", "title": "bbox 2430 2416 2578 2450; x_wconf 92"}            |     34 |    148 | 0103000020967F000001000000050000000000000000FCA240000000000024A3C00000000000FCA2400000000000E0A2C0000000000024A4400000000000E0A2C0000000000024A440000000000024A3C00000000000FCA240000000000024A3C0 |
+| 1299327 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_595 | HAUT            |      92 | {"id": "word_1_595", "tag": "span", "text": "HAUT", "class": "ocrx_word", "title": "bbox 2430 2416 2578 2450; x_wconf 92"}            |     34 |    148 | 0103000020967F000001000000050000000000000000FCA240000000000024A3C00000000000FCA2400000000000E0A2C0000000000024A4400000000000E0A2C0000000000024A440000000000024A3C00000000000FCA240000000000024A3C0 |
+| 1299328 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_595 | HAUT            |      92 | {"id": "word_1_595", "tag": "span", "text": "HAUT", "class": "ocrx_word", "title": "bbox 2430 2416 2578 2450; x_wconf 92"}            |     34 |    148 | 0103000020967F000001000000050000000000000000FCA240000000000024A3C00000000000FCA2400000000000E0A2C0000000000024A4400000000000E0A2C0000000000024A440000000000024A3C00000000000FCA240000000000024A3C0 |
+| 1299321 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_596 | BRION.......... |      89 | {"id": "word_1_596", "tag": "span", "text": "BRION..........", "class": "ocrx_word", "title": "bbox 2606 2414 3015 2449; x_wconf 89"} |     35 |    409 | 0103000020967F0000010000000500000000000000005CA440000000000022A3C000000000005CA4400000000000DCA2C000000000008EA7400000000000DCA2C000000000008EA740000000000022A3C000000000005CA440000000000022A3C0 |
+| 1299322 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_596 | BRION.......... |      89 | {"id": "word_1_596", "tag": "span", "text": "BRION..........", "class": "ocrx_word", "title": "bbox 2606 2414 3015 2449; x_wconf 89"} |     35 |    409 | 0103000020967F0000010000000500000000000000005CA440000000000022A3C000000000005CA4400000000000DCA2C000000000008EA7400000000000DCA2C000000000008EA740000000000022A3C000000000005CA440000000000022A3C0 |
+| 1299323 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_596 | BRION.......... |      89 | {"id": "word_1_596", "tag": "span", "text": "BRION..........", "class": "ocrx_word", "title": "bbox 2606 2414 3015 2449; x_wconf 89"} |     35 |    409 | 0103000020967F0000010000000500000000000000005CA440000000000022A3C000000000005CA4400000000000DCA2C000000000008EA7400000000000DCA2C000000000008EA740000000000022A3C000000000005CA440000000000022A3C0 |
+| 1299324 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_596 | BRION.......... |      89 | {"id": "word_1_596", "tag": "span", "text": "BRION..........", "class": "ocrx_word", "title": "bbox 2606 2414 3015 2449; x_wconf 89"} |     35 |    409 | 0103000020967F0000010000000500000000000000005CA440000000000022A3C000000000005CA4400000000000DCA2C000000000008EA7400000000000DCA2C000000000008EA740000000000022A3C000000000005CA440000000000022A3C0 |
+| 1299309 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_597 | 12.50           |      87 | {"id": "word_1_597", "tag": "span", "text": "12.50", "class": "ocrx_word", "title": "bbox 3074 2413 3223 2449; x_wconf 87"}           |     36 |    149 | 0103000020967F00000100000005000000000000000004A840000000000022A3C0000000000004A8400000000000DAA2C000000000002EA9400000000000DAA2C000000000002EA940000000000022A3C0000000000004A840000000000022A3C0 |
+| 1299310 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_597 | 12.50           |      87 | {"id": "word_1_597", "tag": "span", "text": "12.50", "class": "ocrx_word", "title": "bbox 3074 2413 3223 2449; x_wconf 87"}           |     36 |    149 | 0103000020967F00000100000005000000000000000004A840000000000022A3C0000000000004A8400000000000DAA2C000000000002EA9400000000000DAA2C000000000002EA940000000000022A3C0000000000004A840000000000022A3C0 |
+| 1299311 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_597 | 12.50           |      87 | {"id": "word_1_597", "tag": "span", "text": "12.50", "class": "ocrx_word", "title": "bbox 3074 2413 3223 2449; x_wconf 87"}           |     36 |    149 | 0103000020967F00000100000005000000000000000004A840000000000022A3C0000000000004A8400000000000DAA2C000000000002EA9400000000000DAA2C000000000002EA940000000000022A3C0000000000004A840000000000022A3C0 |
+| 1299312 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_597 | 12.50           |      87 | {"id": "word_1_597", "tag": "span", "text": "12.50", "class": "ocrx_word", "title": "bbox 3074 2413 3223 2449; x_wconf 87"}           |     36 |    149 | 0103000020967F00000100000005000000000000000004A840000000000022A3C0000000000004A8400000000000DAA2C000000000002EA9400000000000DAA2C000000000002EA940000000000022A3C0000000000004A840000000000022A3C0 |
+| 1299337 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_598 | 135.00          |      87 | {"id": "word_1_598", "tag": "span", "text": "135.00", "class": "ocrx_word", "title": "bbox 3306 2413 3492 2449; x_wconf 87"}          |     36 |    186 | 0103000020967F000001000000050000000000000000D4A940000000000022A3C00000000000D4A9400000000000DAA2C0000000000048AB400000000000DAA2C0000000000048AB40000000000022A3C00000000000D4A940000000000022A3C0 |
+| 1299338 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_598 | 135.00          |      87 | {"id": "word_1_598", "tag": "span", "text": "135.00", "class": "ocrx_word", "title": "bbox 3306 2413 3492 2449; x_wconf 87"}          |     36 |    186 | 0103000020967F000001000000050000000000000000D4A940000000000022A3C00000000000D4A9400000000000DAA2C0000000000048AB400000000000DAA2C0000000000048AB40000000000022A3C00000000000D4A940000000000022A3C0 |
+| 1299339 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_598 | 135.00          |      87 | {"id": "word_1_598", "tag": "span", "text": "135.00", "class": "ocrx_word", "title": "bbox 3306 2413 3492 2449; x_wconf 87"}          |     36 |    186 | 0103000020967F000001000000050000000000000000D4A940000000000022A3C00000000000D4A9400000000000DAA2C0000000000048AB400000000000DAA2C0000000000048AB40000000000022A3C00000000000D4A940000000000022A3C0 |
+| 1299340 |    5458 |    65095 |  77073 |  200098 | d7bc7n-007 |        0 | word_1_598 | 135.00          |      87 | {"id": "word_1_598", "tag": "span", "text": "135.00", "class": "ocrx_word", "title": "bbox 3306 2413 3492 2449; x_wconf 87"}          |     36 |    186 | 0103000020967F000001000000050000000000000000D4A940000000000022A3C00000000000D4A9400000000000DAA2C0000000000048AB400000000000DAA2C0000000000048AB40000000000022A3C00000000000D4A940000000000022A3C0 |
 
 ** Image Rotation
 
@@ -460,7 +865,8 @@ we can see if those columns are really vertical.  From this we can build some
 potential rotations.
 
 #+BEGIN_SRC sql
-  create or replace view rotate as
+	drop view rotate;
+  create materialized view rotate as
   with a as (
     select ark,'id'::text as type,bbox,
     ST_ClusterDBSCAN(lhs_0, eps := 50, minpoints:=6)
@@ -490,8 +896,9 @@ potential rotations.
 #+END_SRC
 
 #+RESULTS:
-| CREATE VIEW |
+| DROP VIEW   |
 |-------------|
+| SELECT 7396 |
 
 From our rotation estimates, we can then use the iiif and tesseract services to
 rotate the images.
@@ -552,6 +959,23 @@ fi;
 done
 #+END_SRC
 
+#+RESULTS:
+
+Argh, these semi-rotated files should be removed.
+#+BEGIN_SRC bash
+  for i in d7c01w-010 d7hp45-030 d7bc7n-007 d7nk5r-013  d7vp48-030 d7r592-015 d7c01w-008 ; do
+   ark=${i%%-*}
+   rm ark_87287/$ark/$i/rotated.hocr
+   rm ark_87287/$ark/$i/rotated.r
+  done
+#+END_SRC
+
+Now redo the rotated data.
+
+#+RESULTS:
+
+
+
 Then import these into hocr with
 #+BEGIN_SRC sql
  \COPY hocr (ark¸rotation,hocr) from rotated.json
@@ -566,7 +990,6 @@ sizes,
 
     w_returned = abs(w*cos(n)) + abs(h*sin(n))
     h_returned = abs(h*cos(n)) + abs(w*sin(n))
-
 
 
 * Extracting title,date from metadata.ttl

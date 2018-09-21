@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:sql :engine postgresql :cmdline "postgres://postgres@localhost:5434/postgres" :tangle yes
+#+PROPERTY: header-args:sql :engine postgresql :cmdline "service=datafest-sl" :tangle yes
 
 -- create extension fuzzystrmatch;
 
@@ -26,17 +26,15 @@ COPY hocr (ark,rotation,hocr) from /io/rotated.json;
 #+END_SRC
 
 #+BEGIN_SRC sql
---  refresh materialized view carea;
+refresh materialized view pages;
+refresh materialized view carea;
 refresh materialized view par;
 refresh materialized view line;
 refresh materialized view words;
 #+END_SRC
 
 #+RESULTS:
-| REFRESH MATERIALIZED VIEW |
-|---------------------------|
-| REFRESH MATERIALIZED VIEW |
-| REFRESH MATERIALIZED VIEW |
+
 
 #+BEGIN_SRC sql
 create materialized view rotation_deltas as
@@ -66,10 +64,81 @@ from (select * from b where rotation=0) b1
 join b b2 using (ark);
 #+END_SRC
 
-#+RESULTS:
-| SELECT 5550 |
-|-------------|
+#+BEGIN_SRC sql
+create materialized view rotation_deltas as
+with a as (
+ select
+ ark,rotation,
+ regexp_split_to_array((regexp_matches(hocr->0->>'title','(bbox([\s\d])+);'))[1],' ') as b,
+ hocr->0 as json
+ from hocr
+),
+b as (
+ select ark,
+ rotation,
+ b[4]::integer as x,
+ -b[5]::integer as y
+ from a
+)
+select ark,b2.rotation,
+ b2.rotation*pi()/180 as rad,
+-(b2.x-b1.x)/2 as dx,
+-(b2.y-b1.y)/2 as dy,
+b2.x as x,
+b2.y as y,
+b2.x/2 as cx,
+b2.y/2 as cy
+from (select * from b where rotation=0) b1
+join b b2 using (ark);
+#+END_SRC
 
+
+
+*** This is a test
+
+#+BEGIN_SRC sql
+with h as (
+ select h.ark,h.rotation
+ from hocr h left join rotation_deltas r
+ using (ark,rotation) where r is null
+),
+a as (
+ select
+ ark,hocr.rotation,
+ regexp_split_to_array((regexp_matches(hocr->0->>'title','(bbox([\s\d])+);'))[1],' ') as b,
+ hocr->0 as json
+ from hocr join h using (ark)
+),
+b as (
+ select ark,
+ rotation,
+ b[4]::integer as x,
+ -b[5]::integer as y
+ from a
+),
+c as (select ark,b2.rotation,
+ b2.rotation*pi()/180 as rad,
+-(b2.x-b1.x)/2 as dx,
+-(b2.y-b1.y)/2 as dy,
+b2.x as x,
+b2.y as y,
+b2.x/2 as cx,
+b2.y/2 as cy
+from (select * from b where rotation=0) b1
+join b b2 using (ark)
+)
+select ark,o.rotation,
+hocr->0->>'title' as title
+-- regexp_split_to_array((regexp_matches(hocr->0->>'title','(bbox([\s\d])+);'))[1],' ') as b
+ from h join hocr o using (ark)
+#+END_SRC
+
+#+RESULTS:
+| ark | rotation | title |
+|-----+----------+-------|
+
+
+*** JSON to postgis
 
 #+BEGIN_SRC sql
 create materialized view pages as
@@ -102,8 +171,6 @@ from a join rotation_deltas using (ark,rotation);
 | SELECT 5536 |
 |-------------|
 
-*** JSON to postgis
-
 #+BEGIN_SRC sql
   create materialized view carea as
   with c as ( select
@@ -128,6 +195,20 @@ from a join rotation_deltas using (ark,rotation);
      st_makepoint(b[4]::integer,-b[5]::integer)),32662)
 	 end as bbox
   from a join rotation_deltas using (ark,rotation);
+#+END_SRC
+
+#+BEGIN_SRC sql
+  with c as ( select
+   page_id,ark,rotation,
+   jsonb_array_elements(json->'children') as json
+   from pages
+   where page_id=5458
+  ),
+  a as (select *,
+   regexp_split_to_array((regexp_matches(json->>'title','(bbox([\s\d])+)'))[1],' ') as b
+   from c
+  )
+select * from a;
 #+END_SRC
 
 #+RESULTS:
@@ -214,6 +295,34 @@ from a join rotation_deltas using (ark,rotation);
 |-----------------|
 | CREATE FUNCTION |
 
+#+BEGIN_SRC sql
+with c as (
+select
+ page_id,carea_id,par_id,line_id,ark,rotation,
+ jsonb_array_elements(json->'children') as json
+from line
+),
+a as (select *,
+ json->>'text' as text,
+ (regexp_matches(json->>'title','x_wconf (\d+)'))[1] as x_wconf,
+ regexp_split_to_array((regexp_matches(json->>'title','(bbox([\s\d])+)'))[1],' ') as b
+ from c
+)
+#+END_SRC
+
+#+RESULTS:
+| b                          | height | length |
+|----------------------------+--------+--------|
+| {bbox,2516,3124,2609,3147} |     23 |     93 |
+| {bbox,2649,3131,2678,3147} |     16 |     29 |
+| {bbox,2709,3124,2765,3148} |     24 |     56 |
+| {bbox,2806,3126,2875,3148} |     22 |     69 |
+| {bbox,2952,3133,3014,3149} |     16 |     62 |
+| {bbox,3054,3126,3075,3149} |     23 |     21 |
+| {bbox,3101,3131,3143,3150} |     19 |     42 |
+| {bbox,3204,3130,3259,3150} |     20 |     55 |
+| {bbox,3307,3128,3458,3151} |     23 |    151 |
+| {bbox,2233,5382,2293,5405} |     23 |     60 |
 
 #+BEGIN_SRC sql
 create materialized view words as
@@ -235,6 +344,7 @@ select
  text,
  x_wconf,
  json,
+ b[5]::integer-b[3]::integer as height,b[4]::integer-b[2]::integer as length,
  case when (rad != 0) THEN
  st_translate(
  st_rotate(
@@ -255,6 +365,8 @@ create index words_line_id on words(line_id);
 #+RESULTS:
 | SELECT 5464769 |
 |----------------|
+| CREATE INDEX   |
+| CREATE INDEX   |
 
 ** Helper views
 
@@ -275,3 +387,70 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA catalogs to PUBLIC;
 |-------|
 | GRANT |
 | GRANT |
+
+
+#+BEGIN_SRC sql
+\d
+#+END_SRC
+
+#+RESULTS:
+| List of relations |                       |          |       |
+|-------------------+-----------------------+----------+-------|
+| Schema            | Name                  | Type     | Owner |
+| public            | bioprojects           | view     | quinn |
+| public            | bp                    | table    | quinn |
+| public            | ca_hucs_ogc_fid_seq   | sequence | quinn |
+| public            | cdl_file              | table    | quinn |
+| public            | cdl_yr                | table    | quinn |
+| public            | climate               | table    | quinn |
+| public            | climate_ogc_fid_seq   | sequence | quinn |
+| public            | cvpm_ogc_fid_seq      | sequence | quinn |
+| public            | deltaislands2_gid_seq | sequence | quinn |
+| public            | dwr_lu_ag_ogc_fid_seq | sequence | quinn |
+| public            | geography_columns     | view     | quinn |
+| public            | geometry_columns      | view     | quinn |
+| public            | jalles_gid_seq        | sequence | quinn |
+| public            | kern2014_gid_seq      | sequence | quinn |
+| public            | kern2015_gid_seq      | sequence | quinn |
+| public            | ner_conll             | table    | quinn |
+| public            | orgs                  | view     | quinn |
+| public            | raster_columns        | view     | quinn |
+| public            | raster_overviews      | view     | quinn |
+| public            | spatial_ref_sys       | table    | quinn |
+| public            | station               | table    | quinn |
+| public            | submissions           | view     | quinn |
+| public            | topotest              | table    | quinn |
+
+#+BEGIN_SRC sql
+\d
+#+END_SRC
+
+#+RESULTS:
+| List of relations |                   |                   |          |
+|-------------------+-------------------+-------------------+----------|
+| Schema            | Name              | Type              | Owner    |
+| catalogs          | bottle_info       | table             | postgres |
+| catalogs          | carea             | materialized view | postgres |
+| catalogs          | catalog_xwalk     | table             | postgres |
+| catalogs          | catalogs          | table             | postgres |
+| catalogs          | countries         | table             | postgres |
+| catalogs          | hocr              | table             | postgres |
+| catalogs          | jpegs             | table             | postgres |
+| catalogs          | jwalk             | view              | postgres |
+| catalogs          | languages         | table             | postgres |
+| catalogs          | line              | materialized view | postgres |
+| catalogs          | marks             | table             | postgres |
+| catalogs          | page_xwalk        | table             | postgres |
+| catalogs          | pages             | materialized view | postgres |
+| catalogs          | par               | materialized view | postgres |
+| catalogs          | ptv_pages         | table             | postgres |
+| catalogs          | rotation_deltas   | materialized view | postgres |
+| catalogs          | wine_color        | table             | postgres |
+| catalogs          | wine_type         | table             | postgres |
+| catalogs          | words             | materialized view | quinn    |
+| public            | ark_xref          | table             | quinn    |
+| public            | geography_columns | view              | postgres |
+| public            | geometry_columns  | view              | postgres |
+| public            | raster_columns    | view              | postgres |
+| public            | raster_overviews  | view              | postgres |
+| public            | spatial_ref_sys   | table             | postgres |

@@ -2,7 +2,7 @@
 <qlr>
   <layer-tree-group expanded="1" checked="Qt::PartiallyChecked" name="">
     <customproperties/>
-    <layer-tree-group expanded="1" checked="Qt::PartiallyChecked" name="[[id]]-[[page]]">
+    <layer-tree-group expanded="1" checked="Qt::PartiallyChecked" name="[[ark]]">
       <customproperties/>
       <layer-tree-layer expanded="1" checked="Qt::Unchecked" id="words20180913122410070" name="DF:words - unrotated">
         <customproperties/>
@@ -37,7 +37,10 @@
       <layer-tree-layer expanded="1" checked="Qt::Unchecked" id="pages20180912162943293" name="pages">
         <customproperties/>
       </layer-tree-layer>
-      <layer-tree-layer expanded="1" checked="Qt::Checked" id="[[id]]_[[page]][[timestamp]]" name="[[id]]-[[page]]">
+      <layer-tree-layer expanded="1" checked="Qt::Checked"
+                        id="[[ark]][[timestamp]]"
+                        source="./ark_87287/[[catalog]]/media/images/[[ark]].jpg"
+                        name="image">
         <customproperties/>
       </layer-tree-layer>
     </layer-tree-group>
@@ -45,7 +48,7 @@
   <maplayers>
     <maplayer minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>words20180913122410070</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' password='datafest2018' sslmode=disable key='word_id' srid=32662 type=Polygon table="catalogs"."words" (bbox) sql=ark='[[id]]-[[page]]' and rotation=0</datasource>
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' password='datafest2018' sslmode=disable key='word_id' srid=32662 type=Polygon table="catalogs"."words" (bbox) sql=ark='[[ark]]' and rotation=0</datasource>
       <keywordList>
         <value></value>
       </keywordList>
@@ -352,7 +355,7 @@ def my_form_open(dialog, layer, feature):
         <ymax>-673.00156948897904385</ymax>
       </extent>
       <id>words_copy20180913122448534</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' password='datafest2018' sslmode=disable key='word_id' srid=32662 type=Polygon table="catalogs"."words" (bbox) sql=ark='[[id]]-[[page]]' and rotation!=0</datasource>
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' password='datafest2018' sslmode=disable key='word_id' srid=32662 type=Polygon table="catalogs"."words" (bbox) sql=ark='[[ark]]' and rotation!=0</datasource>
       <keywordList>
         <value></value>
       </keywordList>
@@ -653,7 +656,7 @@ def my_form_open(dialog, layer, feature):
     </maplayer>
     <maplayer minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>words20180913094727121</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='word_id' srid=32662 type=Polygon table="catalogs"."words" (bbox) sql=ark='[[id]]-[[page]]' and rotation=0
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='word_id' srid=32662 type=Polygon table="catalogs"."words" (bbox) sql=ark='[[ark]]' and rotation=0
 </datasource>
       <keywordList>
         <value></value>
@@ -955,7 +958,7 @@ def my_form_open(dialog, layer, feature):
     </maplayer>
     <maplayer minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>words___unrotated_copy20180913095140746</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='word_id' srid=32662 type=Polygon table="catalogs"."words" (bbox) sql=ark='[[id]]-[[page]]' and rotation!=0
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='word_id' srid=32662 type=Polygon table="catalogs"."words" (bbox) sql=ark='[[ark]]' and rotation!=0
 </datasource>
       <keywordList>
         <value></value>
@@ -1257,7 +1260,7 @@ def my_form_open(dialog, layer, feature):
     </maplayer>
     <maplayer minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>line20180913092756203</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='line_id' srid=32662 type=Polygon table="catalogs"."line" (bbox) sql="ark"='[[id]]-[[page]]' and rotation=0</datasource>
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='line_id' srid=32662 type=Polygon table="catalogs"."line" (bbox) sql="ark"='[[ark]]' and rotation=0</datasource>
       <keywordList>
         <value></value>
       </keywordList>
@@ -1550,7 +1553,7 @@ def my_form_open(dialog, layer, feature):
     </maplayer>
     <maplayer minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>line___unrotated_copy20180913094433313</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='line_id' srid=32662 type=Polygon table="catalogs"."line" (bbox) sql="ark"='[[id]]-[[page]]' and rotation!=0</datasource>
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='line_id' srid=32662 type=Polygon table="catalogs"."line" (bbox) sql="ark"='[[ark]]' and rotation!=0</datasource>
       <keywordList>
         <value></value>
       </keywordList>
@@ -1843,7 +1846,7 @@ def my_form_open(dialog, layer, feature):
     </maplayer>
     <maplayer minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>par20180912172804615</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='par_id' srid=32662 type=Polygon table="catalogs"."par" (bbox) sql=ark='[[id]]-[[page]]' and rotation=0</datasource>
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='par_id' srid=32662 type=Polygon table="catalogs"."par" (bbox) sql=ark='[[ark]]' and rotation=0</datasource>
       <keywordList>
         <value></value>
       </keywordList>
@@ -2128,7 +2131,7 @@ def my_form_open(dialog, layer, feature):
     </maplayer>
     <maplayer minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>par___unrotated_copy20180912173038400</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='par_id' srid=32662 type=Polygon table="catalogs"."par" (bbox) sql=ark='[[id]]-[[page]]' and rotation!=0</datasource>
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='par_id' srid=32662 type=Polygon table="catalogs"."par" (bbox) sql=ark='[[ark]]' and rotation!=0</datasource>
       <keywordList>
         <value></value>
       </keywordList>
@@ -2419,7 +2422,7 @@ def my_form_open(dialog, layer, feature):
         <ymax>166.50387878832299293</ymax>
       </extent>
       <id>carea20180912163940206</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='carea_id' srid=32662 type=Polygon table="catalogs"."carea" (bbox) sql=ark='[[id]]-[[page]]' and rotation = 0</datasource>
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='carea_id' srid=32662 type=Polygon table="catalogs"."carea" (bbox) sql=ark='[[ark]]' and rotation = 0</datasource>
       <keywordList>
         <value></value>
       </keywordList>
@@ -2699,7 +2702,7 @@ def my_form_open(dialog, layer, feature):
     </maplayer>
     <maplayer minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>carea_copy20180912172043825</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='carea_id' srid=32662 type=Polygon table="catalogs"."carea" (bbox) sql=ark='[[id]]-[[page]]' and rotation != 0</datasource>
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='carea_id' srid=32662 type=Polygon table="catalogs"."carea" (bbox) sql=ark='[[ark]]' and rotation != 0</datasource>
       <keywordList>
         <value></value>
       </keywordList>
@@ -2980,7 +2983,7 @@ def my_form_open(dialog, layer, feature):
     </maplayer>
     <maplayer minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>pages20180912162943293</id>
-      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='page_id' srid=32662 type=Polygon table="catalogs"."pages" (bbox) sql="ark"='[[id]]-[[page]]'</datasource>
+      <datasource>dbname='datafest' host=35.230.56.243 port=5432 user='datafest' sslmode=disable key='page_id' srid=32662 type=Polygon table="catalogs"."pages" (bbox) sql="ark"='[[ark]]'</datasource>
       <keywordList>
         <value></value>
       </keywordList>
@@ -3262,12 +3265,12 @@ def my_form_open(dialog, layer, feature):
         <xmax>4000</xmax>
         <ymax>0</ymax>
       </extent>
-      <id>[[id]][[timestamp]]</id>
-      <datasource>./[[id]]-[[page]].jpg</datasource>
+      <id>[[catalog]]_[[timestamp]]</id>
+      <datasource>./ark_87287/[[catalog]]/media/images/[[ark]].jpg</datasource>
       <keywordList>
         <value></value>
       </keywordList>
-      <layername>[[id]]-[[page]]</layername>
+      <layername>image</layername>
       <srs>
         <spatialrefsys>
           <proj4>+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs</proj4>
