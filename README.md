@@ -17,3 +17,7 @@ We have created a read-only public access postgres dataset.  You can connect via
 ```bash
 psql postgres://datafest@35.230.56.243/datafest -P
 ```
+
+## DSI 
+
+The dsi folder contains progress from the UCD DSI on extracting tables of prices with number, year and other information. 
