@@ -29,7 +29,7 @@ library(cluster)
 
 FullBoxes = readRDS("FullBoxes.rds") #download from http://dsi.ucdavis.edu/WineCatalogs/FullBoxes.rds
 
-source("~/Documents/DSI/WineCatalogs_forked_repo/R/helper.R")
+source("~/Documents/DSI/wine-price-extraction/dsi/R/helper.R")
 
 # Functions
 # 2. Get iterative column info  ####
@@ -162,6 +162,56 @@ extractFromCols <- function(x, colData, px, buffer = 5) {
   GetBoxes(tpx, level = "textline")
 }
 
+# 4. Group columns and use to find left boundaries ####
+
+pageCols <- function(data1, prices.cols, cpt.var = .05, buffer = 10) {
+
+  # first organize columns into tables ####
+  n.pricecols = length(prices.cols)
+  v.prices = lapply(prices.cols, function(x) {c(mean(x$left), mean(x$right))})
+  v.prices = v.prices[order(sapply(v.prices, first))]
+  v.widths = diff(unlist(v.prices)) #column width, break, column width, break, etc.
+  
+  c = 2; i = 1; index = 1
+  tables = vector(mode = "list", n.pricecols)
+  tables[[1]] = v.prices[[1]]
+  while (index < length(v.widths)) {
+    if (v.widths[index+1] < v.widths[index]) {
+      #new column in table
+      tables[[i]] = rbind(tables[[i]], v.prices[[c]])
+      index = index + 2
+      c = c+1
+    } else {
+      #new table
+      i = i + 1
+      tables[[i]] = rbind(tables[[i]], v.prices[[c]])
+      #v.labels[c] = paste(paste("table", i, collapse="_"), paste("col", j, collapse="_"), sep = ", ")
+      index = index + 2
+      c = c + 1
+    }
+  }
+  n.table = i
+  tables = lapply(1:n.table, function(x) {tables[[x]]})
+ 
+  # find table left boundary ####
+  # find page boundaries
+  #by position
+  data1.order = data1[order(data1$left),]
+  r = max(data1.order$right)
+  data1.cum = sapply(1:r, function(x) {sum(data1.order$left <= x)})
+  data1.lag = diff(data1.cum)
+  data1.lag[1] = 0
+  v.regions = cpt.var(data1.lag, method='PELT')
+  cpts = v.regions@cpts
+  vars = v.regions@param.est$variance
+  #we can use this to find one that's after a space, tmp@param.est$variance should be close to zero
+  for (t in 1:n.table) {
+    attr(tables[[t]], "left") = max(cpts[(cpts < (tables[[t]][1,1] - (tables[[t]][1,2] - tables[[t]][2,1]))) & (vars < cpt.var)]) - buffer
+  }
+}
+
+  
+
 ####################################################################################################
 # RUN ####
 ####################################################################################################
@@ -211,5 +261,7 @@ prices = lapply(prices.cols, dplyr::filter, price)
 
 ################### check 3
 plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", prices), img = px1, confidence = FALSE)
-plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", prices), img = px1)
+#plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", prices), img = px1)
 ################## 
+
+# 5 
