@@ -15,7 +15,6 @@
 
 ####################
 # TODO:
-# 1. add confidence to results
 # 2. "smart" matching using agrep
 # 3. build region and producers dictionaries (scrap web)
 # -parse section titles and item details
@@ -36,9 +35,9 @@ library(RODBC)
 
 # create database connection
 conn = odbcDriverConnect('driver={SQL Server};server=localhost;database=DataFest;trusted_connection=true')
+
 # get regions from SQL
 regions = sqlQuery(conn, paste("SELECT Region, Country FROM Regions", sep=""));
-
 
 # get producers from SQL
 producers = sqlQuery(conn, paste("SELECT Producer, Region, Country FROM Producers", sep=""));
@@ -46,9 +45,10 @@ producers = sqlQuery(conn, paste("SELECT Producer, Region, Country FROM Producer
 
 # recognize text from image
 eng = tesseract("eng")
-item_text = ocr_data("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0036_5.jpg", engine = eng)
+item_text = ocr("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0036_2.jpg", engine = eng)
+item_text_conf = ocr_data("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0036_2.jpg", engine = eng)
 item_text
-
+item_text_conf
 
 ################
 # START PARSING
@@ -57,10 +57,11 @@ item_text
 # get year - look for number 18xx or 19xx
 year = str_extract(item_text, "1[8|9]\\d\\d");
 
-# if year not recognized mark as FALSE, else trim from text
+# if year not recognized mark as FALSE, else get confidence and trim from text
 if (is.na(year)) {
   year = FALSE;
 } else {
+  year_conf = as.numeric(item_text_conf$confidence[grep(year, item_text_conf$word)]);
   item_text = gsub(year, "", item_text);
 }
 
@@ -68,11 +69,12 @@ if (is.na(year)) {
 # get color - look for key-words
 color = str_extract(item_text, regex(pattern = "white|blanc|rose|pink|red|rouge", ignore_case = TRUE));
 
-# if color not recognized mark as FALSE
-# don't trim color as it may be a part of name
+# if color not recognized mark as FALSE, else get confidence
+# don't trim color as it may be part of the name
 if (is.na(color)) {
   color = FALSE;
 } else {
+  color_conf = as.numeric(item_text_conf$confidence[grep(color, item_text_conf$word)]);
   color = tolower(color);
   if (color == "blanc" || color == "white") {
     color = "white";
@@ -86,11 +88,14 @@ if (is.na(color)) {
 
 # get region
 region = str_extract(item_text, regex(pattern = paste(regions$Region, collapse="|"), ignore_case = TRUE));
+country = FALSE;
 
-# if region not found mark as FALSE, else trim region and set country
+# if region not found mark as FALSE, else get confidence, trim region, and set country
 if (is.na(region)) {
   region = FALSE;
+  region_conf_df = FALSE;
 } else {
+  region_conf_df = subset(item_text_conf, grepl(pattern = paste(strsplit(region, " ")[[1]], collapse="|"), word), select = c(1:2));
   item_text = gsub(region, "", item_text);
   country = as.character(regions$Country[which(regions$Region == region)]);
 }
@@ -99,10 +104,12 @@ if (is.na(region)) {
 # get producer
 producer = str_extract(item_text, regex(pattern = paste(producers$Producer, collapse="|"), ignore_case = TRUE));
 
-# if producer not found mark as FALSE, else trim producer and set country
+# if producer not found mark as FALSE, else get confidence, trim producer, and set country
 if (is.na(producer)) {
   producer = FALSE;
+  producer_conf_df = FALSE;
 } else {
+  producer_conf_df = subset(item_text_conf, grepl(pattern = paste(strsplit(producer, " ")[[1]], collapse="|"), word), select = c(1:2));
   item_text = gsub(producer, "", item_text);
   country = as.character(producers$Country[which(producers$Producer == producer)]);
 }
@@ -114,7 +121,9 @@ brackets = str_extract(item_text, "[\\[\\(].*?[\\]\\)]");
 # if brackets not found mark as FALSE, else trim bracket content
 if (is.na(brackets)) {
   brackets = FALSE;
+  brackets_conf_df = FALSE;
 } else {
+  brackets_conf_df = subset(item_text_conf, grepl(pattern = paste(strsplit(brackets, " ")[[1]], collapse="|"), word), select = c(1:2));
   item_text = gsub(brackets, "", item_text, fixed = TRUE);
 }
 
@@ -124,14 +133,19 @@ if (is.na(brackets)) {
 name = gsub("[\\.|\n|:|,]", "", item_text);
 # remove redundant spaces
 name = gsub(" +", " ", name);
-
-
+name_conf_df = subset(item_text_conf, grepl(pattern = paste(strsplit(name, " ")[[1]], collapse="|"), word), select = c(1:2));
 
 
 name
+name_conf_df
 year
+year_conf
 color
+color_conf
 region
+region_conf_df
 producer
+producer_conf_df
 country
 brackets
+brackets_conf_df
