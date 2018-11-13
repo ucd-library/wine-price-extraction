@@ -115,3 +115,9 @@ textTypes <- function(cat_files, catalog = NULL){
 #  img1 = sample(list.files(".", recursive = T), 1)
 #}
 
+charTypes <- function(boxes, types = 2, confidence = 50) { #using k-means
+  boxes = filter(boxes, confidence >= confidence)
+  boxes$charwidth = (boxes$right-boxes$left)/nchar(boxes$text)
+  boxes.kmeans = kmeans(boxes$charwidth, centers = types)
+  return(list(membership = boxes.kmeans$cluster, means = boxes.kmeans$centers))
+}
