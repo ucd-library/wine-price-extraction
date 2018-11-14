@@ -491,10 +491,15 @@ names(final.prices) = paste("table", 1:max(page.cols$price_cols$table), sep = "_
 final.data = list(prices = final.prices, name.locations = name.boxes[["locations"]],
                   name.words = name.boxes[["words"]])
 
+saveRDS(final.data, paste("~/Documents/DSI/wine-price-extraction/dsi/Data/", file1, ".RDS", sep = ""))
+
 ################## check 4 / share image####
 #make fake confidence for box colors
 tmp.boxes = do.call("rbind", name.boxes[[1]])
-png(paste("~/Desktop/", file1, ".png", sep=""), width = 3*480, height = 4*480)
+png(paste("~/Documents/DSI/wine-price-extraction/dsi/Data/", file1, ".png", sep=""), width = 4000, height = 6000)
+plot(tesseract(px1), img = px1)
+dev.off()
+png(paste("~/Documents/DSI/wine-price-extraction/dsi/Data/", file1, "_boxes.png", sep=""), width = 1000, height = 1500)
 plot(tesseract(px1), cropToBoxes = F, bbox = tmp.boxes, img = px1, confidence = FALSE)
 
 #save image
