@@ -1,4 +1,20 @@
 #+PROPERTY: header-args:sql :engine postgresql :cmdline "service=datafest" :tangle yes
+* Crosswalk
+
+There are three different nameing schemes for the files, the original filename
+with their numbering scheme, the catalog/page_id from the current PTV
+application, and the arks from the DAMS. The way that these were joined together
+is torturous.
+
+I have created our best guess at this crosswalk.  Rather than trying to keep any
+of the other tables joining these, I will use this table as the final aribitor
+of this xwalk.  Part of the reason for that, is that with Eric's changes, we
+have some new arks, from catalogs that were separated.
+
+#+BEGIN_SRC psql
+\COPY (select coalesce(j.file,p.file) as file,coalesce(j.catalog_id,p.catalog_id) as catalog_id,j.ark,coalesce(j.page,p.page) as page,p.page_id from page_xwalk p full outer join jwalk j using (file,catalog_id) order by 1,2,j.page) to xwalk.csv with csv header
+#+END_SRC
+
 
 * Rotation
 

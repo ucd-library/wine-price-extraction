@@ -3,7 +3,7 @@
 - Quinn Hart - qhart@ucdavis.edu
 - Justin Merz - jrmerz@ucdavis.edu
 
-We looked at OCR errors as a function of rotation.  Additionally, we looked at interactive tools to more quickly visualize 
+We looked at OCR errors as a function of rotation.  Additionally, we looked at interactive tools to more quickly visualize
 our results.
 
 Our
@@ -18,6 +18,6 @@ We have created a read-only public access postgres dataset.  You can connect via
 psql postgres://datafest@35.230.56.243/datafest -P
 ```
 
-## DSI 
+## DSI
 
-The dsi folder contains progress from the UCD DSI on extracting tables of prices with number, year and other information. 
+The dsi folder contains progress from the UCD DSI on extracting tables of prices with number, year and other information.
