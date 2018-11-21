@@ -19,23 +19,54 @@
 # Overall, the following steps are taken:
 # -COLLATE to latin (remove diacritics)
 # -select unique values
-# -replace '-' with spaces, e.g. "Saint-Emilion" -> "Saint Emilion"
-# -add short names, e.g. "Saint-Emilion" -> "St. Emilion"
-# -remove countries from provinces and regions
-# -remove empty regions / producers / names
+# -remove non-word chars with spaces (with some exceptions), e.g. "Saint-d'Emilion" -> "Saint d'Emilion"
+# -remove countries from other columns
+# -remove values shorter than 5 chars (usually dummy values)
 # 
 
 
 ####################
+# FIXME:
+# -some values are replicated in two columns, e.g. province and region_1 have Bordeaux, decide which to delete
+# 
 # TODO:
-# -add region2 to region1 before clearing
-# -what to do with designation?
-
+# -merge countries, provinces, regions, producers into one table
+# -add columns with diacritics, so we can have a 'true' value
+# -add region2 to region1 before cleanning
+#
+####################
 
 
 library(dplyr)
 library(RODBC)
 library(sqldf)
+
+
+# Clears provided column. Removes duplicates, empty values, countries.
+# Replaces '-' with " ", and diacritics.
+clear_column = function(column_to_clear) {
+  # replace diacritics
+  # FIXME: iconv doesn't recognize some of the characters, so far I identified only one: ??
+  values = iconv(column_to_clear, from="UTF-8", to='ASCII//TRANSLIT');
+  # remove non-letter, non-number chars, some values are dummy, e.g. "%@#$!" or "1,618"
+  values = gsub("[^a-zA-Z0-9'&\\.]", " ", values); ##more rigorous pattern: \\W
+  # remove redundant spaces
+  values = gsub("\\s+", " ", values);
+  values = gsub("^\\s|\\s$", "", values);
+  # remove values shorter than 5 chars (mostly dummy)
+  values = values[nchar(values) > 4];
+  # remove duplicates and sort
+  values = sort(unique(values));
+  # FIXME distinct() works faster?
+  # values = df %>% distinct(column_to_clear) %>% arrange(column_to_clear);
+  #remove countries
+  values = values[!values %in% countries$Country];
+  # coerce as a data.frame for sqlSave function
+  values = as.data.frame(values);
+  
+  return(values);
+}
+
 
 # create database connection
 conn = odbcDriverConnect('driver={SQL Server};server=localhost;database=DataFest;trusted_connection=true')
@@ -48,40 +79,57 @@ countries = sqlQuery(conn, "SELECT Country FROM Countries");
 wine_data = read.csv(file="C:\\Users\\ssaganowski\\Desktop\\wines\\corpus\\wine_data.csv", header=TRUE, sep=",", encoding="UTF-8");
 head(wine_data, n = 10);
 
+
 # clear province column
 provinces = clear_column(wine_data$province);
+# set column name as in SQL table
+colnames(provinces) =  c("Province");
 NROW(provinces);
 head(provinces, n=100);
 
+
 # clear region_1 column
 regions = clear_column(wine_data$region_1);
+# set column name as in SQL table
+colnames(regions) =  c("Region");
 NROW(regions);
 head(regions, n=100);
 
-# clear title column ?
-# title contains winery, province / region, year, and sometimes name of the wine
 
 # clear producer column
 producers = clear_column(wine_data$winery);
+# set column name as in SQL table
+colnames(producers) =  c("Producer");
 NROW(producers);
 head(producers, n=100);
 
 
-# Clears provided column. Removes duplicates, empty values, countries.
-# Replaces '-' with " ", and diacritics.
-clear_column = function(column_to_clear) {
-  # remove duplicates and sort
-  values = as.character(levels(sort(column_to_clear)));
-  # FIXME distinct() works faster?
-  # values = df %>% distinct(column_to_clear) %>% arrange(column_to_clear);
-  # remove empty objects
-  values = values[values != ""];
-  #remove countries
-  values = values[!values %in% countries$Country];
-  # replace '-' with spaces
-  values = gsub("-", " ", values);
-  # replace diacritics
-  values = iconv(values, from="UTF-8", to='ASCII//TRANSLIT');
+# clear designation column
+designations = clear_column(wine_data$designation);
+# set column name as in SQL table
+colnames(designations) =  c("Designation");
+NROW(designations);
+head(designations, n=100);
 
-  return(values);
-}
+
+# clear variety column
+varieties = clear_column(wine_data$variety);
+# set column name as in SQL table
+colnames(varieties) =  c("Variety");
+NROW(varieties);
+head(varieties, n=100);
+
+
+
+
+# clear title column ?
+# title contains winery, province / region, year, variety and sometimes sth more
+
+
+# store in db
+sqlSave(conn, provinces, tablename = "kProvinces", rownames = FALSE, append = TRUE, fast = TRUE);
+sqlSave(conn, regions, tablename = "kRegions", rownames = FALSE, append = TRUE, fast = TRUE);
+sqlSave(conn, producers, tablename = "kProducers", rownames = FALSE, append = TRUE, fast = TRUE);
+sqlSave(conn, designations, tablename = "kDesignations", rownames = FALSE, append = TRUE, fast = TRUE);
+sqlSave(conn, varieties, tablename = "kVarieties", rownames = FALSE, append = TRUE, fast = TRUE);
+close(conn);
