@@ -1,20 +1,21 @@
 #
-# Parser approach for wine catalogs, v 0.4
+# Parser approach for wine catalogs, v 0.5
 #
-# As an input it expects trimmed part of the image containig potential item name
-# (just item line - without prices or additional info).
+# As an input it expects RDS file with tables containign recognized item names
+#
 # It will try to extract:
 # -id
 # -wine color
 # -vintage (year)
 # -province
 # -region
+# -producer
 # -anything in brackets
-# -and finally name (what's left and written in upper-case)
+# 
 #
 # Parsing steps (and explanation):
 # 1. Find and trim ID
-# 2. Look for color (don't trim cause it may be part of the name)
+# 2. Look for color
 # 3. Recognize and trim content in brackets - it usually contains region, producer or other info, e.g. (red dry)
 # 4. Look for and trim year
 # 5. Divide text into upper- and lower-case parts
@@ -118,16 +119,18 @@ pick_best = function(category) {
 
 
 # Parse item
-parse_item = function(item_img_path) {
+parse_item = function(item_text, item_text_conf) {
   
-  # item_img_path = "C:\\Users\\ssaganowski\\Desktop\\wines\\items\\3.jpg";
+  #item_text = paste(items$name.words$table_1[[1]]$text, collapse = " ");
+  #item_text_conf = items$name.words$table_1[[1]][,c("text","confidence")];
+  
   
   # recognize text from image
-  eng = tesseract("eng");
-  item_text = ocr(item_img_path, engine = eng);
-  item_text_conf = ocr_data(item_img_path, engine = eng);
-  print(item_text);
-  #item_text_conf
+  #eng = tesseract("eng");
+  #item_text = ocr(item_img_path, engine = eng);
+  #item_text_conf = ocr_data(item_img_path, engine = eng);
+  cat("\n\n", item_text);
+  #item_text_conf;
   
   ################
   # START PARSING
@@ -150,7 +153,7 @@ parse_item = function(item_img_path) {
     id = NULL;
     id_conf = NULL;
   } else {
-    id_conf = as.numeric(item_text_conf$confidence[grep(id, item_text_conf$word)]);
+    id_conf = as.numeric(item_text_conf$confidence[grep(id, item_text_conf$text)]);
     item_text = gsub(id, "", item_text);
   }
   
@@ -164,7 +167,7 @@ parse_item = function(item_img_path) {
     color = NULL;
     color_conf = NULL;
   } else {
-    color_conf = as.numeric(item_text_conf$confidence[grep(color, item_text_conf$word)]);
+    color_conf = as.numeric(item_text_conf$confidence[grep(color, item_text_conf$text)]);
     color = tolower(color);
     if (color == "blanc" || color == "white") {
       color = "white";
@@ -177,14 +180,14 @@ parse_item = function(item_img_path) {
   
   
   # 3. get anything that is in brackets
-  brackets = str_extract(item_text, "[\\[\\(].*?[\\]\\)]");
+  brackets = str_extract(item_text, "[\\[\\({].*?[\\]\\)}]");
   
   # if brackets not found mark as FALSE, else trim bracket content
   if (is.na(brackets)) {
     brackets = NULL;
     brackets_conf_df = NULL;
   } else {
-    brackets_conf_df = subset(item_text_conf, grepl(pattern = paste(strsplit(brackets, " ")[[1]], collapse="|"), word), select = c(1:2));
+    brackets_conf_df = subset(item_text_conf, grepl(pattern = paste(strsplit(brackets, " ")[[1]], collapse="|"), text, fixed = TRUE), select = c(1:2));
     item_text = gsub(brackets, "", item_text, fixed = TRUE);
   }
   
@@ -197,15 +200,16 @@ parse_item = function(item_img_path) {
     year = NULL;
     year_conf = NULL;
   } else {
-    year_conf = as.numeric(item_text_conf$confidence[grep(year, item_text_conf$word)]);
+    year_conf = as.numeric(item_text_conf$confidence[grep(year, item_text_conf$text)]);
     item_text = gsub(year, "", item_text);
   }
   
   
   # 5. divide text into upper- and lower-case parts
   item_text = gsub("^\\s|\\s$", "", item_text);
-  upper_case_text = str_extract(item_text, "^([A-Z\\s]+[A-Z\\s',.]*[A-Z])\\b");
-  lower_case_text = str_extract(item_text, "\\b([A-Z]?[a-z\\s',.]+)+$");
+  cat("\n", item_text);
+  upper_case_text = str_extract(item_text, "[A-Z][A-Z\\s-,.;']*[A-Z]\\b"); #more rigorous pattern: ^([A-Z\\s]+[A-Z\\s',.]*[A-Z])\\b
+  lower_case_text = gsub(upper_case_text, "", item_text); #more rigorous pattern: \\b([^A-Z]*[A-Z]{0,2}[^A-Z]+)+$
   
   
   
@@ -244,7 +248,7 @@ parse_item = function(item_img_path) {
   # if all below 0.7 set UPPER CASE as a name  ??
   # 7. Set upper-case part as name???
   name = upper_case_text;
-  name_conf_df = subset(item_text_conf, grepl(pattern = paste(strsplit(name, " ")[[1]], collapse="|"), word), select = c(1:2));
+  name_conf_df = subset(item_text_conf, grepl(pattern = paste(strsplit(name, " ")[[1]], collapse="|"), text), select = c(1:2));
   
   
   
@@ -285,6 +289,11 @@ parse_item = function(item_img_path) {
   } else {
     show_info = paste(show_info, "\nupper_case:  ", upper_case_text, sep = "");
   }
+  if (is.null(lower_case_text)) {
+    show_info = paste(show_info, "\nlower_case:  ", sep = "");
+  } else {
+    show_info = paste(show_info, "\nlower_case:  ", lower_case_text, sep = "");
+  }
   if (is.null(brackets)) {
     show_info = paste(show_info, "\n  brackets:  ", sep = "");
   } else {
@@ -299,20 +308,23 @@ parse_item = function(item_img_path) {
 }
 
 
+parse_RDS_items = function(RDS_path) {
+  items = readRDS(RDS_path);
+  
+  for (i in items$name.words) {
+    for (j in i) {
+      parse_item(paste(j$text, collapse = " "), j[,c("text","confidence")])
+    }
+  }
+}
 
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0011_1.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\2.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\3.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\4.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0036_1.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0036_2.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0036_3.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0036_4.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0036_5.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0295_1.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0237_250.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0237_250b.jpg");
-parse_item("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\0237_250c.jpg");
+
+parse_RDS_items("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_0011.RDS");
+parse_RDS_items("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_3392.RDS");
+parse_RDS_items("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_1106.RDS");
+parse_RDS_items("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_0237.RDS");
+
+
 
 
 
