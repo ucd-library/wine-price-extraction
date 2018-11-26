@@ -72,7 +72,8 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
     #2b. Find more prices. Chose to do this to get most complete possible table. ####
 
     if (is.null(img.height)) height1 = dim(readJPEG(img))[1] #note we'll use the image attribute here later
-
+    bottle.or.case = vector("character", k) # add column header "bottle" or "case" if possible
+    
     for (i in 1:k) {
       #column alignment
       lm.tmp = lm(height1 - top ~ prices[[just]], data = prices,
@@ -88,9 +89,19 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
       if(show.plot) {
         points(data1$top ~ data1[[just]], col = 1 + as.numeric(near))
       }
-      look = data1$price == FALSE & near == TRUE
+      
+      #look for column header "Bottle" or "Case"
+      look1 = (near == TRUE) 
+      #use levenshtein distance <= 1 or contains "Bottle" or "Case":
+      Bottle = data1[look1,][adist(data1[look1, "text"], "Bottle") <= 1 | str_detect(data1[look1, "text"], "Bottle"), ] 
+      Case = data1[look1,][adist(data1[look1, "text"], "Case") <= 1 | str_detect(data1[look1, "text"], "Case"), ]
+      if (nrow(Bottle) >= 1 & nrow(Case) == 0 ) {bottle.or.case[i] = "Bottle"}
+      if (nrow(Case) >= 1 & nrow(Bottle) == 0 ) {bottle.or.case[i] = "Case"}
+      
+      #look for more prices
+      look2 = (look1 & data1$price == FALSE)
       data1$text.new = "FALSE"
-      data1$text.new[look & data1$type == "number"] =  sapply(data1[look & data1$type == "number","text"], numToPrice)
+      data1$text.new[look2 & data1$type == "number"] =  sapply(data1[look2 & data1$type == "number","text"], numToPrice)
       cat("grabbed", sum(data1$text.new!="FALSE"), "new prices\n") 
       data1$price[data1$text.new!="FALSE"] = TRUE
       data1$text[data1$text.new!="FALSE"] = data1$text.new[data1$text.new!="FALSE"]
@@ -116,6 +127,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
     colData$slope = rep(0,k)
     max.clust = which.max(clust2$clusinfo[,1]) #largest cluster
     colData = colData %>% arrange(col_left)
+    colData$bottle.or.case = bottle.or.case
     
     # reformate and detect outliers by right edge
     tmp.prices = lapply(1:max(prices2$cluster), function(x) filter(prices2, cluster==x))
@@ -144,17 +156,32 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
     id_cols = tmp.cpt[(rowSums(abs(outer(tmp.cpt, tmp.numbers$left,  "-")) < charheight/4)) > 
                         max(table(prices2$cluster))/2]
     if(length(id_cols) > 0) {
-    ids = filter(tmp.numbers, type == idtype,
-                 abs(apply(abs(outer(tmp.numbers$left, id_cols, "-")), 1, min)) < charheight,
+      # make sure in a table
+      ids = filter(tmp.numbers, type == idtype,
+                 apply(abs(outer(tmp.numbers$left, id_cols, "-")), 1, min) < charheight,
                  bottom > min(prices$bottom) - 4*charheight) %>% arrange(bottom)
-    ids$table = sapply(ids$left, function(x) {which.min(abs(x-id_cols))}) #assume one id col per table
+      
+      # saw a weird case (1106.jpg) where one ID was being read twice.
+      # Eliminate lower-confidence duplicate
+      look.for.duplicates = apply(ids[,c("left","bottom","right","top")], 1, function(x) {
+                              apply(ids[,c("left","bottom","right","top")], 1, 
+                                function(y) {max(abs(y-x))})})
+      look.for.duplicates = data.frame(which(apply(look.for.duplicates, 1, "<",  charheight /2), arr.ind = T)) %>% 
+                              filter(., row > col)
+      if(nrow(look.for.duplicates) > 0) {
+        ids = apply(look.for.duplicates, 1, function(x) {
+            remove.duplicates = x[-which.max(ids[x,"confidence"])]
+            ids[-remove.duplicates,]
+        })
+      }
+      ids = ids[[1]]
+      ids$table = sapply(ids$left, function(x) {which.min(abs(x-id_cols))}) #assume one id col per table
     
-    id_cols = ids %>% group_by(table) %>% summarize(col_left = min(left),
+      id_cols = ids %>% group_by(table) %>% summarize(col_left = min(left),
                                                      col_right = max(right),
                                                      col_top = max(top),
                                                      col_bottom = min(bottom),
                                                      entries = n()) %>% arrange(col_left)
-    
     } else {
       id_cols = NULL
       ids = NULL
@@ -221,6 +248,122 @@ priceCols <- function(prices, minGap) {
 }
 
 # 3. Extract text from columns, find more prices and IDs ####
+
+# check for new prices and return updated page.cols ####
+addPrices <- function(page.cols) {
+  
+  tmp.boxes.from.cols_price = lapply(1:page.cols$n_price_cols, boxesFromCols,
+                                     page.cols$price_cols,px1, buffer = page.cols$charheight/3)
+  
+  # only add new ones, only replace ones that got better
+  page.cols$prices = lapply(1:page.cols$n_price_cols, function(x) {
+    
+    #evaluate possible new prices
+    tmp.boxes.from.cols_price[[x]]$price = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = F, dollar = F)
+    tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = T, dollar = F)
+    tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], type !="FALSE", !str_detect(tmp.boxes.from.cols_price[[x]]$text, "\\$"))
+    tmp.boxes.from.cols_price[[x]]$text.new = str_extract(tmp.boxes.from.cols_price[[x]]$text, "[0-9]+\\.{0,1}[0-9]+.{0,1}$")
+    tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text.new, maybe = T, dollar = F)
+    tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], type !="FALSE")
+    
+    #new prices? -- add later
+    compare.col = abs(outer(tmp.boxes.from.cols_price[[x]]$bottom, page.cols$prices[[x]]$bottom, "-"))
+    tmp.new = apply(compare.col, 1, min) > page.cols$charheight
+    tmp.lost = apply(compare.col, 2, min) > page.cols$charheight # prices not found in new data
+    new.prices = filter(tmp.boxes.from.cols_price[[x]], tmp.new)
+    
+    #better prices? - should have same number of rows as old
+    tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], !tmp.new)
+    
+    #what is the closest old price for each?
+    tmp.compare = apply(cbind(page.cols$prices[[x]]$type[!tmp.lost], tmp.boxes.from.cols_price[[x]]$type), 1, compareTypes)
+    page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==1] = page.cols$prices[[x]]$text[!tmp.lost][tmp.compare==1]
+    page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==2] = tmp.boxes.from.cols_price[[x]]$text[tmp.compare==2]
+    page.cols$prices[[x]]$text.new[tmp.lost] = page.cols$prices[[x]]$text[tmp.lost]
+    
+    #add new prices
+    if (nrow(new.prices) > 0) {
+      new.prices$cluster = median(page.cols$prices[[x]]$cluster)
+      page.cols$prices[[x]] = rbind(page.cols$prices[[x]], new.prices[,names(page.cols$prices[[x]])]) %>% arrange(top)
+    }
+    
+    #strip leading periods from new text
+    page.cols$prices[[x]]$text.new = str_remove(page.cols$prices[[x]]$text.new, "^\\.+")
+    return(page.cols$prices[[x]])
+  })
+  cat("Did this process add or take away PRICES? (all >= 0 good):", sapply(page.cols$prices, nrow) - page.cols$price_cols$entries)
+  
+  # update other stuff
+  # updated entries
+  page.cols$price_cols$entries = sapply(page.cols$prices, nrow)
+  # track price-finding progress
+  page.cols$progress = c(page.cols$progress, sum(page.cols$price_cols$entries))
+  # expand columns boundaries if necessary
+  page.cols$price_cols[,c("col_left","col_bottom")] = do.call("rbind", 
+                            lapply(page.cols$prices, function(x) {
+                              apply(x[,c("left", "bottom")], 2, min)}))
+  page.cols$price_cols[,c("col_right","col_top")] = do.call("rbind", 
+                             lapply(page.cols$prices, function(x) {
+                              apply(x[,c("right", "top")], 2, max)}))
+  page.cols
+}
+
+# check for new IDs and return updated page.cols ####
+addIds <- function(page.cols) {
+  
+  tmp.boxes.from.cols_id = lapply(1:page.cols$n_id_cols, boxesFromCols, page.cols$id_cols, px1, buffer = page.cols$charheight/3)
+  
+  new.ids = do.call("rbind", lapply(1:page.cols$n_id_cols, function(x) {
+    
+    #are the things we found IDs?
+    tmp.boxes.from.cols_id[[x]]$price = isPrice(tmp.boxes.from.cols_id[[x]]$text, maybe = F)
+    tmp.boxes.from.cols_id[[x]]$type = isPrice(tmp.boxes.from.cols_id[[x]]$text, maybe = T)
+    tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], type == page.cols$idtype)
+    #another heuristic to weed out non-IDs
+    tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], !grepl("[a-zA-Z-]{3}", tmp.boxes.from.cols_id[[x]]$text))
+    
+    old.ids = filter(page.cols$ids, table == x)
+    compare.ids = abs(outer(tmp.boxes.from.cols_id[[x]]$bottom, old.ids$bottom, "-"))
+    tmp.new = apply(compare.ids, 1, min) > page.cols$charheight
+    #remove column if it's not a new or a best match for an old
+    #shouldn't really do anything since we removed ID duplicates in pageCols
+    keep.cols = unique(apply(compare.ids, 1, which.min)[!tmp.new])
+    compare.ids = compare.ids[,keep.cols]
+    tmp.lost = apply(compare.ids, 2, min) > page.cols$charheight
+    new.ids = filter(tmp.boxes.from.cols_id[[x]], (apply(compare.ids, 1, min) > page.cols$charheight))
+    
+    #better ids? - should have same number of rows as old
+    tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], !tmp.new)
+    
+    # replace if original worse thn 90 and new at least 10 better
+    tmp.replace = (old.ids$confidence[!tmp.lost])[keep.cols] < 90 &
+      (old.ids$confidence[!tmp.lost][keep.cols] - tmp.boxes.from.cols_id[[x]]$confidence) < -10 #old - new
+    old.ids$text[!tmp.lost][tmp.replace] =  tmp.boxes.from.cols_id[[x]]$text[tmp.replace]
+    
+    #add improved and new prices
+    if (nrow(new.ids) > 0) {
+      new.ids$text.new = new.ids$text
+      new.ids$table = x
+      new.ids = rbind(old.ids, new.ids[,names(page.cols$ids)]) %>% arrange(table, top)
+    } else {new.ids = old.ids}
+    return(new.ids)
+  }))
+  
+  cat("Did this process add or take away IDs (>= 0 good)?",   new.ids  %>% group_by(table) %>% group_size() - page.cols$id_cols$entries)
+  
+  # update  stuff
+  # ids
+  page.cols$ids = new.ids
+  # entries
+  page.cols$id_cols$entries = new.ids %>% group_by(table) %>% group_size()
+  # column boundaries if necessary
+  page.cols$id_cols[,c("col_left","col_bottom")] = (new.ids %>% group_by(table) %>% summarize(l = min(left), b = min(bottom)))[,c("l","b")]
+  page.cols$id_cols[,c("col_right","col_top")] = (new.ids %>% group_by(table) %>% summarize(r = max(left), t = max(bottom)))[,c("r","t")]
+  
+  return(page.cols)
+}
+
+# for extracting new information from identified column
 boxesFromCols <- function(index, colData, px, buffer = 5) {
   colDataRow = colData[index,]
   #px = pixRead(img)
@@ -508,7 +651,7 @@ nameBoxes <- function(data1, page.cols = NULL, prices, buffer = page.tables$char
 # RUN ####
 ####################################################################################################
 # preprocess ####
-file1 = "UCD_Lehmann_0011" #0011
+file1 = "UCD_Lehmann_1106" #0011
 img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = "")
 #img1 = "~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_0069.jpg"
 api = tesseract(img1)
@@ -530,107 +673,28 @@ data1 = GetBoxes(px1)
 
 # 2 ####
 page.cols = pageCols(data1, img.height = height1)
-
 ############# img check 2 ####
 if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1)
+if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1)
 
 # 3 ####
 
-# check for new prices ####
-tmp.boxes.from.cols_price = lapply(1:page.cols$n_price_cols, boxesFromCols,
-         page.cols$price_cols,px1, buffer = page.cols$charheight/3)
-
-# only add new ones, only replace ones that got better
-page.cols$prices = lapply(1:page.cols$n_price_cols, function(x) {
-  
-    #evaluate possible new prices
-    tmp.boxes.from.cols_price[[x]]$price = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = F, dollar = F)
-    tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = T, dollar = F)
-    tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], type !="FALSE", !str_detect(tmp.boxes.from.cols_price[[x]]$text, "\\$"))
-    tmp.boxes.from.cols_price[[x]]$text.new = str_extract(tmp.boxes.from.cols_price[[x]]$text, "[0-9]+\\.{0,1}[0-9]+.{0,1}$")
-    tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text.new, maybe = T, dollar = F)
-    tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], type !="FALSE")
-    
-    #new prices? -- add later
-    compare.col = abs(outer(tmp.boxes.from.cols_price[[x]]$bottom, page.cols$prices[[x]]$bottom, "-"))
-    tmp.new = apply(compare.col, 1, min) > page.cols$charheight
-    tmp.lost = apply(compare.col, 2, min) > page.cols$charheight # prices not found in new data
-    new.prices = filter(tmp.boxes.from.cols_price[[x]], tmp.new)
-    
-    #better prices? - should have same number of rows as old
-    tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], !tmp.new)
-    
-    #what is the closest old price for each?
-    tmp.compare = apply(cbind(page.cols$prices[[x]]$type[!tmp.lost], tmp.boxes.from.cols_price[[x]]$type), 1, compareTypes)
-    page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==1] = page.cols$prices[[x]]$text[!tmp.lost][tmp.compare==1]
-    page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==2] = tmp.boxes.from.cols_price[[x]]$text[tmp.compare==2]
-    page.cols$prices[[x]]$text.new[tmp.lost] = page.cols$prices[[x]]$text[tmp.lost]
-      
-    #add new prices
-    if (nrow(new.prices) > 0) {
-      new.prices$cluster = median(page.cols$prices[[x]]$cluster)
-      page.cols$prices[[x]] = rbind(page.cols$prices[[x]], new.prices[,names(page.cols$prices[[x]])]) %>% arrange(top)
-    }
-    
-    #strip leading periods from new text
-    page.cols$prices[[x]]$text.new = str_remove(page.cols$prices[[x]]$text.new, "^\\.+")
-    return(page.cols$prices[[x]])
-})
-
-############# table check 1 ####
-
-cat("Did this process add or take away PRICES? (all >= 0 good):", sapply(page.cols$prices, nrow) - page.cols$price_cols$entries)
+# check for new prices and return updated page.cols ####
+page.cols = addPrices(page.cols) 
 
 # check for new ids ####
 if (!is.null(page.cols$ids)) {
-  
-  tmp.boxes.from.cols_id = lapply(1:page.cols$n_id_cols, boxesFromCols, page.cols$id_cols, px1, buffer = page.cols$charheight/3)
-  
-  #new ids? -- add later
-  lapply(1:page.cols$n_id_cols, function(x) {
-    
-    tmp.boxes.from.cols_id[[x]]$price = isPrice(tmp.boxes.from.cols_id[[x]]$text, maybe = F)
-    tmp.boxes.from.cols_id[[x]]$type = isPrice(tmp.boxes.from.cols_id[[x]]$text, maybe = T)
-    tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], type == page.cols$idtype)
-    #another heuristic to weed out
-    tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], !grepl("[a-zA-Z-]{3}", tmp.boxes.from.cols_id[[x]]$text))
-    
-    tmp.ids = filter(page.cols$ids, table == x)
-    compare.ids = abs(outer(tmp.boxes.from.cols_id[[x]]$bottom, tmp.ids$bottom, "-"))
-    tmp.new = apply(compare.ids, 1, min) > page.cols$charheight
-    tmp.lost = apply(compare.ids, 2, min) > page.cols$charheight
-    new.ids = filter(tmp.boxes.from.cols_id[[x]], (apply(compare.ids, 1, min) > page.cols$charheight))
-    
-    #better ids? - should have same number of rows as old
-    tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], !tmp.new)
-    
-    # replace if original worse thn 90 and new at least 10 better
-    tmp.replace = tmp.ids$confidence[!tmp.lost] < 90 &
-                  (tmp.ids$confidence[!tmp.lost] - tmp.boxes.from.cols_id[[x]]$confidence) < -10 #old - new
-    tmp.ids$confidence[!tmp.lost][tmp.replace] =  tmp.boxes.from.cols_id[[x]]$text[tmp.replace]
-    
-    #add new prices
-    if (nrow(new.ids) > 0) {
-      new.ids$price = isPrice(new.prices$text, maybe = TRUE)
-      new.ids$type = isPrice(new.prices$text, maybe = TRUE)
-      new.ids$text.new = new.ids$text
-      new.ids$cluster = x
-      page.cols$ids = rbind(page.cols$ids, new.ids[,names(page.cols$ids)]) %>% arrange(table, top)
-    }
-  })
-  cat("Did this process add or take away IDs (>= 0 good)?", page.cols$ids %>% group_by(table) %>% group_size() - page.cols$id_cols$entries)
+  page.cols = addIds(page.cols)
 }
 
-#update column information
-page.cols$price_cols$entries = sapply(page.cols$prices, nrow)
-page.cols$id_cols$entries  = page.cols$ids %>% group_by(table) %>% group_size()
-page.cols$id_cols$col_left = (page.cols$ids %>% group_by(table) %>% summarize(min(left)))$`min(left)`
-page.cols$id_cols$col_right = (page.cols$ids %>% group_by(table) %>% summarize(max(right)))$`max(right)`
-  
+
 ############# img check 3 ####
 if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
+if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
+
 #plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", prices), img = px1)
-############# table check 2 ####
+
+############# table check 1 ####
 if (!is.null(page.cols$ids)) {
   cat("We guess there's", page.cols$n_id_cols, "table(s)\n")
   tmp.maybe_missing = rep(page.cols$id_cols$entries, each = page.cols$n_price_cols/page.cols$n_id_cols) - sapply(page.cols$prices, nrow)
@@ -643,6 +707,7 @@ if (!is.null(page.cols$ids)) {
 # Find table locations using changepoint method 
 page.tables = pageTables(data1, page.cols$prices, page.cols, cpt.var = 0.05, buffer = page.cols$charheight/3)
 
+############# table check 2 ####
 # Check that left edge based on ID columns, if present, equals changepoint method (page.tables) left-edge
 # Default to method based on ID columns
 if (!is.null(page.cols$ids)) {
