@@ -42,7 +42,6 @@ source("wine-price-extraction/dsi/R/helper.R")
 # returns found prices, price column locations, number of prices found, character height,
 # column justification, id column locations (left edge), and found ids
 # image attribute only used for height
-
 pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { #need img until image size attribute implemented
   
     if(is.null(img) & is.null(img.height)) {break("Need image or image height")}
@@ -59,7 +58,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
     
     # prices
     cols1 = priceCols(prices, minGap = charheight)
-    k = cols1[["k"]]
+    k = cols1[["k"]] #suspected number of price columns
     just = cols1[["just"]]
     clust1 = cols1[["column_info"]]
     prices$cluster = clust1$clustering
@@ -106,6 +105,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
       data1$price[data1$text.new!="FALSE"] = TRUE
       data1$text[data1$text.new!="FALSE"] = data1$text.new[data1$text.new!="FALSE"]
     }
+    bottle.or.case = bottle.or.case[order(colData$col_left)]
     
     #what do we have now?
     prices2 = filter(data1, price==TRUE)
@@ -120,14 +120,14 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
     just = cols2[["just"]]
     clust2 = cols2[["column_info"]]
     prices2$cluster = clust2$clustering
-    colData = prices2 %>% group_by(cluster) %>%
+    colData2 = prices2 %>% group_by(cluster) %>%
       summarize(col_left = min(left), col_right = max(right),
                 col_bottom = min(prices2$bottom), col_top = max(prices2$top),
                 entries = n())
-    colData$slope = rep(0,k)
+    colData2$slope = rep(0,k)
     max.clust = which.max(clust2$clusinfo[,1]) #largest cluster
-    colData = colData %>% arrange(col_left)
-    colData$bottle.or.case = bottle.or.case
+    colData2 = colData2 %>% arrange(col_left)
+    colData2$bottle.or.case = bottle.or.case #bottle.or.case already ordered left to right
     
     # reformate and detect outliers by right edge
     tmp.prices = lapply(1:max(prices2$cluster), function(x) filter(prices2, cluster==x))
@@ -174,7 +174,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
             ids[-remove.duplicates,]
         })
       }
-      ids = ids[[1]]
+      if(is.null(dim(ids))) ids = ids[[1]]
       ids$table = sapply(ids$left, function(x) {which.min(abs(x-id_cols))}) #assume one id col per table
     
       id_cols = ids %>% group_by(table) %>% summarize(col_left = min(left),
@@ -190,8 +190,8 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
     #2e. return ####
 
     return(list(prices = tmp.prices,
-              price_cols = colData,
-              n_price_cols = max(colData$cluster),
+              price_cols = colData2,
+              n_price_cols = max(colData2$cluster),
               
               progress = c(nrow(prices), nrow(prices2)),
               charheight = charheight,
@@ -454,8 +454,9 @@ whichTable <- function(page.tables, page.cols) {
 }
 
 # 5. Check again for missing prices and now IDs too ####
-##  if no ids, just look for mismatches between #prices in columns in tables ----
-##  if ids, also look for mismatches between #ids and #prices in tables ---- 
+##  if no ids, just look for mismatches between #prices in columns in tables 
+##  if ids, also look for mismatches between #ids and #prices in tables 
+##  Should do nothing if not mismatches found
 
 addMissing <- function(page.cols, buffer = page.cols$charheight) {
   
@@ -507,7 +508,6 @@ addMissing <- function(page.cols, buffer = page.cols$charheight) {
   }
   
   # by prices less than ids ####
-  
   page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% 
     mutate(table.size = max(entries),
            missing.by.price = entries < table.size,
@@ -651,7 +651,7 @@ nameBoxes <- function(data1, page.cols = NULL, prices, buffer = page.tables$char
 # RUN ####
 ####################################################################################################
 # preprocess ####
-file1 = "UCD_Lehmann_1106" #0011
+file1 = "UCD_Lehmann_3392" #0011, 1106, 0237, 3392
 img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = "")
 #img1 = "~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_0069.jpg"
 api = tesseract(img1)
@@ -700,8 +700,9 @@ if (!is.null(page.cols$ids)) {
   tmp.maybe_missing = rep(page.cols$id_cols$entries, each = page.cols$n_price_cols/page.cols$n_id_cols) - sapply(page.cols$prices, nrow)
   if (max(tmp.maybe_missing) > 0) {
     cat("Column(s)", which(tmp.maybe_missing>0), "may be missing", tmp.maybe_missing[tmp.maybe_missing>0], "entry")
-  }
+  } else {cat("Columns don't seem to be missing entries")}
 }
+
 # 4 ####
 
 # Find table locations using changepoint method 
@@ -737,10 +738,13 @@ final.prices = vector("list", max(page.cols$price_cols$table))
 final.prices = lapply(1:max(page.cols$price_cols$table), function(x) {
   final.prices[[x]] = list(
     if (!is.null(page.cols$ids)) {ids = unlist(page.cols$ids %>% filter(table == x) %>% .$text)},
-    prices = lapply(subset(page.cols$prices, page.cols$price_cols$table == x), function(y) y$text.new)
+    prices = lapply(subset(page.cols$prices, page.cols$price_cols$table == x), 
+                    function(y) y$text.new)
   )
+  names(final.prices[[x]]$prices) = subset(page.cols$price_cols, page.cols$price_cols$table == x)$bottle.or.case
+  final.prices[[x]]
 })
-names(final.prices) = paste("table", 1:max(page.cols$price_cols$table), sep = "_")
+
 
 # all
 final.data = list(prices = final.prices, name.locations = name.boxes[["locations"]],
