@@ -577,6 +577,7 @@ checkBoxes <- function(df, px, buffer = 10, level = "textline", height, checker 
   
   do.call("rbind", tmp.list)
 }
+# df is left, bottom, width, height
 
 # 6. Extract the names with words and images ####
 nameBoxes <- function(data1, page.cols = NULL, prices, buffer = page.tables$charheight/3, page.tables = NULL) { #buffer on order of 1/2 small char size, 1/4 larege
@@ -756,11 +757,13 @@ saveRDS(final.data, paste("wine-price-extraction/dsi/Data/", file1, ".RDS", sep 
 ################## check 4 / share image####
 #make fake confidence for box colors
 tmp.boxes = do.call("rbind", name.boxes[[1]])
-png(paste("wine-price-extraction/dsi/Data/", file1, ".png", sep=""), width = 4000, height = 6000)
+png(paste("wine-price-extraction/dsi/Data/", file1, "_deskew.png", sep=""), width = 4000, height = 6000)
 plot(tesseract(px1), img = px1)
 dev.off()
-png(paste("wine-price-extraction/dsi/Data/", file1, "_boxes.png", sep=""), width = 1000, height = 1500)
+png(paste("wine-price-extraction/dsi/Data/", file1, "_name_boxes.png", sep=""), width = 1000, height = 1500)
 plot(tesseract(px1), cropToBoxes = F, bbox = tmp.boxes, img = px1, confidence = FALSE)
 dev.off()
-
+png(paste("wine-price-extraction/dsi/Data/", file1, "_price_boxes.png", sep=""), width = 1000, height = 1500)
+plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
+dev.off()
 
