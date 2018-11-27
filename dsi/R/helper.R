@@ -43,6 +43,11 @@ isPrice = #Jane's version - different than Duncan's isPrice
         ifelse(maybe, "number", FALSE)
       }
       
+      else if( grepl("^[nN].{0,1}[0-9]+$", x)) {
+        #warning(paste0("This  (", x, ") seems to be number, but not a price ", collapse = " "))
+        ifelse(maybe, "ID", FALSE)
+      }
+      
       else{return(FALSE)}
     })
   }
@@ -120,4 +125,9 @@ charTypes <- function(boxes, types = 2, confidence = 50) { #using k-means
   boxes$charwidth = (boxes$right-boxes$left)/nchar(boxes$text)
   boxes.kmeans = kmeans(boxes$charwidth, centers = types)
   return(list(membership = boxes.kmeans$cluster, means = boxes.kmeans$centers))
+}
+
+#converts a data frame of left, bottom, right, top boxes to left, bottom, width, height for the checkBoxes function
+makeCheckBox <- function(df) {
+  data.frame(df$left, df$bottom, df$right - df$left, df$top - df$bottom)
 }
