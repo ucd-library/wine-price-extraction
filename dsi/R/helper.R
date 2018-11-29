@@ -120,14 +120,31 @@ textTypes <- function(cat_files, catalog = NULL){
 #  img1 = sample(list.files(".", recursive = T), 1)
 #}
 
-charTypes <- function(boxes, types = 2, confidence = 50) { #using k-means
-  boxes = filter(boxes, confidence >= confidence)
+charTypes <- function(boxes, types = 2, conf.min = 50) { #using k-means
   boxes$charwidth = (boxes$right-boxes$left)/nchar(boxes$text)
-  boxes.kmeans = kmeans(boxes$charwidth, centers = types)
-  return(list(membership = boxes.kmeans$cluster, means = boxes.kmeans$centers))
+  boxes.use = filter(boxes, confidence > conf.min) # only use somewhat high conf boxes for finding char types
+  boxes.kmeans = kmeans(boxes.use$charwidth, centers = types)
+  cluster = sapply(boxes$charwidth, function(x){
+    which.min(abs(x - boxes.kmeans$centers))})
+  return(list(membership = cluster, means = boxes.kmeans$centers))
 }
 
 #converts a data frame of left, bottom, right, top boxes to left, bottom, width, height for the checkBoxes function
-makeCheckBox <- function(df) {
-  data.frame(df$left, df$bottom, df$right - df$left, df$top - df$bottom)
+makeCheckBox <- function(df, type  = c("forCheckBox", "forBbox")) {
+  if (type == "forCheckBox") data.frame(df$left, df$bottom, df$right - df$left, df$top - df$bottom)
+  if (type == "forBbox") data.frame(df$left, df$bottom, df$left + df$width, df$bottom + df$height)
+}
+
+removeDuplicates <- function(table, buffer = 10) { #price or id table, should have left, bottom, right, top and confidence  
+  look.for.duplicates = apply(table[,c("left","bottom","right","top")], 1, 
+                              function(x) {apply(table[,c("left","bottom","right","top")], 1, 
+                                  function(y) {max(abs(y-x))})})
+  look.for.duplicates = data.frame(which(apply(look.for.duplicates, 1, "<",  buffer), arr.ind = T)) %>%  filter(., row > col)
+  if(nrow(look.for.duplicates) > 0) {
+    remove = apply(look.for.duplicates, 1, function(x) {
+      x[which.min(table[x,"confidence"])]
+    })
+    table = table[-remove,]
+  }
+  table
 }
