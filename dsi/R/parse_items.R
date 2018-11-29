@@ -1,5 +1,5 @@
 #
-# Parser approach for wine catalogs, v 0.5
+# Parser approach for wine catalogs, v 0.6
 #
 # As an input it expects RDS file with tables containign recognized item names
 #
@@ -13,18 +13,22 @@
 # -designation (the vineyard within the winery where the grapes that made the wine are from)
 # -variety (the type of grapes used to make the wine, e.g. Pinot Noir)
 # 
+# It will also compute some statistics on how many matches with dictionaries were full matches, how many items didn't have any match, etc.
 #
 # Parsing steps:
-# 1. Find and trim ID
-# 2. Find and trim year
-# 3. Store current text as a name (but correct spelling errors if you find them)
-# 4. Look for color
-# 5. Recognize content in brackets - it usually contains region, producer or other info, e.g. (red dry)
-# 6. Divide text into upper- and lower-case parts
-# 7. Look for province, region, producer, designation and variety in brackets, upper- and lower-case parts
-# in the first iteration look for exact matches (sim = 1), exclude matched category and recognized part from further process
-# next look for most similar matches (similarity > 0.9)
-# then look for partial matches (substring)
+# 1. Clean text from dots and unwanted characters
+# 2. Find and trim ID
+# 3. Find and trim year
+# 4. Store current text as a name
+# 5. Clean text more aggressively to improve dictionary matching, e.g. replace "St." with "Saint", remove dots, commas, etc.
+# 6. Find and trim keywords, e.g. estate bottled
+# 7. Look for color
+# 8. Recognize content in brackets - it usually contains region, producer or other info, e.g. (red dry)
+# 9. Divide text into upper- and lower-case parts
+# 10. Look for province, region, producer, designation and variety in brackets, upper- and lower-case parts
+#       -in the first iteration look for exact matches (similarity = 1), exclude matched category and recognized part from further process
+#       -next look for most similar matches (similarity > 0.8)
+#       -then look for partial matches (substring)
 
 
 ####################
@@ -32,8 +36,10 @@
 # -make use of "key_words" found
 # -if more than one matches from dictionaries pick the best (look for other info?)
 # -try to "understand" the pattern - if most of items on this page start with REGION, then give more confidence to REGION dictionary
+# -improve dictionaries based on above knowledge
 # -use id to look for similar items
 # -track performance (using Levenshtein distance?)
+# -some staistics, e.g. how many upper case parts produced us something, how many 100% hits?
 # -store results in database
 # -try NLP approach
 #
@@ -45,13 +51,12 @@
 # load libraries
 library(dplyr)
 library(tidyverse)
-library(tesseract)
 library(RODBC)
 library(RecordLinkage)
 
 
-# similarity threshold below which two strings will be considered different
-SIMILARITY_THRESHOLD = 0.7;
+# similarity threshold above which we consider two strings as potential match
+SIMILARITY_THRESHOLD = 0.8;
 lockBinding("SIMILARITY_THRESHOLD", globalenv())
 
 
@@ -75,6 +80,206 @@ close(conn);
 
 
 
+# Initializes result object. 
+# Returns empty result object.
+init_result = function() {
+  result = list(
+    
+    text = NULL,            # original text as recognized by tesseract
+    text_conf = NULL,       # tesseract confidence of recognizing particular parts of text
+    
+    # extracted from the original text:
+    name = NULL,            # cleaned original text without year and id, e.g. "CHATEAU LYNCH BAGES (Pauillac)"
+    keywords = NULL,        # keywords, e.g. "estate bottled"
+    upper_text = NULL,      # cleaned upper case text
+    lower_text = NULL,      # cleaned lower case text
+    brackets_text = NULL,   # brackets content, e.g. "(red wine)"
+    dictionary_hits = NULL, # matrix of dictionary matches (all dictionaries vs upper, lower,bracket texts)
+    
+    # item attributes:
+    id = NULL,              # wine id, e.g. 246 or N-4
+    year = NULL,            # wine vintage, e.g. 1957
+    color = NULL,           # wine color: white / red / rose
+    province = NULL,        # corresponds to provinces dictionary, province or state that the wine is from, e.g. Bordeaux
+    region = NULL,          # corresponds to regions dictionary, wine growing area in a province or state, e.g. Margaux
+    producer = NULL,        # corresponds to producers dictionary, winery that made the wine, e.g. Chateau Margaux
+    designation = NULL,     # corresponds to designations dictionary, vineyard within the producer where the grapes that made the wine are from, e.g. Pavillon Blanc de Chateau Margaux
+    variety = NULL,         # corresponds to varieties dictionary, type of grapes used to make the wine, e.g. Sauvignon Blanc
+    
+    # fields' confidences:
+    id_conf = NULL,         # tesseract confidence
+    year_conf = NULL,       # tesseract confidence
+    color_conf = NULL,      # tesseract confidence
+    province_sim = NULL,    # Levenshtein similarity with a value from dictionary
+    region_sim = NULL,      # Levenshtein similarity with a value from dictionary
+    producer_sim = NULL,    # Levenshtein similarity with a value from dictionary
+    designation_sim = NULL, # Levenshtein similarity with a value from dictionary
+    variety_sim = NULL,     # Levenshtein similarity with a value from dictionary
+    brackets_conf = NULL,   # tesseract confidence, data frame
+    dictionary_hits_sim = NULL, # matrix of similarity to dictionary matches 
+    
+    # additional fields:
+    upper_text_hit = NULL,    # flag telling if this part of text had a match in dictionary
+    lower_text_hit = NULL,    # flag telling if this part of text had a match in dictionary
+    brackets_text_hit = NULL, # flag telling if this part of text had a match in dictionary
+    file_name = NULL,         # page being processed, e.g. UCD_Lehmann_0011
+    confidence = NULL,        # how reliable results are: 100% means all hits were in the dictionaries
+    inspect = NULL            # tells which fields should be inspected
+  );
+  
+  return(result);
+}
+
+
+# Removes redundant spaces.
+remove_spaces = function(text) {
+  # replace multiple spaces with a single space
+  text = gsub("\\s+", " ", text);
+  # remove space at the begining and at the end
+  text = gsub("^\\s|\\s$", "", text);
+  
+  return(text)
+}
+
+
+# Cleans original item text.
+clean_text = function(text) {
+  # remove new lines and some special characters
+  text = gsub("[\n:@^*]+", " ", text);
+  # remove multiple dots
+  text = gsub("(\\s\\.|\\.){2,}.*", " ", text);
+  # remove redundant spaces
+  text = remove_spaces(text);
+  
+  return(text);
+}
+
+
+# Looks for and trims id.
+# TODO: handle more than one number in text
+find_id = function(result_object) {
+  # look for a number at the beggining of the text (or number and max 3 characters, e.g. N-4)
+  id = str_extract(result_object$text, "^[0-9]+\\S{0,3}\\b|^\\S{0,3}[0-9]+\\b");
+  
+  # if found trim from text and look for confidence
+  if (!is.na(id)) {
+    result_object$id = id;
+    result_object$id_conf = as.numeric(result_object$text_conf$confidence[grep(id, result_object$text_conf$text)]);
+    result_object$text = gsub(id, "", result_object$text);
+  }
+  
+  return(result_object);
+}
+
+
+# Looks for and trims year.
+find_year = function(result_object) {
+  # look for number 18xx or 19xx
+  year = str_extract(result_object$text, "1[8|9]\\d\\d");
+  
+  # if found trim from text and look for confidence
+  if (!is.na(year)) {
+    result_object$year = year;
+    result_object$year_conf = as.numeric(result_object$text_conf$confidence[grep(year, result_object$text_conf$text)]);
+    result_object$text = gsub(year, "", result_object$text);
+  }
+  
+  return(result_object);
+}
+
+
+# Cleans item text more aggressively.
+clean_text_aggressive = function(text) {
+  # start with replacing abbreviations (St. -> Saint), this will improve matching with dictionaries
+  text = gsub("St\\.", "Saint ", text, ignore.case = FALSE);
+  text = gsub("ST\\.", "SAINT ", text, ignore.case = FALSE);
+  # remove dots, commas and other unneccessary characters
+  text = gsub("[-_,.;?]+", " ", text);
+  # remove redundant spaces
+  text = remove_spaces(text);
+  
+  return(text);
+}
+
+
+# Looks for and trims keywords.
+# TODO: make use of keywords (e.g. estate bottled)
+find_keywords = function(result_object) {
+  text = result_object$text;
+  # put short words within a word boundary, e.g. \bdry\b, so we don't accidentaly trim the middle of some word
+  keywords = c("original abfullung", "estate bottled", "estate", "bottled", "cooperation", "cooperative", "co op", "\\bcoop\\b", "\\bdry\\b", "rich");
+  matched_keywords = keywords[!is.na(str_extract(text, regex(keywords, ignore_case = TRUE)))];
+  # trim keywords from text
+  text = gsub(paste(matched_keywords, collapse = "|"), "", text, ignore.case = TRUE);
+  text = remove_spaces(text);
+  
+  result_object$text = text;
+  result_object$keywords = matched_keywords;
+  
+  return(result_object);
+}
+
+
+# Looks for color.
+# Don't trim color as it may be part of producer or variety.
+find_color = function(result_object) {
+  # look for color keywords
+  color = str_extract(result_object$text, regex(pattern = "white|blanc|rose|pink|red|rouge", ignore_case = TRUE));
+  
+  # if found look for confidence
+  if (!is.na(color)) {
+    result_object$color_conf = as.numeric(result_object$text_conf$confidence[grep(color, result_object$text_conf$text)]);
+    color = tolower(color);
+    if (color == "blanc" || color == "white") {
+      color = "white";
+    } else if (color == "rose" || color == "pink") {
+      color = "rose";
+    } else if (color == "red" || color == "rouge") {
+      color = "red";
+    }
+    result_object$color = color;
+  }
+  
+  return(result_object);
+}
+
+
+# Looks for and trims brackets content.
+find_brackets = function(result_object) {
+  
+  brackets = str_extract(result_object$text, "[\\[\\({].*?[\\]\\)}]");
+  
+  # if found trim from text and look for confidence
+  if (!is.na(brackets)) {
+    result_object$brackets_text = substr(brackets, 2, nchar(brackets) - 1);
+    result_object$brackets_conf = subset(result_object$text_conf, grepl(pattern = paste(strsplit(brackets, " ")[[1]], collapse="|"), text, fixed = TRUE), select = c(1:2));
+    text = gsub(brackets, "", result_object$text, fixed = TRUE);
+    text = remove_spaces(text);
+    result_object$text = text;
+  }
+    
+  return(result_object);
+}
+
+
+# Divides text into upper- and lower-case text.
+divide_upper_lower = function(result_object) {
+  
+  upper_text = str_extract(result_object$text, "[A-Z][A-Z\\s-,.;']*[A-Z]\\b"); #more rigorous pattern: ^([A-Z\\s]+[A-Z\\s',.]*[A-Z])\\b
+  lower_text = gsub(upper_text, "", result_object$text); #more rigorous pattern: \\b([^A-Z]*[A-Z]{0,2}[^A-Z]+)+$
+  
+  # check if longer than 4 chars
+  if (!is.na(upper_text) & nchar(upper_text) > 4) {
+    result_object$upper_text = upper_text;
+  }
+  if (!is.na(lower_text) & nchar(lower_text) > 4) {
+    lower_text = remove_spaces(lower_text);
+    result_object$lower_text = lower_text;
+  }
+  
+  return(result_object);
+}
+
 
 # Look for the most similar string.
 # Returns list of matches (one or more) and their similarity with string_to_match 
@@ -86,9 +291,9 @@ closest_match = function(string_to_match, string_vector){
 }
 
 
-# Checks dictionaries for the provided string.
+# Finds the most similar values in  all dictionaries to the provided text.
 # Returns matrix of closest matches.
-gather_info = function(string_to_match) {
+dictionary_matches = function(string_to_match) {
   # look for province
   best_prov = closest_match(string_to_match, as.character(provinces$Province));
   # look for region
@@ -102,458 +307,335 @@ gather_info = function(string_to_match) {
   
   return(
     rbind(
-      "best_province" = best_prov,
-      "best_region" = best_reg,
-      "best_producer" = best_prod,
-      "best_designation" = best_desig,
-      "best_variety" = best_var
+      "province" = best_prov,
+      "region" = best_reg,
+      "producer" = best_prod,
+      "designation" = best_desig,
+      "variety" = best_var
     )
   );
-  
 }
 
-# Picks best value for province / region / producer from brackets / upper_case / lower_case
-# Provide category: province / region / producer / designation / variety
-# Returns list or NULL if not similar enough
-pick_best = function(category) {
-  max_similarity = 0;
-  best_match = NULL;
-  # check brackets
+
+# Looks for full matches (similarity = 1) only among all matches.
+# Modifies matrix for further searches.
+find_full_matches = function(result_object) {
   
-  if (!is.null(brackets_info)) {
-    max_similarity = eval(parse(text = paste("brackets_info$best_", category, "$similarity", sep = "")));
-    best_match = eval(parse(text = paste("brackets_info$best_", category, "$phrase", sep = "")));
-  }
-  # check upper_case
-  if (!is.null(upper_case_info)) {
-    if (eval(parse(text = paste("upper_case_info$best_", category, "$similarity", sep = ""))) > max_similarity) {
-      max_similarity = eval(parse(text = paste("upper_case_info$best_", category, "$similarity", sep = "")));
-      best_match = eval(parse(text = paste("upper_case_info$best_", category, "$phrase", sep = "")));
+  # helper object for shorter code in eval(parse(paste...
+  hits_sim = result_object$dictionary_hits_sim;
+
+  # go through all columns (parts) separately
+  for (part in colnames(hits_sim)) {
+    # check if there is any full match
+    if (any(eval(parse(text = paste("hits_sim$", part, " == 1", sep = ""))))) {
+      # if there is more than one match in column we have duplicates in dictionaries
+      if (sum(eval(parse(text = paste("hits_sim$", part, " == 1", sep = ""))), na.rm = TRUE) > 1) {
+        # TODO set warning
+      }
+      
+      # if we have a full match set other values in column and row to 0
+      eval(parse(text = paste("hits_sim$", part, "[hits_sim$", part, " != 1] = 0", sep = "")));# = 0;
+      eval(parse(text = paste("hits_sim[hits_sim$", part, " == 1, names(hits_sim) != \"", part, "\"] = 0", sep = "")));# = 0;
+      
+      # store values in result_object
+      row_id = which(eval(parse(text = paste("hits_sim$", part, sep = ""))) == 1);
+      row_name = rownames(hits_sim)[row_id];
+      # set attribute
+      eval(parse(text = paste("result_object$", row_name, " = result_object$dictionary_hits$", part, "[[", row_id, "]]", sep = "")));
+      # and its similarity
+      eval(parse(text = paste("result_object$", row_name, "_sim = 1", sep = "")));
+      # keep note that this part was a full match (for further iterations and statistics)
+      eval(parse(text = paste("result_object$", part, "_hit = \"", row_name, "\"", sep = "")));
     }
-  }
-  # check lower_case
-  if (!is.null(lower_case_info)) {
-    if (eval(parse(text = paste("lower_case_info$best_", category, "$similarity", sep = ""))) > max_similarity) {
-      max_similarity = eval(parse(text = paste("lower_case_info$best_", category, "$similarity", sep = "")));
-      best_match = eval(parse(text = paste("lower_case_info$best_", category, "$phrase", sep = "")));
-    }
-  }
+  };
   
-  # return NULL if max_similarity is lower than SIMILARITY_THRESHOLD
-  if (max_similarity >= SIMILARITY_THRESHOLD) {
-    return(list("phrase" = best_match, "similarity" = max_similarity));
+  # remove full matches from similarity matrix for further searches
+  hits_sim[hits_sim == 1] = 0;
+
+  # don't forget it was only a helper object
+  result_object$dictionary_hits_sim = hits_sim;
+  
+  return(result_object);
+}
+
+
+# Looks for very probable matches (similarity > SIMILARITY_THRESHOLD).
+find_decent_matches = function(result_object) {
+  
+  # helper object for shorter code in eval(parse(paste...
+  hits_sim = result_object$dictionary_hits_sim;
+  
+  # go through all columns (parts) separately
+  for (part in colnames(hits_sim)) {
+    # check if this part wasn't a full match and if there is any decent match
+    if (is.null(eval(parse(text = paste("result_object$", part, "_hit", sep = "")))) & any(eval(parse(text = paste("hits_sim$", part, sep = ""))) > SIMILARITY_THRESHOLD)) {
+
+      # store values in result_object
+      row_id = which.max(eval(parse(text = paste("hits_sim$", part, sep = ""))));
+      row_name = rownames(hits_sim)[row_id];
+      # set attribute
+      eval(parse(text = paste("result_object$", row_name, " = result_object$dictionary_hits$", part, "[[", row_id, "]]", sep = "")));
+      # and its similarity
+      eval(parse(text = paste("result_object$", row_name, "_sim = max(unlist(hits_sim$", part, "))", sep = "")));
+      # keep note that this part was a match (for further iterations and statistics)
+      eval(parse(text = paste("result_object$", part, "_hit = \"", row_name, "\"", sep = "")));
+    }
+  };
+  
+  return(result_object);
+}
+
+
+# Find best matches in dictionaries for all text parts (upper, lower, brackets).
+check_dictionaries = function(result_object) {
+  
+  # create similarity matrix (all dictionaries vs all considered texts)
+  upper_mat = dictionary_matches(result_object$upper_text);
+  lower_mat = dictionary_matches(result_object$lower_text);
+  brackets_mat = dictionary_matches(result_object$brackets_text);
+  # keep it in result object
+  result_object$dictionary_hits = data.frame(cbind("upper_text" = upper_mat[,1], "lower_text" = lower_mat[,1], "brackets_text" = brackets_mat[,1]));
+  result_object$dictionary_hits_sim = data.frame(cbind("upper_text" = upper_mat[,2], "lower_text" = lower_mat[,2], "brackets_text" = brackets_mat[,2]));
+  
+  # look for full matches
+  result_object = find_full_matches(result_object);
+  
+  # look for decent matches
+  result_object = find_decent_matches(result_object);
+  
+  # look for sub-matches
+  # TODO:
+  
+  return(result_object);
+}
+
+
+# Returns well formated text, ready to be printed or stored in output file.
+format_result = function(result) {
+  
+  text = "";
+  
+  text = paste(text, "\n\n    raw text:  ", paste(result$text_conf$text, collapse = " "), sep = "");
+  if (is.null(result$name)) {
+    text = paste(text, "\n        name:  ", sep = "");
   } else {
-    return(NULL);
+    text = paste(text, "\n        name:  ", result$name, sep = "");
   }
+  text = paste(text, "\n  clean text:  ", result$text, sep = "");
+  if (is.null(result$id)) {
+    text = paste(text, "\n          id:  ", sep = "");
+  } else {
+    text = paste(text, "\n          id:  ", result$id, " (", round(result$id_conf, 0), "%)", sep = "");
+  }
+  if (is.null(result$year)) {
+    text = paste(text, "\n        year:  ", sep = "");
+  } else {
+    text = paste(text, "\n        year:  ", result$year, " (", round(result$year_conf, 0), "%)", sep = "");
+  }
+  if (is.null(result$color)) {
+    text = paste(text, "\n       color:  ", sep = "");
+  } else {
+    text = paste(text, "\n       color:  ", result$color, " (", round(result$color_conf, 0), "%)", sep = "");
+  }
+  if (is.null(result$province)) {
+    text = paste(text, "\n    province:  ", sep = ""); # 
+  } else {
+    text = paste(text, "\n    province:  ", paste(result$province, collapse = " / "), " (", round(result$province_sim, 2), ")", sep = "");
+  }
+  if (is.null(result$region)) {
+    text = paste(text, "\n      region:  ", sep = "");
+  } else {
+    text = paste(text, "\n      region:  ", paste(result$region, collapse = " / "), " (", round(result$region_sim, 2), ")", sep = "");
+  }
+  if (is.null(result$producer)) {
+    text = paste(text, "\n    producer:  ", sep = "");
+  } else {
+    text = paste(text, "\n    producer:  ", paste(result$producer, collapse = " / "), " (", round(result$producer_sim, 2), ")", sep = "");
+  }
+  if (is.null(result$designation)) {
+    text = paste(text, "\n designation:  ", sep = "");
+  } else {
+    text = paste(text, "\n designation:  ", paste(result$designation, collapse = " / "), " (", round(result$designation_sim, 2), ")", sep = "");
+  }
+  if (is.null(result$variety)) {
+    text = paste(text, "\n     variety:  ", sep = "");
+  } else {
+    text = paste(text, "\n     variety:  ", paste(result$variety, collapse = " / "), " (", round(result$variety_sim, 2), ")", sep = "");
+  }
+  if (is.null(result$upper_text)) {
+    text = paste(text, "\n  upper_text:  ", sep = "");
+  } else {
+    text = paste(text, "\n  upper_text:  ", result$upper_text, sep = "");
+  }
+  if (is.null(result$lower_text)) {
+    text = paste(text, "\n  lower_text:  ", sep = "");
+  } else {
+    text = paste(text, "\n  lower_text:  ", result$lower_text, sep = "");
+  }
+  if (is.null(result$brackets_text)) {
+    text = paste(text, "\n    brackets:  ", sep = "");
+  } else {
+    text = paste(text, "\n    brackets:  ", result$brackets_text, " (", round(mean(result$brackets_conf$confidence), 0), "%)", sep = "");
+  }
+  if (is.null(result$keywords)) {
+    text = paste(text, "\n    keywords:  ", sep = "");
+  } else {
+    text = paste(text, "\n    keywords:  ", paste(result$keywords, collapse = " / "), sep = "");
+  }
+  
+  return(text);
 }
 
 
-set_flags = function(category, phrase, similarity) {
-    switch(category,
-         "1" = {
-           assign("hit_province", phrase, envir = .GlobalEnv);
-           assign("province_sim", similarity, envir = .GlobalEnv);
-           },
-         "2" = {
-           assign("hit_region", phrase, envir = .GlobalEnv);
-           assign("region_sim", similarity, envir = .GlobalEnv);
-         },
-         "3" = {
-           assign("hit_producer", phrase, envir = .GlobalEnv);
-           assign("producer_sim", similarity, envir = .GlobalEnv);
-         },
-         "4" = {
-           assign("hit_designation", phrase, envir = .GlobalEnv);
-           assign("designation_sim", similarity, envir = .GlobalEnv);
-         },
-         "5" = {
-           assign("hit_varirety", phrase, envir = .GlobalEnv);
-           assign("variety_sim", similarity, envir = .GlobalEnv);
-         });
-}
-
-# Parse item
-parse_item = function(item_text, item_text_conf) {
+# Parses single item
+# Gets items$name.words$table_X. Gets only column text and confidence.
+# Returns result object.
+parse_item = function(item_text_conf) {
+  
   
   #items = readRDS("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_0011.RDS");
   #item_text = paste(items$name.words$table_1[[5]]$text, collapse = " ");
-  #item_text_conf = items$name.words$table_1[[5]][,c("text","confidence")];
-  #item_text = "237 CHATEAU BELAIR (St. Emillion). ...";
+  #item_text_conf = items$name.words$table_1[[3]][,c("text","confidence")];
   
-  # recognize text from image
-  #eng = tesseract("eng");
-  #item_text = ocr(item_img_path, engine = eng);
-  #item_text_conf = ocr_data(item_img_path, engine = eng);
-  cat("\n\n", item_text);
+  
+  # init result object
+  result = init_result();
+  result$text_conf = item_text_conf;
+  
+  # collate text
+  result$text = paste(item_text_conf$text, collapse = " ");
+  #cat("\n\n", result$text);
   #item_text_conf;
   
-  ################
-  # START PARSING
+  # 1. Clean text
+  result$text = clean_text(result$text);
+  
+  # 2. Find and trim ID
+  result = find_id(result);
+  
+  # 3. Find and trim year
+  result = find_year(result);
+  
+  # 4. Store current text as a name
+  # TODO: correct spelling errors (using dictionaries?)
+  result$name = remove_spaces(result$text);
+  
+  # At that point we have item name, now try to recognize some values from dictionary
+  
+  # 5. Clean text more aggressively
+  result$text = clean_text_aggressive(result$text);
+  
+  # 6. Recognize and trim key words like: "estate bottled", "cooperation"
+  result = find_keywords(result);
+  
+  # 7. Find color
+  result = find_color(result);
+  
+  # 8. Find and trim brackets
+  result = find_brackets(result);
+  
+  # 9. divide text into upper- and lower-case parts
+  result = divide_upper_lower(result);
+  
+  # 10. Identify entities using dictionaries
+  result = check_dictionaries(result);
   
   
-  # 0. clean item_text
-  # remove multiple dots, new lines and widow chars
-  item_text = gsub("[\n|:]+", " ", item_text);
-  item_text = gsub("\\.{2,}", " ", item_text);
-  # remove redundant spaces
-  item_text = gsub("\\s+", " ", item_text);
-  item_text = gsub("^\\s|\\s$", "", item_text);
+  # print results
+  cat(format_result(result));
   
+  # store results in db
   
-  # 1. Find and trim ID
-  # look for a number at the beggining of the text (or number and max 3 characters, e.g. N-4)
-  id = str_extract(item_text, "^[0-9]+\\S{0,3}\\b|^\\S{0,3}[0-9]+\\b");
-  
-  # if id not recognized mark as FALSE, else get confidence and trim from text
-  if (is.na(id)) {
-    id = NULL;
-    id_conf = NULL;
-  } else {
-    id_conf = as.numeric(item_text_conf$confidence[grep(id, item_text_conf$text)]);
-    item_text = gsub(id, "", item_text);
-  }
-  
-  
-  # 2. Find and trim year
-  # get year - look for number 18xx or 19xx
-  year = str_extract(item_text, "1[8|9]\\d\\d");
-  
-  # if year not recognized mark as FALSE, else get confidence and trim from text
-  if (is.na(year)) {
-    year = NULL;
-    year_conf = NULL;
-  } else {
-    year_conf = as.numeric(item_text_conf$confidence[grep(year, item_text_conf$text)]);
-    item_text = gsub(year, "", item_text);
-  }
-  
-  
-  # 3. Store current text as a name (but correct spelling errors if you find them)
-  # remove redundant spaces
-  item_text = gsub("\\s+", " ", item_text);
-  item_text = gsub("^\\s|\\s$", "", item_text);
-  name = item_text;
-  cat("\n", name);
-  
-  
-  # at that point we have item name, now try to recognize some values from dictionary
-  # start with replacing abbreviations (St. -> Saint), this will improve matching with dictionaries
-  item_text = gsub("St\\.", "Saint ", item_text, ignore.case = FALSE);
-  item_text = gsub("ST\\.", "SAINT ", item_text, ignore.case = FALSE);
-  # remove commas and other unneccessary characters
-  item_text = gsub("-|_|,|\\.|;|\\?", " ", item_text);
-  # remove redundant spaces
-  item_text = gsub("\\s+", " ", item_text);
-  
-  
-  # recognize and trim key words like: "estate bottled", "cooperation"
-  # put short words within a word boundary, e.g. \bdry\b, so we don't accidentaly trim the middle of some word
-  key_words = c("original abfullung", "estate bottled", "estate", "bottled", "cooperation", "cooperative", "co op", "\\bcoop\\b", "\\bdry\\b", "\\brich\\b");
-  item_key_words = key_words[!is.na(str_extract(item_text, regex(key_words, ignore_case = TRUE)))];
-  item_text = gsub(paste(item_key_words, collapse = "|"), "", item_text, ignore.case = TRUE);
-  # remove redundant spaces
-  item_text = gsub("\\s+", " ", item_text);
-  
-  
-  # 4. Look for color
-  # look for key-words
-  color = str_extract(item_text, regex(pattern = "white|blanc|rose|pink|red|rouge", ignore_case = TRUE));
-  
-  # if color not recognized mark as FALSE, else get confidence
-  # don't trim color as it may be part of producer or variety
-  if (is.na(color)) {
-    color = NULL;
-    color_conf = NULL;
-  } else {
-    color_conf = as.numeric(item_text_conf$confidence[grep(color, item_text_conf$text)]);
-    color = tolower(color);
-    if (color == "blanc" || color == "white") {
-      color = "white";
-    } else if (color == "rose" || color == "pink") {
-      color = "rose";
-    } else if (color == "red" || color == "rouge") {
-      color = "red";
-    }
-  }
-  
-  
-  # 5. get anything that is in brackets
-  brackets = str_extract(item_text, "[\\[\\({].*?[\\]\\)}]");
-  
-  # if brackets not found mark as FALSE, else trim bracket content
-  if (is.na(brackets)) {
-    brackets = NULL;
-    brackets_conf_df = NULL;
-  } else {
-    brackets_conf_df = subset(item_text_conf, grepl(pattern = paste(strsplit(brackets, " ")[[1]], collapse="|"), text, fixed = TRUE), select = c(1:2));
-    item_text = gsub(brackets, "", item_text, fixed = TRUE);
-  }
-  
-  
-  # 6. divide text into upper- and lower-case parts
-  item_text = gsub("^\\s|\\s$", "", item_text);
-  cat("\n", item_text);
-  upper_case_text = str_extract(item_text, "[A-Z][A-Z\\s-,.;']*[A-Z]\\b"); #more rigorous pattern: ^([A-Z\\s]+[A-Z\\s',.]*[A-Z])\\b
-  lower_case_text = gsub(upper_case_text, "", item_text); #more rigorous pattern: \\b([^A-Z]*[A-Z]{0,2}[^A-Z]+)+$
-  # remove redundant spaces
-  lower_case_text = gsub("\\s+", " ", lower_case_text);
-  lower_case_text = gsub("^\\s|\\s$", "", lower_case_text);
-  
-  # 7. Look for province, region, producer, designation and variety in brackets, upper- and lower-case parts
-  # assign("brackets_info", NULL, envir = .GlobalEnv);
-  # if (!is.null(brackets)) {
-  #   assign("brackets_info", gather_info(substr(brackets, 2, nchar(brackets) - 1)), envir = .GlobalEnv);
-  # }
-  # 
-  # assign("upper_case_info", NULL, envir = .GlobalEnv);
-  # if (!is.na(upper_case_text) && nchar(upper_case_text) > 4) {
-  #   assign("upper_case_info", gather_info(upper_case_text), envir = .GlobalEnv);
-  # }
-  # 
-  # assign("lower_case_info", NULL, envir = .GlobalEnv);
-  # if (!is.na(lower_case_text) && nchar(lower_case_text) > 4) {
-  #   assign("lower_case_info", gather_info(lower_case_text), envir = .GlobalEnv);
-  # }
-
-  ############ !!!!!!!!!!!!!!!!!!!!!
-  # TODO: refactor code below this point
-  
-  brackets_mat = gather_info(substr(brackets, 2, nchar(brackets) - 1));
-  upper_mat = gather_info(upper_case_text);
-  lower_mat = gather_info(lower_case_text);
-  
-  info_phrase = data.frame(cbind("brackets" = brackets_mat[,1], "upper" = upper_mat[,1], "lower" = lower_mat[,1]));
-  info_similarity = data.frame(cbind("brackets" = brackets_mat[,2], "upper" = upper_mat[,2], "lower" = lower_mat[,2]));
-  #info_phrase
-  #info_similarity
-  
-  hit_brackets = FALSE;
-  hit_upper = FALSE;
-  hit_lower = FALSE;
-  
-  assign("hit_province", NULL, envir = .GlobalEnv);
-  assign("hit_region", NULL, envir = .GlobalEnv);
-  assign("hit_producer", NULL, envir = .GlobalEnv);
-  assign("hit_designation", NULL, envir = .GlobalEnv);
-  assign("hit_variety", NULL, envir = .GlobalEnv);
-  
-  assign("province_sim", NULL, envir = .GlobalEnv);
-  assign("region_sim", NULL, envir = .GlobalEnv);
-  assign("producer_sim", NULL, envir = .GlobalEnv);
-  assign("designation_sim", NULL, envir = .GlobalEnv);
-  assign("variety_sim", NULL, envir = .GlobalEnv);
-
-  
-  # check if any bracket is 100% match
-  if (any(info_similarity$brackets == 1)) {
-    # if there is more than one match in column we have duplicates in dictionaries
-    if (sum(info_similarity$brackets == 1, na.rm = TRUE) > 1) {
-      # TODO warning
-    }
-    
-    #if we have a hit set other values in column and row to 0
-    info_similarity$brackets[info_similarity$brackets != 1] = 0
-    info_similarity[info_similarity$brackets == 1, names(info_similarity) != "brackets"] = 0;
-    
-    #store value and set flags
-    hit_brackets = TRUE;
-    row_id = which(info_similarity$brackets == 1);
-    set_flags(row_id, info_phrase$brackets[[row_id]], 1);
-  } else {
-    #print("nope");
-  }
-  
-  # check if any upper is 100% match
-  if (any(info_similarity$upper == 1)) {
-    if (sum(info_similarity$upper == 1, na.rm = TRUE) > 1) {
-      # TODO warning
-    }
-    
-    #if so set other values in column and row to 0
-    info_similarity$upper[info_similarity$upper != 1] = 0;
-    info_similarity[info_similarity$upper == 1, names(info_similarity) != "upper"] = 0;
-    
-    #store value and set flags
-    hit_upper = TRUE;
-    row_id = which(info_similarity$upper == 1);
-    set_flags(row_id, info_phrase$upper[[row_id]], 1);
-  } else {
-    #print("nope");
-  }
-  
-  # check if any lower is 100% match
-  if (any(info_similarity$lower == 1)) {
-    if (sum(info_similarity$lower == 1, na.rm = TRUE) > 1) {
-      # TODO warning
-    }
-    
-    #if so set other values in column and row to 0
-    info_similarity$lower[info_similarity$lower != 1] = 0
-    info_similarity[info_similarity$lower == 1, names(info_similarity) != "lower"] = 0;
-    
-    #store value and set flags
-    hit_lower = TRUE;
-    row_id = which(info_similarity$lower == 1);
-    set_flags(row_id, info_phrase$lower[[row_id]], 1);
-  } else {
-    #print("nope");
-  }
-  
-  
-  #info_similarity;
-  
-  
-  #### second iteration - remove anything below threshold and pick the max value from what's left
-  
-  info_similarity[info_similarity == 1] = 0;
-  info_similarity[info_similarity < SIMILARITY_THRESHOLD] = 0;
-  
-  #info_similarity;
-  
-  # TODO: if max(info_similarity$brackets) returns a list, we have a duplication between dictionaries
-  
-  if (!hit_brackets & any(info_similarity$brackets > SIMILARITY_THRESHOLD)) {
-    #store value and set flags
-    hit_brackets = TRUE;
-    row_id = which.max(info_similarity$brackets);
-    set_flags(row_id, info_phrase$brackets[[row_id]], max(unlist(info_similarity$brackets)));
-  }
-  if (!hit_upper & any(info_similarity$upper > SIMILARITY_THRESHOLD)) {
-    #store value and set flags
-    hit_upper = TRUE;
-    row_id = which.max(info_similarity$upper);
-    set_flags(row_id, info_phrase$upper[[row_id]], max(unlist(info_similarity$upper)));
-  }
-  if (!hit_lower & any(info_similarity$lower > SIMILARITY_THRESHOLD)) {
-    #store value and set flags
-    hit_lower = TRUE;
-    row_id = which.max(info_similarity$lower);
-    set_flags(row_id, info_phrase$lower[[row_id]], max(unlist(info_similarity$lower)));
-  }
-  
-  ######## third iteration - look for substrings
-  
-  
-  
-  # pick best info
-  # best_province = pick_best("province");
-  # best_region = pick_best("region");
-  # best_producer = pick_best("producer");
-  # best_designation = pick_best("designation");
-  # best_variety = pick_best("variety");
-  
-
-  
-  
-  # show what have been found
-  show_info = "";
-  if (is.null(id)) {
-    show_info = paste(show_info, "\n        id:  ", sep = "");
-  } else {
-    show_info = paste(show_info, "\n        id:  ", id, " (", round(id_conf, 0), "%)", sep = "");
-  }
-  if (is.null(year)) {
-    show_info = paste(show_info, "\n      year:  ", sep = "");
-  } else {
-    show_info = paste(show_info, "\n      year:  ", year, " (", round(year_conf, 0), "%)", sep = "");
-  }
-  if (is.null(color)) {
-    show_info = paste(show_info, "\n     color:  ", sep = "");
-  } else {
-    show_info = paste(show_info, "\n     color:  ", color, " (", round(color_conf, 0), "%)", sep = "");
-  }
-  
-  if (is.null(hit_province)) {
-    show_info = paste(show_info, "\n  province:  ", sep = ""); # 
-  } else {
-    show_info = paste(show_info, "\n  province:  ", paste(hit_province, collapse = " / "), " (", round(province_sim, 2), ")", sep = "");
-  }
-  if (is.null(hit_region)) {
-    show_info = paste(show_info, "\n    region:  ", sep = "");
-  } else {
-    show_info = paste(show_info, "\n    region:  ", paste(hit_region, collapse = " / "), " (", round(region_sim, 2), ")", sep = "");
-  }
-  if (is.null(hit_producer)) {
-    show_info = paste(show_info, "\n  producer:  ", sep = "");
-  } else {
-    show_info = paste(show_info, "\n  producer:  ", paste(hit_producer, collapse = " / "), " (", round(producer_sim, 2), ")", sep = "");
-  }
-  if (is.null(hit_designation)) {
-    show_info = paste(show_info, "\ndesignation  ", sep = "");
-  } else {
-    show_info = paste(show_info, "\ndesignation  ", paste(hit_designation, collapse = " / "), " (", round(designation_sim, 2), ")", sep = "");
-  }
-  if (is.null(hit_variety)) {
-    show_info = paste(show_info, "\n   variety:  ", sep = "");
-  } else {
-    show_info = paste(show_info, "\n   variety:  ", paste(hit_variety, collapse = " / "), " (", round(province_sim, 2), ")", sep = "");
-  }
-  # if (is.null(best_province)) {
-  #   show_info = paste(show_info, "\n  province:  ", sep = "");
-  # } else {
-  #   show_info = paste(show_info, "\n  province:  ", best_province$phrase[1], " (", round(best_province$similarity, 2), ")", sep = "");
-  # }
-  # if (is.null(best_region)) {
-  #   show_info = paste(show_info, "\n    region:  ", sep = "");
-  # } else {
-  #   show_info = paste(show_info, "\n    region:  ", best_region$phrase[1], " (", round(best_region$similarity, 2), ")", sep = "");
-  # }
-  # if (is.null(best_producer)) {
-  #   show_info = paste(show_info, "\n  producer:  ", sep = "");
-  # } else {
-  #   show_info = paste(show_info, "\n  producer:  ", best_producer$phrase[1], " (", round(best_producer$similarity, 2), ")", sep = "");
-  # }
-  # if (is.null(best_designation)) {
-  #   show_info = paste(show_info, "\ndesignation  ", sep = "");
-  # } else {
-  #   show_info = paste(show_info, "\ndesignation  ", best_designation$phrase[1], " (", round(best_designation$similarity, 2), ")", sep = "");
-  # }
-  # if (is.null(best_variety)) {
-  #   show_info = paste(show_info, "\n   variety:  ", sep = "");
-  # } else {
-  #   show_info = paste(show_info, "\n   variety:  ", best_variety$phrase[1], " (", round(best_variety$similarity, 2), ")", sep = "");
-  # }
-  
-  
-  if (is.null(upper_case_text)) {
-    show_info = paste(show_info, "\nupper_case:  ", sep = "");
-  } else {
-    show_info = paste(show_info, "\nupper_case:  ", upper_case_text, sep = "");
-  }
-  if (is.null(lower_case_text)) {
-    show_info = paste(show_info, "\nlower_case:  ", sep = "");
-  } else {
-    show_info = paste(show_info, "\nlower_case:  ", lower_case_text, sep = "");
-  }
-  if (is.null(brackets)) {
-    show_info = paste(show_info, "\n  brackets:  ", sep = "");
-  } else {
-    show_info = paste(show_info, "\n  brackets:  ", brackets, " (", round(mean(brackets_conf_df$confidence), 0), "%)", sep = "");
-  }
-  show_info = paste(show_info, "\n key_words:  ", paste(item_key_words, collapse = "; "));
-  
-  cat(show_info, sep = "");
-  
-  
-  # save to SQL
-  
+  return(result);
 }
 
 
+
+
+# Parse given page.
+# As an input requires Jane's RDS file.
+# TODO: calculate statistics
 parse_RDS_items = function(RDS_path) {
   items = readRDS(RDS_path);
   
   for (i in items$name.words) {
     for (j in i) {
-      parse_item(paste(j$text, collapse = " "), j[,c("text","confidence")])
+      item_result = parse_item(j[,c("text","confidence")])
     }
   }
 }
 
 
+
+# Initializes statistics object. 
+# Returns empty statistics object.
+init_statistics = function() {
+  result = list(
+    
+    # general
+    items = NULL,        # number of items in RDS file
+    items_zero_hits = NULL,        # number of items that didn't have any hit in dictionaries (full or decent)
+    items_some_hits = NULL,        # number of items that had at least one hit in dictionary (full or decent)
+    total_hits = NULL,   # total number of dictionary hits
+    inspect = NULL,      # how many items have to be inspected
+
+    # number of attributes found (non-null attributes in result_object)
+    id = NULL,
+    year = NULL,
+    color = NULL,
+    province = NULL,
+    region = NULL,
+    producer = NULL,
+    designation = NULL,
+    variety = NULL,
+    
+    # number of full matches in dictionaries (*_sim = 1 objects in result_object)
+    province_sim = NULL,
+    region_sim = NULL,
+    producer_sim = NULL,
+    designation_sim = NULL,
+    variety_sim = NULL,
+    
+    # number of decent matches in dictionaries (*_sim > SIMILARITY_THRESHOLD objects in result_object)
+    province_decent = NULL,
+    region_decent = NULL,
+    producer_decent = NULL,
+    designation_decent = NULL,
+    variety_decent = NULL,
+    
+    # number of sub-matches in dictionaries (*_sim = -1 objects in result_object) ???????
+    province_sub = NULL,
+    region_sub = NULL,
+    producer_sub = NULL,
+    designation_sub = NULL,
+    variety_sub = NULL,
+    
+    # number of non-empty parts of text
+    upper_text = NULL,
+    lower_text = NULL,
+    brackets_text = NULL,
+    
+    # number of hits in particular text part
+    upper_text_hit = NULL,
+    lower_text_hit = NULL,
+    upper_text_hit = NULL,
+    
+    # number of particular attirbutes in particular part of text, e.g. how many regions were found in upper_text part
+    pattern_matrix = matrix(0, nrow = 5, ncol = 3, dimnames = list(c("province","region","producer", "designation", "variety"), c("upper_text","lower_text","brackets_text")))
+  );
+  
+  return(result);
+}
+
+
+
+
 parse_RDS_items("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_0011.RDS");
 parse_RDS_items("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_3392.RDS");
 parse_RDS_items("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_1106.RDS");
-parse_RDS_items("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_0237.RDS");
+parse_RDS_items("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_0237.RDS")
+
+
+
 
 
