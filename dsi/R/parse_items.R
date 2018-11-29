@@ -34,11 +34,9 @@
 ####################
 # TODO:
 # -make use of "key_words" found
-# -if more than one matches from dictionaries pick the best (look for other info?)
 # -try to "understand" the pattern - if most of items on this page start with REGION, then give more confidence to REGION dictionary
 # -improve dictionaries based on above knowledge
 # -use id to look for similar items
-# -track performance (using Levenshtein distance?)
 # -some staistics, e.g. how many upper case parts produced us something, how many 100% hits?
 # -store results in database
 # -try NLP approach
@@ -541,91 +539,151 @@ parse_item = function(item_text_conf) {
   result = check_dictionaries(result);
   
   
-  # print results
-  cat(format_result(result));
-  
-  # store results in db
-  
   return(result);
 }
 
 
-
-
-# Parse given page.
-# As an input requires Jane's RDS file.
-# TODO: calculate statistics
-parse_RDS_items = function(RDS_path) {
-  items = readRDS(RDS_path);
-  
-  for (i in items$name.words) {
-    for (j in i) {
-      item_result = parse_item(j[,c("text","confidence")])
-    }
-  }
-}
-
-
-
-# Initializes statistics object. 
-# Returns empty statistics object.
-init_statistics = function() {
+# Initializes page_stats object. 
+# Returns empty page stats object.
+init_page_stats = function() {
   result = list(
     
     # general
-    items = NULL,        # number of items in RDS file
-    items_zero_hits = NULL,        # number of items that didn't have any hit in dictionaries (full or decent)
-    items_some_hits = NULL,        # number of items that had at least one hit in dictionary (full or decent)
-    total_hits = NULL,   # total number of dictionary hits
-    inspect = NULL,      # how many items have to be inspected
-
+    items = 0,          # number of items in RDS file
+    total_hits = 0,     # total number of dictionary hits
+    items_no_hits = 0,  # number of items that didn't have any hit in dictionaries (full or decent)
+    items_some_hits = 0,# number of items that had at least one hit in dictionary (full or decent)
+    inspect = 0,        # how many items have to be inspected
+    
     # number of attributes found (non-null attributes in result_object)
-    id = NULL,
-    year = NULL,
-    color = NULL,
-    province = NULL,
-    region = NULL,
-    producer = NULL,
-    designation = NULL,
-    variety = NULL,
+    id = 0,
+    year = 0,
+    color = 0,
+    province = 0,
+    region = 0,
+    producer = 0,
+    designation = 0,
+    variety = 0,
     
     # number of full matches in dictionaries (*_sim = 1 objects in result_object)
-    province_sim = NULL,
-    region_sim = NULL,
-    producer_sim = NULL,
-    designation_sim = NULL,
-    variety_sim = NULL,
+    province_sim = 0,
+    region_sim = 0,
+    producer_sim = 0,
+    designation_sim = 0,
+    variety_sim = 0,
     
     # number of decent matches in dictionaries (*_sim > SIMILARITY_THRESHOLD objects in result_object)
-    province_decent = NULL,
-    region_decent = NULL,
-    producer_decent = NULL,
-    designation_decent = NULL,
-    variety_decent = NULL,
+    province_decent = 0,
+    region_decent = 0,
+    producer_decent = 0,
+    designation_decent = 0,
+    variety_decent = 0,
     
     # number of sub-matches in dictionaries (*_sim = -1 objects in result_object) ???????
-    province_sub = NULL,
-    region_sub = NULL,
-    producer_sub = NULL,
-    designation_sub = NULL,
-    variety_sub = NULL,
+    province_sub = 0,
+    region_sub = 0,
+    producer_sub = 0,
+    designation_sub = 0,
+    variety_sub = 0,
     
     # number of non-empty parts of text
-    upper_text = NULL,
-    lower_text = NULL,
-    brackets_text = NULL,
+    upper_text = 0,
+    lower_text = 0,
+    brackets_text = 0,
     
-    # number of hits in particular text part
-    upper_text_hit = NULL,
-    lower_text_hit = NULL,
-    upper_text_hit = NULL,
+    # number of hits in particular text part (full or decent)
+    upper_text_hit = 0,
+    lower_text_hit = 0,
+    brackets_text_hit = 0,
     
     # number of particular attirbutes in particular part of text, e.g. how many regions were found in upper_text part
-    pattern_matrix = matrix(0, nrow = 5, ncol = 3, dimnames = list(c("province","region","producer", "designation", "variety"), c("upper_text","lower_text","brackets_text")))
+    hits_matrix = matrix(0, nrow = 5, ncol = 3, dimnames = list(c("province","region","producer", "designation", "variety"), c("upper_text","lower_text","brackets_text")))
   );
   
   return(result);
 }
+
+
+# Computes stats for a single page. Uses result_object.
+compute_page_stats = function(stats, result) {
+  # TODO: loop over result object and update stats accordingly instead of manual "if" statements
+  
+  if (!is.null(result$upper_text_hit)) {
+    # increment values
+    stats$total_hits = stats$total_hits + 1;
+    stats$upper_text_hit = stats$upper_text_hit + 1;
+    stats$hits_matrix[result$upper_text_hit, 1] = stats$hits_matrix[result$upper_text_hit, 1] + 1;
+  }
+  if (!is.null(result$lower_text_hit)) {
+    # increment values
+    stats$total_hits = stats$total_hits + 1;
+    stats$lower_text_hit = stats$lower_text_hit + 1;
+    stats$hits_matrix[result$lower_text_hit, 2] = stats$hits_matrix[result$lower_text_hit, 2] + 1;
+  }
+  if (!is.null(result$brackets_text_hit)) {
+    # increment values
+    stats$total_hits = stats$total_hits + 1;
+    stats$brackets_text_hit = stats$brackets_text_hit + 1;
+    stats$hits_matrix[result$brackets_text_hit, 3] = stats$hits_matrix[result$brackets_text_hit, 3] + 1;
+  }
+  
+  return(stats);
+}
+
+
+# Returns well formated text, ready to be printed or stored in output file.
+format_page_stats = function(stats) {
+  
+  text = "";
+  
+  text = paste(text, "\n         items:  ", stats$items, sep = "");
+  text = paste(text, "\n    total hits:  ", stats$total_hits, " (", round(stats$total_hits / stats$items, 2), " per item)", sep = "");
+  text = paste(text, "\n    upper hits:  ", stats$upper_text_hit, sep = "");
+  text = paste(text, "\n    lower hits:  ", stats$lower_text_hit, sep = "");
+  text = paste(text, "\n brackets hits:  ", stats$brackets_text_hit, sep = "");
+  text = paste(text, "\n   hits matrix:\n", sep = "");
+  
+  
+  return(text);
+}
+
+
+# Parse given page.
+# As an input requires Jane's RDS file.
+parse_RDS_items = function(RDS_path) {
+  
+  # init stats object
+  page_stats = init_page_stats();
+  
+  # read items
+  items = readRDS(RDS_path);
+  
+  # iterate over columns
+  for (i in items$name.words) {
+    
+    # update page stats (number of items)
+    page_stats$items = page_stats$items + length(i);
+    
+    # iterate over each item
+    for (j in i) {
+      # parse single item
+      item_result = parse_item(j[,c("text","confidence")]);
+      
+      # print results
+      cat(format_result(item_result));
+      
+      # store results in db ??
+      
+      # update page stats
+      page_stats = compute_page_stats(page_stats, item_result);
+    }
+  }
+  
+  # show stats
+  cat(format_page_stats(page_stats));
+  prmatrix(page_stats$hits_matrix); #TODO: include that in format_page_stats
+}
+
 
 
 
