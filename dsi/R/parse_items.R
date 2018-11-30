@@ -122,7 +122,7 @@ init_result = function() {
     brackets_text_hit = NULL, # flag telling if this part of text had a match in dictionary
     file_name = NULL,         # page being processed, e.g. UCD_Lehmann_0011
     confidence = NULL,        # how reliable results are: 100% means all hits were in the dictionaries
-    inspect = NULL            # tells which fields should be inspected
+    inspect = NULL            # tells which fields should be inspected (cause they were not a full hit or had other issues)
   );
   
   return(result);
@@ -377,6 +377,59 @@ find_decent_matches = function(result_object) {
       eval(parse(text = paste("result_object$", row_name, "_sim = max(unlist(hits_sim$", part, "))", sep = "")));
       # keep note that this part was a match (for further iterations and statistics)
       eval(parse(text = paste("result_object$", part, "_hit = \"", row_name, "\"", sep = "")));
+      # append attribute to 'inspect' field
+      result_object$inspect = paste(result_object$inspect, paste(row_name, " (decent ", part,"); ", sep = ""), sep = "");
+    }
+  };
+  
+  return(result_object);
+}
+
+
+# Looks for submatches of particular text part within particular dictionary.
+dictionary_submatches = function(result_object, text_part, attribute, dictionary) {
+  
+  # consider only attributes that didn't have a hit
+  if (is.null(eval(parse(text = paste("result_object$", attribute, sep = ""))))) {
+    # get all matching substrings
+    submatches = na.omit(str_extract(eval(parse(text = paste("result_object$", text_part, sep = ""))), regex(as.character(dictionary), ignore_case = TRUE, fixed = TRUE)));
+    if (length(submatches) > 0) {
+      # pick the longest one
+      submatch = submatches[nchar(submatches) == max(nchar(submatches))];
+      
+      #cat("\n", attribute, ": ", paste(submatch, collapse = " / "), sep = "");
+      
+      # store values in result_object
+      # set attribute
+      eval(parse(text = paste("result_object$", attribute, " = '", submatch, "'", sep = "")));# = submatch;
+      # and its similarity
+      eval(parse(text = paste("result_object$", attribute, "_sim = levenshteinSim(str1 = tolower('", submatch, "'), str2 = tolower(result_object$", text_part, "))", sep = "")));
+      # keep note that this part was a match (for statistics)
+      eval(parse(text = paste("result_object$", text_part, "_hit = \"", attribute, "\"", sep = "")));
+      # append attribute to 'inspect' field
+      result_object$inspect = paste(result_object$inspect, paste(attribute, " (submatch ", text_part,"); ", sep = ""), sep = "");
+    }
+  }
+  return(result_object);
+}
+
+
+# Looks for sub-matches. For each text part try every entry from each dictionary as a substring.
+find_submatches = function(result_object) {
+  
+  # go through all columns (parts) separately
+  for (part in colnames(result_object$dictionary_hits_sim)) {
+    # check if this part wasn't a full match and if it's not null
+    if (is.null(eval(parse(text = paste("result_object$", part, "_hit", sep = "")))) & !is.null(eval(parse(text = paste("result_object$", part, sep = ""))))) {
+      
+      #cat("\ntext: ", eval(parse(text = paste("result_object$", part, sep = ""))));
+      
+      # go over all attributes (that have a dictionary)
+      result_object = dictionary_submatches(result_object, part, "province", provinces$Province);
+      result_object = dictionary_submatches(result_object, part, "region", regions$Region);
+      result_object = dictionary_submatches(result_object, part, "producer", producers$Producer);
+      result_object = dictionary_submatches(result_object, part, "designation", designations$Designation);
+      result_object = dictionary_submatches(result_object, part, "variety", varieties$Variety);
     }
   };
   
@@ -388,6 +441,7 @@ find_decent_matches = function(result_object) {
 check_dictionaries = function(result_object) {
   
   # create similarity matrix (all dictionaries vs all considered texts)
+  # FIXME: set zeros if part of text is NULL or shorter than 4 characters
   upper_mat = dictionary_matches(result_object$upper_text);
   lower_mat = dictionary_matches(result_object$lower_text);
   brackets_mat = dictionary_matches(result_object$brackets_text);
@@ -402,7 +456,7 @@ check_dictionaries = function(result_object) {
   result_object = find_decent_matches(result_object);
   
   # look for sub-matches
-  # TODO:
+  result_object = find_submatches(result_object);
   
   return(result_object);
 }
@@ -479,6 +533,11 @@ format_result = function(result) {
     text = paste(text, "\n    keywords:  ", sep = "");
   } else {
     text = paste(text, "\n    keywords:  ", paste(result$keywords, collapse = " / "), sep = "");
+  }
+  if (is.null(result$inspect)) {
+    text = paste(text, "\n     inspect:  ", sep = "");
+  } else {
+    text = paste(text, "\n     inspect:  ", result$inspect, sep = "");
   }
   
   return(text);
