@@ -42,94 +42,118 @@ library(RODBC)
 library(sqldf)
 
 
+# Removes redundant spaces.
+remove_spaces = function(column) {
+  # replace multiple spaces with a single space
+  column = gsub("\\s+", " ", column);
+  # remove space at the begining and at the end
+  column = gsub("^\\s|\\s$", "", column);
+  
+  return(column)
+}
+
+
+# Helper function for aggregating data.
+# Pick the most common country.
+most_common = function(x) {
+  ux = unique(x)
+  return(ux[which.max(tabulate(match(x, ux)))]);
+}
+
+
 # Clears provided column. Removes duplicates, empty values, countries.
 # Replaces '-' with " ", and diacritics.
-clear_column = function(column_to_clear) {
+# Keeps country if we want to.
+clear_column = function(column_to_clear, keep_country) {
+  
+  # select column(s)
+  subset = wine_data[,c(column_to_clear, "country")];
+  
   # replace diacritics
   # FIXME: iconv doesn't recognize some of the characters, so far I identified only one: ??
-  values = iconv(column_to_clear, from="UTF-8", to='ASCII//TRANSLIT');
-  # remove non-letter, non-number chars, some values are dummy, e.g. "%@#$!" or "1,618"
-  values = gsub("[^a-zA-Z0-9'&\\.]", " ", values); ##more rigorous pattern: \\W
-  # remove redundant spaces
-  values = gsub("\\s+", " ", values);
-  values = gsub("^\\s|\\s$", "", values);
-  # remove values shorter than 5 chars (mostly dummy)
-  values = values[nchar(values) > 4];
-  # remove duplicates and sort
-  values = sort(unique(values));
-  # FIXME distinct() works faster?
-  # values = df %>% distinct(column_to_clear) %>% arrange(column_to_clear);
-  #remove countries
-  values = values[!values %in% countries$Country];
-  # coerce as a data.frame for sqlSave function
-  values = as.data.frame(values);
+  subset[,c(1)] = iconv(subset[,c(1)], from="UTF-8", to='ASCII//TRANSLIT');
   
-  return(values);
+  # remove non-letter, non-number chars, some values are dummy, e.g. "%@#$!" or "1,618"
+  subset[,c(1)] = gsub("[^a-zA-Z0-9'&\\.]", " ", subset[,c(1)]); ##more rigorous pattern: \\W
+
+  # remove redundant spaces
+  subset[,c(1)] = remove_spaces(subset[,c(1)]);
+
+  # remove values shorter than 5 chars (mostly dummy)
+  subset = subset[(which(nchar(subset[,c(1)]) > 4)),];
+  
+  # remove duplicates and sort
+  subset = aggregate(x = subset,
+                     by = list(subset[,c(1)]),
+                     FUN = most_common);
+  subset = subset[-1];
+  
+  #remove countries (from province and region columns)
+  subset = subset[(which(!subset[,c(1)] %in% countries$Country)),];
+  
+  
+  if (keep_country) {
+    return(subset);
+  } else {
+    return(as.data.frame(subset[,c(1)]));
+  }
 }
 
 
 # create database connection
 conn = odbcDriverConnect('driver={SQL Server};server=localhost;database=DataFest;trusted_connection=true')
 
-# get countries from SQL
+# get countries from SQL (list from some github repo)
 countries = sqlQuery(conn, "SELECT Country FROM Countries");
-
 
 # read wine csv data encoded with utf-8
 wine_data = read.csv(file="C:\\Users\\ssaganowski\\Desktop\\wines\\corpus\\wine_data.csv", header=TRUE, sep=",", encoding="UTF-8");
-head(wine_data, n = 10);
 
 
 # clear province column
-provinces = clear_column(wine_data$province);
+provinces = clear_column("province", TRUE);
 # set column name as in SQL table
-colnames(provinces) =  c("Province");
-NROW(provinces);
-head(provinces, n=100);
+colnames(provinces) =  c("Province", "Country");
 
 
 # clear region_1 column
-regions = clear_column(wine_data$region_1);
+regions = clear_column("region_1", TRUE);
 # set column name as in SQL table
-colnames(regions) =  c("Region");
-NROW(regions);
-head(regions, n=100);
+colnames(regions) =  c("Region", "Country");
 
 
 # clear producer column
-producers = clear_column(wine_data$winery);
+producers = clear_column("winery", TRUE);
 # set column name as in SQL table
-colnames(producers) =  c("Producer");
-NROW(producers);
-head(producers, n=100);
-
+colnames(producers) =  c("Producer", "Country");
+# manually update producer that we know that have wrong value (Chile instead of France).
+# For some reason kaggle experts entered Chile as a country more often than France. There may be more errors like this.
+row_id = which(producers$Producer %in% c("Domaines Barons de Rothschild Lafite"));
+producers$Country[row_id] = "France";
 
 # clear designation column
-designations = clear_column(wine_data$designation);
+designations = clear_column("designation", FALSE);
 # set column name as in SQL table
 colnames(designations) =  c("Designation");
-NROW(designations);
-head(designations, n=100);
 
 
 # clear variety column
-varieties = clear_column(wine_data$variety);
+varieties = clear_column("variety", FALSE);
 # set column name as in SQL table
 colnames(varieties) =  c("Variety");
-NROW(varieties);
-head(varieties, n=100);
-
-
-
-
-# clear title column ?
-# title contains winery, province / region, year, variety and sometimes sth more
 
 
 # store in db
+# truncate tables
+sqlQuery(conn, "TRUNCATE TABLE kProvinces"); #'k' stands for kaggle
+sqlQuery(conn, "TRUNCATE TABLE kRegions");
+sqlQuery(conn, "TRUNCATE TABLE kProducers");
+sqlQuery(conn, "TRUNCATE TABLE kDesignations");
+sqlQuery(conn, "TRUNCATE TABLE kVarieties");
+# save tables
 sqlSave(conn, provinces, tablename = "kProvinces", rownames = FALSE, append = TRUE, fast = TRUE);
 sqlSave(conn, regions, tablename = "kRegions", rownames = FALSE, append = TRUE, fast = TRUE);
 sqlSave(conn, producers, tablename = "kProducers", rownames = FALSE, append = TRUE, fast = TRUE);
 sqlSave(conn, designations, tablename = "kDesignations", rownames = FALSE, append = TRUE, fast = TRUE);
 sqlSave(conn, varieties, tablename = "kVarieties", rownames = FALSE, append = TRUE, fast = TRUE);
-close(conn);
+close(conn)
