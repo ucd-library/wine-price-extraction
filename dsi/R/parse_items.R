@@ -29,15 +29,17 @@
 #       -in the first iteration look for exact matches (similarity = 1), exclude matched category and recognized part from further process
 #       -next look for most similar matches (similarity > 0.8)
 #       -then look for partial matches (substring)
+# 11. Assign country based on province / region / producer
 
 
 ####################
 # TODO:
 # -make use of "key_words" found
-# -try to "understand" the pattern - if most of items on this page start with REGION, then give more confidence to REGION dictionary
-# -improve dictionaries based on above knowledge
+# -save output to file
+# -compute more stats
+# -make use of stats (patterns)
+# -compute global stats (for all pages)
 # -use id to look for similar items
-# -some staistics, e.g. how many upper case parts produced us something, how many 100% hits?
 # -store results in database
 # -try NLP approach
 #
@@ -63,11 +65,11 @@ conn = odbcDriverConnect('driver={SQL Server};server=localhost;database=DataFest
 
 
 # get provinces from SQL
-provinces = sqlQuery(conn, paste("SELECT Province FROM kProvinces", sep=""));
+provinces = sqlQuery(conn, paste("SELECT Province, Country FROM kProvinces", sep=""));
 # get regions from SQL
-regions = sqlQuery(conn, paste("SELECT Region FROM kRegions", sep=""));
+regions = sqlQuery(conn, paste("SELECT Region, Country FROM kRegions", sep=""));
 # get producers from SQL
-producers = sqlQuery(conn, paste("SELECT Producer FROM kProducers", sep=""));
+producers = sqlQuery(conn, paste("SELECT Producer, Country FROM kProducers", sep=""));
 # get designations from SQL
 designations = sqlQuery(conn, paste("SELECT Designation FROM kDesignations", sep=""));
 # get varieties from SQL
@@ -103,6 +105,7 @@ init_result = function() {
     producer = NULL,        # corresponds to producers dictionary, winery that made the wine, e.g. Chateau Margaux
     designation = NULL,     # corresponds to designations dictionary, vineyard within the producer where the grapes that made the wine are from, e.g. Pavillon Blanc de Chateau Margaux
     variety = NULL,         # corresponds to varieties dictionary, type of grapes used to make the wine, e.g. Sauvignon Blanc
+    country = NULL,         # country associated with province, region, producer (value from dictionary)
     
     # fields' confidences:
     id_conf = NULL,         # tesseract confidence
@@ -319,31 +322,32 @@ dictionary_matches = function(string_to_match) {
 # Modifies matrix for further searches.
 find_full_matches = function(result_object) {
   
-  # helper object for shorter code in eval(parse(paste...
+  # helper object for shorter code
   hits_sim = result_object$dictionary_hits_sim;
 
   # go through all columns (parts) separately
   for (part in colnames(hits_sim)) {
     # check if there is any full match
-    if (any(eval(parse(text = paste("hits_sim$", part, " == 1", sep = ""))))) {
+    if (any(hits_sim[[part]] == 1)) {
       # if there is more than one match in column we have duplicates in dictionaries
-      if (sum(eval(parse(text = paste("hits_sim$", part, " == 1", sep = ""))), na.rm = TRUE) > 1) {
-        # TODO set warning
+      if (sum(hits_sim[[part]] == 1, na.rm = TRUE) > 1) {
+        # add warning to 'inspect' field
+        result_object$inspect = paste0(result_object$inspect, "duplication in dictionaries; ");
       }
       
       # if we have a full match set other values in column and row to 0
-      eval(parse(text = paste("hits_sim$", part, "[hits_sim$", part, " != 1] = 0", sep = "")));# = 0;
-      eval(parse(text = paste("hits_sim[hits_sim$", part, " == 1, names(hits_sim) != \"", part, "\"] = 0", sep = "")));# = 0;
+      hits_sim[[part]][hits_sim[[part]] != 1] = 0;
+      hits_sim[hits_sim[[part]] == 1, names(hits_sim) != part] = 0;
       
       # store values in result_object
-      row_id = which(eval(parse(text = paste("hits_sim$", part, sep = ""))) == 1);
+      row_id = which(hits_sim[[part]] == 1);
       row_name = rownames(hits_sim)[row_id];
       # set attribute
-      eval(parse(text = paste("result_object$", row_name, " = result_object$dictionary_hits$", part, "[[", row_id, "]]", sep = "")));
+      result_object[[row_name]] = result_object$dictionary_hits[[part]][row_id];
       # and its similarity
-      eval(parse(text = paste("result_object$", row_name, "_sim = 1", sep = "")));
+      result_object[[paste0(row_name, "_sim")]] = 1;
       # keep note that this part was a full match (for further iterations and statistics)
-      eval(parse(text = paste("result_object$", part, "_hit = \"", row_name, "\"", sep = "")));
+      result_object[[paste0(part, "_hit")]] = row_name;
     }
   };
   
@@ -360,25 +364,25 @@ find_full_matches = function(result_object) {
 # Looks for very probable matches (similarity > SIMILARITY_THRESHOLD).
 find_decent_matches = function(result_object) {
   
-  # helper object for shorter code in eval(parse(paste...
+  # helper object for shorter code
   hits_sim = result_object$dictionary_hits_sim;
   
   # go through all columns (parts) separately
   for (part in colnames(hits_sim)) {
     # check if this part wasn't a full match and if there is any decent match
-    if (is.null(eval(parse(text = paste("result_object$", part, "_hit", sep = "")))) & any(eval(parse(text = paste("hits_sim$", part, sep = ""))) > SIMILARITY_THRESHOLD)) {
+    if (is.null(result_object[[paste0(part, "_hit")]]) & any(hits_sim[[part]] > SIMILARITY_THRESHOLD)) {
 
       # store values in result_object
-      row_id = which.max(eval(parse(text = paste("hits_sim$", part, sep = ""))));
+      row_id = which.max(hits_sim[[part]]);
       row_name = rownames(hits_sim)[row_id];
       # set attribute
-      eval(parse(text = paste("result_object$", row_name, " = result_object$dictionary_hits$", part, "[[", row_id, "]]", sep = "")));
+      result_object[[row_name]] = result_object$dictionary_hits[[part]][row_id];
       # and its similarity
-      eval(parse(text = paste("result_object$", row_name, "_sim = max(unlist(hits_sim$", part, "))", sep = "")));
+      result_object[[paste0(row_name, "_sim")]] = max(unlist(hits_sim[[part]]));
       # keep note that this part was a match (for further iterations and statistics)
-      eval(parse(text = paste("result_object$", part, "_hit = \"", row_name, "\"", sep = "")));
+      result_object[[paste0(part, "_hit")]] = row_name;
       # append attribute to 'inspect' field
-      result_object$inspect = paste(result_object$inspect, paste(row_name, " (decent ", part,"); ", sep = ""), sep = "");
+      result_object$inspect = paste0(result_object$inspect, paste0(row_name, " (decent ", part,"); "));
     }
   };
   
@@ -390,24 +394,26 @@ find_decent_matches = function(result_object) {
 dictionary_submatches = function(result_object, text_part, attribute, dictionary) {
   
   # consider only attributes that didn't have a hit
-  if (is.null(eval(parse(text = paste("result_object$", attribute, sep = ""))))) {
+  if (is.null(result_object[[attribute]])) {
     # get all matching substrings
-    submatches = na.omit(str_extract(eval(parse(text = paste("result_object$", text_part, sep = ""))), regex(as.character(dictionary), ignore_case = TRUE, fixed = TRUE)));
+    submatches = na.omit(str_extract(result_object[[text_part]], regex(as.character(dictionary), ignore_case = TRUE, fixed = TRUE)));
     if (length(submatches) > 0) {
       # pick the longest one
       submatch = submatches[nchar(submatches) == max(nchar(submatches))];
+      # store it as in dictionary (letter case matters later)
+      submatch = as.character(dictionary[tolower(dictionary) == tolower(submatch)]);
       
-      #cat("\n", attribute, ": ", paste(submatch, collapse = " / "), sep = "");
+      #cat("\n", attribute, ": ", paste0(submatch, collapse = " / "));
       
       # store values in result_object
       # set attribute
-      eval(parse(text = paste("result_object$", attribute, " = '", submatch, "'", sep = "")));# = submatch;
+      result_object[[attribute]] = submatch;
       # and its similarity
-      eval(parse(text = paste("result_object$", attribute, "_sim = levenshteinSim(str1 = tolower('", submatch, "'), str2 = tolower(result_object$", text_part, "))", sep = "")));
+      result_object[[paste0(attribute, "_sim")]] = levenshteinSim(str1 = tolower(submatch), str2 = tolower(result_object[[text_part]]));
       # keep note that this part was a match (for statistics)
-      eval(parse(text = paste("result_object$", text_part, "_hit = \"", attribute, "\"", sep = "")));
+      result_object[[paste0(text_part, "_hit")]] =  attribute;
       # append attribute to 'inspect' field
-      result_object$inspect = paste(result_object$inspect, paste(attribute, " (submatch ", text_part,"); ", sep = ""), sep = "");
+      result_object$inspect = paste0(result_object$inspect, paste0(attribute, " (submatch ", text_part,"); "));
     }
   }
   return(result_object);
@@ -420,9 +426,9 @@ find_submatches = function(result_object) {
   # go through all columns (parts) separately
   for (part in colnames(result_object$dictionary_hits_sim)) {
     # check if this part wasn't a full match and if it's not null
-    if (is.null(eval(parse(text = paste("result_object$", part, "_hit", sep = "")))) & !is.null(eval(parse(text = paste("result_object$", part, sep = ""))))) {
+    if (is.null(result_object[[paste0(part, "_hit")]]) & !is.null(result_object[[part]])) {
       
-      #cat("\ntext: ", eval(parse(text = paste("result_object$", part, sep = ""))));
+      #cat("\ntext: ", result_object[[part]]);
       
       # go over all attributes (that have a dictionary)
       result_object = dictionary_submatches(result_object, part, "province", provinces$Province);
@@ -441,13 +447,30 @@ find_submatches = function(result_object) {
 check_dictionaries = function(result_object) {
   
   # create similarity matrix (all dictionaries vs all considered texts)
-  # FIXME: set zeros if part of text is NULL or shorter than 4 characters
-  upper_mat = dictionary_matches(result_object$upper_text);
-  lower_mat = dictionary_matches(result_object$lower_text);
-  brackets_mat = dictionary_matches(result_object$brackets_text);
-  # keep it in result object
-  result_object$dictionary_hits = data.frame(cbind("upper_text" = upper_mat[,1], "lower_text" = lower_mat[,1], "brackets_text" = brackets_mat[,1]));
-  result_object$dictionary_hits_sim = data.frame(cbind("upper_text" = upper_mat[,2], "lower_text" = lower_mat[,2], "brackets_text" = brackets_mat[,2]));
+  result_object$dictionary_hits = as.data.frame(matrix(character(0), nrow = 5, ncol = 3,
+                              dimnames = list(c("province","region","producer", "designation", "variety"),
+                                              c("upper_text","lower_text","brackets_text"))));
+  
+  result_object$dictionary_hits_sim = as.data.frame(matrix(0, nrow = 5, ncol = 3,
+                                  dimnames = list(c("province","region","producer", "designation", "variety"),
+                                                  c("upper_text","lower_text","brackets_text"))));
+  
+  # update matrix only if text part is not null
+  if (!is.null(result_object$upper_text)) {
+    upper_mat = dictionary_matches(result_object$upper_text);
+    result_object$dictionary_hits$upper_text = upper_mat[,1];
+    result_object$dictionary_hits_sim$upper_text = upper_mat[,2];
+  }
+  if (!is.null(result_object$lower_text)) {
+    lower_mat = dictionary_matches(result_object$lower_text);
+    result_object$dictionary_hits$lower_text = lower_mat[,1];
+    result_object$dictionary_hits_sim$lower_text = lower_mat[,2];
+  }
+  if (!is.null(result_object$brackets_text)) {
+    brackets_mat = dictionary_matches(result_object$brackets_text);
+    result_object$dictionary_hits$brackets_text = brackets_mat[,1];
+    result_object$dictionary_hits_sim$brackets_text = brackets_mat[,2];
+  }
   
   # look for full matches
   result_object = find_full_matches(result_object);
@@ -462,82 +485,137 @@ check_dictionaries = function(result_object) {
 }
 
 
+# Assigns country based on province / region / producer.
+assign_country = function(result_object) {
+  
+  # create vector for countries
+  countries_found = character(0);
+  
+  # if attributes are not null look for country in the dictionary
+  if (!is.null(result_object$province)) {
+    country_prov = as.character(provinces$Country[which(provinces$Province == result_object$province)]);
+    # add country to vector
+    # FIXME: for some reason a great number of white spaces is present at the end of the country. problem might be in the way dictonaries are created or in data set
+    countries_found = append(countries_found, trimws(country_prov));
+  }
+  if (!is.null(result_object$region)) {
+    country_reg = as.character(regions$Country[which(regions$Region == result_object$region)]);
+    countries_found = append(countries_found, trimws(country_reg));
+  }
+  if (!is.null(result_object$producer)) {
+    country_prod = as.character(producers$Country[which(producers$Producer == result_object$producer)]);
+    countries_found = append(countries_found, trimws(country_prod));
+  }
+  
+  # remove empty values (dictionaries may have missing values)
+  if (length(countries_found) > 0) {
+    countries_found = Filter(length, countries_found);
+    
+    # check if all values are the same
+    if (length(unique(countries_found)) == 1) {
+      # store value
+      result_object$country = countries_found[1];
+    } else if (length(unique(countries_found)) > 1){
+      # append info to 'inspect' field
+      result_object$inspect = paste0(result_object$inspect, "multiple countries (", paste(countries_found, collapse = " / "), ");");
+    }
+  }
+  
+  
+  return(result_object);
+}
+
+
 # Returns well formated text, ready to be printed or stored in output file.
 format_result = function(result) {
   
   text = "";
   
-  text = paste(text, "\n\n    raw text:  ", paste(result$text_conf$text, collapse = " "), sep = "");
+  text = paste0(text, "\n\n    raw text:  ", paste(result$text_conf$text, collapse = " "));
   if (is.null(result$name)) {
-    text = paste(text, "\n        name:  ", sep = "");
+    text = paste0(text, "\n        name:  ");
   } else {
-    text = paste(text, "\n        name:  ", result$name, sep = "");
+    text = paste0(text, "\n        name:  ", result$name);
   }
-  text = paste(text, "\n  clean text:  ", result$text, sep = "");
-  if (is.null(result$id)) {
-    text = paste(text, "\n          id:  ", sep = "");
-  } else {
-    text = paste(text, "\n          id:  ", result$id, " (", round(result$id_conf, 0), "%)", sep = "");
-  }
-  if (is.null(result$year)) {
-    text = paste(text, "\n        year:  ", sep = "");
-  } else {
-    text = paste(text, "\n        year:  ", result$year, " (", round(result$year_conf, 0), "%)", sep = "");
-  }
-  if (is.null(result$color)) {
-    text = paste(text, "\n       color:  ", sep = "");
-  } else {
-    text = paste(text, "\n       color:  ", result$color, " (", round(result$color_conf, 0), "%)", sep = "");
-  }
-  if (is.null(result$province)) {
-    text = paste(text, "\n    province:  ", sep = ""); # 
-  } else {
-    text = paste(text, "\n    province:  ", paste(result$province, collapse = " / "), " (", round(result$province_sim, 2), ")", sep = "");
-  }
-  if (is.null(result$region)) {
-    text = paste(text, "\n      region:  ", sep = "");
-  } else {
-    text = paste(text, "\n      region:  ", paste(result$region, collapse = " / "), " (", round(result$region_sim, 2), ")", sep = "");
-  }
-  if (is.null(result$producer)) {
-    text = paste(text, "\n    producer:  ", sep = "");
-  } else {
-    text = paste(text, "\n    producer:  ", paste(result$producer, collapse = " / "), " (", round(result$producer_sim, 2), ")", sep = "");
-  }
-  if (is.null(result$designation)) {
-    text = paste(text, "\n designation:  ", sep = "");
-  } else {
-    text = paste(text, "\n designation:  ", paste(result$designation, collapse = " / "), " (", round(result$designation_sim, 2), ")", sep = "");
-  }
-  if (is.null(result$variety)) {
-    text = paste(text, "\n     variety:  ", sep = "");
-  } else {
-    text = paste(text, "\n     variety:  ", paste(result$variety, collapse = " / "), " (", round(result$variety_sim, 2), ")", sep = "");
-  }
+  text = paste0(text, "\n  clean text:  ", result$text);
+  
   if (is.null(result$upper_text)) {
-    text = paste(text, "\n  upper_text:  ", sep = "");
+    text = paste0(text, "\n  upper_text:  ");
   } else {
-    text = paste(text, "\n  upper_text:  ", result$upper_text, sep = "");
+    text = paste0(text, "\n  upper_text:  ", result$upper_text);
   }
   if (is.null(result$lower_text)) {
-    text = paste(text, "\n  lower_text:  ", sep = "");
+    text = paste0(text, "\n  lower_text:  ");
   } else {
-    text = paste(text, "\n  lower_text:  ", result$lower_text, sep = "");
+    text = paste0(text, "\n  lower_text:  ", result$lower_text);
   }
   if (is.null(result$brackets_text)) {
-    text = paste(text, "\n    brackets:  ", sep = "");
+    text = paste0(text, "\n    brackets:  ");
   } else {
-    text = paste(text, "\n    brackets:  ", result$brackets_text, " (", round(mean(result$brackets_conf$confidence), 0), "%)", sep = "");
+    text = paste0(text, "\n    brackets:  ", result$brackets_text, " (", round(mean(result$brackets_conf$confidence), 0), "%)");
   }
   if (is.null(result$keywords)) {
-    text = paste(text, "\n    keywords:  ", sep = "");
+    text = paste0(text, "\n    keywords:  ");
   } else {
-    text = paste(text, "\n    keywords:  ", paste(result$keywords, collapse = " / "), sep = "");
+    text = paste0(text, "\n    keywords:  ", paste(result$keywords, collapse = " / "));
   }
-  if (is.null(result$inspect)) {
-    text = paste(text, "\n     inspect:  ", sep = "");
+  
+  ###################
+  ###
+  ### ATTRIBUTES
+  ###
+  ###################
+  
+  if (is.null(result$id)) {
+    text = paste0(text, "\n          id:  ");
   } else {
-    text = paste(text, "\n     inspect:  ", result$inspect, sep = "");
+    text = paste0(text, "\n          id:  ", result$id, " (", round(result$id_conf, 0), "%)");
+  }
+  if (is.null(result$year)) {
+    text = paste0(text, "\n        year:  ");
+  } else {
+    text = paste0(text, "\n        year:  ", result$year, " (", round(result$year_conf, 0), "%)");
+  }
+  if (is.null(result$color)) {
+    text = paste0(text, "\n       color:  ");
+  } else {
+    text = paste0(text, "\n       color:  ", result$color, " (", round(result$color_conf, 0), "%)");
+  }
+  if (is.null(result$province)) {
+    text = paste0(text, "\n    province:  "); # 
+  } else {
+    text = paste0(text, "\n    province:  ", paste(result$province, collapse = " / "), " (", round(result$province_sim, 2), ")");
+  }
+  if (is.null(result$region)) {
+    text = paste0(text, "\n      region:  ");
+  } else {
+    text = paste0(text, "\n      region:  ", paste(result$region, collapse = " / "), " (", round(result$region_sim, 2), ")");
+  }
+  if (is.null(result$producer)) {
+    text = paste0(text, "\n    producer:  ");
+  } else {
+    text = paste0(text, "\n    producer:  ", paste(result$producer, collapse = " / "), " (", round(result$producer_sim, 2), ")");
+  }
+  if (is.null(result$designation)) {
+    text = paste0(text, "\n designation:  ");
+  } else {
+    text = paste0(text, "\n designation:  ", paste(result$designation, collapse = " / "), " (", round(result$designation_sim, 2), ")");
+  }
+  if (is.null(result$variety)) {
+    text = paste0(text, "\n     variety:  ");
+  } else {
+    text = paste0(text, "\n     variety:  ", paste(result$variety, collapse = " / "), " (", round(result$variety_sim, 2), ")");
+  }
+  if (is.null(result$country)) {
+    text = paste0(text, "\n     country:  ");
+  } else {
+    text = paste0(text, "\n     country:  ", result$country);
+  }
+  
+  if (is.null(result$inspect)) {
+    text = paste0(text, "\n     inspect:  ");
+  } else {
+    text = paste0(text, "\n     inspect:  ", result$inspect);
   }
   
   return(text);
@@ -597,6 +675,9 @@ parse_item = function(item_text_conf) {
   # 10. Identify entities using dictionaries
   result = check_dictionaries(result);
   
+  # 11. assign country based on province / region / producer
+  result = assign_country(result);
+  
   
   return(result);
 }
@@ -605,85 +686,115 @@ parse_item = function(item_text_conf) {
 # Initializes page_stats object. 
 # Returns empty page stats object.
 init_page_stats = function() {
-  result = list(
+  page_stats = list(
     
     # general
     items = 0,          # number of items in RDS file
-    total_hits = 0,     # total number of dictionary hits
+    dictionary_hits = 0,# total number of dictionary hits
     items_no_hits = 0,  # number of items that didn't have any hit in dictionaries (full or decent)
     items_some_hits = 0,# number of items that had at least one hit in dictionary (full or decent)
     inspect = 0,        # how many items have to be inspected
     
-    # number of attributes found (non-null attributes in result_object)
+    # number of non-dictionary attributes found (non-null attributes in result_object)
     id = 0,
     year = 0,
     color = 0,
-    province = 0,
-    region = 0,
-    producer = 0,
-    designation = 0,
-    variety = 0,
+    country = 0,
     
-    # number of full matches in dictionaries (*_sim = 1 objects in result_object)
-    province_sim = 0,
-    region_sim = 0,
-    producer_sim = 0,
-    designation_sim = 0,
-    variety_sim = 0,
-    
-    # number of decent matches in dictionaries (*_sim > SIMILARITY_THRESHOLD objects in result_object)
-    province_decent = 0,
-    region_decent = 0,
-    producer_decent = 0,
-    designation_decent = 0,
-    variety_decent = 0,
-    
-    # number of sub-matches in dictionaries (*_sim = -1 objects in result_object) ???????
-    province_sub = 0,
-    region_sub = 0,
-    producer_sub = 0,
-    designation_sub = 0,
-    variety_sub = 0,
+    # top
+    top_countries = character(0), # list of countries found within this page
     
     # number of non-empty parts of text
     upper_text = 0,
     lower_text = 0,
     brackets_text = 0,
     
-    # number of hits in particular text part (full or decent)
-    upper_text_hit = 0,
-    lower_text_hit = 0,
-    brackets_text_hit = 0,
-    
+    # number of particular types of matches in dictionary (full, decent, sub)
+    matches_matrix = matrix(0, nrow = 5, ncol = 3, dimnames = list(c("province","region","producer", "designation", "variety"),
+                                                                c("full","decent","sub"))),
+
     # number of particular attirbutes in particular part of text, e.g. how many regions were found in upper_text part
-    hits_matrix = matrix(0, nrow = 5, ncol = 3, dimnames = list(c("province","region","producer", "designation", "variety"), c("upper_text","lower_text","brackets_text")))
+    hits_matrix = matrix(0, nrow = 5, ncol = 3, dimnames = list(c("province","region","producer", "designation", "variety"),
+                                                                c("upper_text","lower_text","brackets_text")))
   );
   
-  return(result);
+  return(page_stats);
+}
+
+
+# Helper function to compute stats. Tells which match occured: 1-full, 2-decent, 3-submatch.
+type_of_match = function(similarity) {
+  if (similarity == 1) {
+    return(1);
+  } else if (similarity > SIMILARITY_THRESHOLD) {
+    return(2);
+  } else {
+    return(3);
+  }
 }
 
 
 # Computes stats for a single page. Uses result_object.
 compute_page_stats = function(stats, result) {
-  # TODO: loop over result object and update stats accordingly instead of manual "if" statements
   
+  # count non-dictionary fields
+  if (!is.null(result$id)) {
+    stats$id = stats$id + 1;
+  }
+  if (!is.null(result$year)) {
+    stats$year = stats$year + 1;
+  }
+  if (!is.null(result$color)) {
+    stats$color = stats$color + 1;
+  }
+  if (!is.null(result$country)) {
+    stats$country = stats$country + 1;
+    # add to list
+    stats$top_countries = append(stats$top_countries, result$country);
+  }
+  
+  
+  # count types of matches
+  if (!is.null(result$province)) {
+    match_type = type_of_match(result$province_sim);
+    stats$matches_matrix["province", match_type] = stats$matches_matrix["province", match_type] + 1;
+  }
+  if (!is.null(result$region)) {
+    match_type = type_of_match(result$region_sim);
+    stats$matches_matrix["region", match_type] = stats$matches_matrix["region", match_type] + 1;
+  }
+  if (!is.null(result$producer)) {
+    match_type = type_of_match(result$producer_sim);
+    stats$matches_matrix["producer", match_type] = stats$matches_matrix["producer", match_type] + 1;
+  }
+  if (!is.null(result$designation)) {
+    match_type = type_of_match(result$designation_sim);
+    stats$matches_matrix["designation", match_type] = stats$matches_matrix["designation", match_type] + 1;
+  }
+  if (!is.null(result$variety)) {
+    match_type = type_of_match(result$variety_sim);
+    stats$matches_matrix["variety", match_type] = stats$matches_matrix["variety", match_type] + 1;
+  }
+  
+  
+  # count hits in particular text types
+  # FIXME: when text part produces more than one hit, we count it only once (this happens in sub-matching)
   if (!is.null(result$upper_text_hit)) {
-    # increment values
-    stats$total_hits = stats$total_hits + 1;
-    stats$upper_text_hit = stats$upper_text_hit + 1;
     stats$hits_matrix[result$upper_text_hit, 1] = stats$hits_matrix[result$upper_text_hit, 1] + 1;
   }
   if (!is.null(result$lower_text_hit)) {
-    # increment values
-    stats$total_hits = stats$total_hits + 1;
-    stats$lower_text_hit = stats$lower_text_hit + 1;
     stats$hits_matrix[result$lower_text_hit, 2] = stats$hits_matrix[result$lower_text_hit, 2] + 1;
   }
   if (!is.null(result$brackets_text_hit)) {
-    # increment values
-    stats$total_hits = stats$total_hits + 1;
-    stats$brackets_text_hit = stats$brackets_text_hit + 1;
     stats$hits_matrix[result$brackets_text_hit, 3] = stats$hits_matrix[result$brackets_text_hit, 3] + 1;
+  }
+  
+
+  # total dictionary hits
+  stats$dictionary_hits = sum(stats$matches_matrix);
+  # inspect
+  if (!is.null(result$inspect)) {
+    stats$inspect = stats$inspect + 1;
   }
   
   return(stats);
@@ -693,14 +804,20 @@ compute_page_stats = function(stats, result) {
 # Returns well formated text, ready to be printed or stored in output file.
 format_page_stats = function(stats) {
   
-  text = "";
+  text = "\n";
   
-  text = paste(text, "\n         items:  ", stats$items, sep = "");
-  text = paste(text, "\n    total hits:  ", stats$total_hits, " (", round(stats$total_hits / stats$items, 2), " per item)", sep = "");
-  text = paste(text, "\n    upper hits:  ", stats$upper_text_hit, sep = "");
-  text = paste(text, "\n    lower hits:  ", stats$lower_text_hit, sep = "");
-  text = paste(text, "\n brackets hits:  ", stats$brackets_text_hit, sep = "");
-  text = paste(text, "\n   hits matrix:\n", sep = "");
+  text = paste0(text, "\n          items:  ", stats$items);
+  text = paste0(text, "\n        inspect:  ", stats$inspect, " (", round((stats$inspect / stats$items) * 100, 0), "%)");
+  text = paste0(text, "\n     total hits:  ", stats$dictionary_hits, " (", round(stats$dictionary_hits / stats$items, 2), " per item)");
+  text = paste0(text, "\n     upper hits:  ", sum(stats$hits_matrix[,1]));
+  text = paste0(text, "\n     lower hits:  ", sum(stats$hits_matrix[,2]));
+  text = paste0(text, "\n   bracket hits:  ", sum(stats$hits_matrix[,3]));
+  text = paste0(text, "\n      ids found:  ", stats$id);
+  text = paste0(text, "\n   colors found:  ", stats$color);
+  text = paste0(text, "\n    years found:  ", stats$year);
+  text = paste0(text, "\ncountries found:  ", stats$country);
+  text = paste0(text, "\n      countries:  ", paste(stats$top_countries, collapse = " "));
+  text = paste0(text, "\n   hits matrix:\n");
   
   
   return(text);
@@ -741,10 +858,8 @@ parse_RDS_items = function(RDS_path) {
   # show stats
   cat(format_page_stats(page_stats));
   prmatrix(page_stats$hits_matrix); #TODO: include that in format_page_stats
+  prmatrix(page_stats$matches_matrix); #TODO: include that in format_page_stats
 }
-
-
-
 
 
 parse_RDS_items("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_0011.RDS");
