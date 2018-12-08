@@ -119,9 +119,12 @@ textTypes <- function(cat_files, catalog = NULL){
 #while(!grepl("jpg", img1)) {
 #  img1 = sample(list.files(".", recursive = T), 1)
 #}
+charWidth <- function(boxes) {
+  (boxes$right-boxes$left)/nchar(boxes$text)
+}
 
 charTypes <- function(boxes, types = 2, conf.min = 50) { #using k-means
-  boxes$charwidth = (boxes$right-boxes$left)/nchar(boxes$text)
+  boxes$charwidth = charWidth(boxes)
   boxes.use = filter(boxes, confidence > conf.min) # only use somewhat high conf boxes for finding char types
   boxes.kmeans = kmeans(boxes.use$charwidth, centers = types)
   cluster = sapply(boxes$charwidth, function(x){
@@ -131,8 +134,8 @@ charTypes <- function(boxes, types = 2, conf.min = 50) { #using k-means
 
 #converts a data frame of left, bottom, right, top boxes to left, bottom, width, height for the checkBoxes function
 makeCheckBox <- function(df, type  = c("forCheckBox", "forBbox")) {
-  if (type == "forCheckBox") data.frame(df$left, df$bottom, df$right - df$left, df$top - df$bottom)
-  if (type == "forBbox") data.frame(df$left, df$bottom, df$left + df$width, df$bottom + df$height)
+  if (type[1] == "forCheckBox") return(data.frame(left = df$left, bottom  = df$bottom, width = df$right - df$left, height = df$top - df$bottom))
+  if (type[1] == "forBbox") return(data.frame(left = df$left, bottom  = df$bottom, right = df$left + df$width, top = df$bottom + df$height))
 }
 
 removeDuplicates <- function(table, buffer = 10) { #price or id table, should have left, bottom, right, top and confidence  
@@ -148,3 +151,4 @@ removeDuplicates <- function(table, buffer = 10) { #price or id table, should ha
   }
   table
 }
+

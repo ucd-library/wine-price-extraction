@@ -196,23 +196,32 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
 }  
 
 #Use after updating prices
-updatePageCols <- function(page.cols) {
+updatePageCols <- function(page.cols, type = "price") {
   
-  # updated entries
-  page.cols$price_cols$entries = sapply(page.cols$prices, nrow)
-  # track price-finding progress
-  page.cols$progress = c(page.cols$progress, sum(page.cols$price_cols$entries))
-  # expand columns boundaries if necessary
-  page.cols$price_cols[,c("col_left","col_bottom")] = do.call("rbind", 
-                                                              lapply(page.cols$prices, function(x) {
-                                                                apply(x[,c("left", "bottom")], 2, min)}))
-  page.cols$price_cols[,c("col_right","col_top")] = do.call("rbind", 
-                                                            lapply(page.cols$prices, function(x) {
-                                                              apply(x[,c("right", "top")], 2, max)}))
-  if (hasName(page.cols$price_cols, "table.size")) {
-    page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% mutate(table.size = max(entries)) %>% ungroup()
+  if (type == "price") {
+    # updated entries
+    page.cols$price_cols$entries = sapply(page.cols$prices, nrow)
+    # track price-finding progress
+    page.cols$progress = c(page.cols$progress, sum(page.cols$price_cols$entries))
+    # expand columns boundaries if necessary
+    page.cols$price_cols[,c("col_left","col_bottom")] = do.call("rbind",
+        lapply(page.cols$prices, function(x) { apply(x[,c("left", "bottom")], 2, min)}))
+    page.cols$price_cols[,c("col_right","col_top")] = do.call("rbind",
+        lapply(page.cols$prices, function(x) {apply(x[,c("right", "top")], 2, max)}))
+    if (hasName(page.cols$price_cols, "table.size")) {
+      page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% mutate(table.size = max(entries)) %>% ungroup()
+    }
   }
-  page.cols
+  
+  if (type == "ids") {
+    page.cols$id_cols$entries = as.vector(sort(table(page.cols$ids$table)))
+    
+    # expand columns boundaries if necessary
+    page.cols$id_cols[,c("col_left","col_bottom")] = (  page.cols$ids %>% group_by(table) %>% summarize(left = min(left), bottom = min(bottom)) )[,-1]
+    page.cols$id_cols[,c("col_right","col_top")] = (  page.cols$ids %>% group_by(table) %>% summarize(right = max(right), top = max(top)) )[,-1]
+  }
+  
+  return(page.cols)
 }
 
 #    priceCols  Called by pageCols -- Find price columns, position and justification of text ####
@@ -531,7 +540,10 @@ addMissing <- function(page.cols, buffer = page.cols$charheight) {
       }
     }
   }
+  
+  
   # by prices less than ids ####
+  
   page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% 
     mutate(table.size = max(entries),
            missing.by.price = entries < table.size,
@@ -587,14 +599,42 @@ addMissing <- function(page.cols, buffer = page.cols$charheight) {
 }
 
 # Remove false positive prices by checking if they're numbers (not prices) and have weird left or right places
-removeExtra <- function(page.cols, buffer = page.cols$charheight) {
-  page.cols$prices = lapply(page.cols$prices, removeDuplicates, buffer = buffer)
+# Remove false positive ids by checking if their character width is way off --- don't remove so many that there are less ids than prices
+
+removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "prices", charwidth.cutoff = 2) { #charWidth.cutoff for removing false positive ids by charwidth outlier status
   
-  page.cols$prices = lapply(page.cols$prices, function(x) {
-    x = filter(x, ! (abs(scale(x[[page.cols$justify]])) > 2 & type == "number") )
-    x
-  }) 
-  page.cols = updatePageCols(page.cols)
+  if (! removeType %in% c("prices", "ids")) break("removeType must be 'prices' or 'ids'")
+  
+  if (removeType == "prices") {
+    page.cols$prices = lapply(page.cols$prices, removeDuplicates, buffer = buffer)
+  
+    page.cols$prices = lapply(page.cols$prices, function(x) {
+      if (page.cols$justify == "center") {
+        x = filter(x, ! (abs(scale(  (x$left + x$right)/2 )) > 2 & type == "number") )
+        x
+      } else {
+        x = filter(x, ! (abs(scale(x[[page.cols$justify]])) > 2 & type == "number") )
+        x
+      }
+    }) 
+    page.cols = updatePageCols(page.cols)
+  }
+  
+  if (removeType == "ids") {
+    extra_id = page.cols$id_cols$entries - aggregate(entries ~ table, FUN = max, data = page.cols$price_cols)$entries
+    if (max(extra_id) > 0) { #there are mode ids than entries in at least one table
+      # try to make them align by removing the worse matches according to charachter width
+      charwidth.tmp = abs(scale(charWidth(page.cols$ids)))
+      rank_charwidth.tmp = rank(-charwidth.tmp, ties.method = 'first')
+      to_remove = which( charwidth.tmp > charwidth.cutoff & rank_charwidth.tmp %in% 1:sum(extra_id[extra_id>0]) ) #if a number is specified, filter out those with the least likely character widths and somewhat unlikely (how unlikely determined by charwidth.cutoff)
+      
+      
+      if (identical( as.vector(table((page.cols$ids$table)[-to_remove])), aggregate(entries ~ table, FUN = max, data = page.cols$price_cols)$entries)) {
+        page.cols$ids = page.cols$ids[-to_remove,]
+        page.cols = updatePageCols(page.cols, type = "ids")
+      }
+    }
+  }
   return(page.cols)
 }
 
@@ -605,7 +645,7 @@ checkBoxes <- function(df, px, buffer = 10, level = "textline", height, checker 
   tmp.list = apply(df, 1, function(x) {
     SetRectangle(tpx, dims = c(x[1] - buffer, x[2], x[3] + buffer, x[4] + buffer))
     gb = GetBoxes(tpx, level = level)
-    if (gb$left > 0) { #otherwise means an error or nothing found
+    if (gb$left[1] > 0) { #otherwise means an error or nothing found
       gb$text = gsub("\n", "", gb$text)
       if (!is.null(checker)) {
         gb$price = checker(gb$text)
@@ -618,11 +658,13 @@ checkBoxes <- function(df, px, buffer = 10, level = "textline", height, checker 
 # df is left, bottom, width, height
 
 # 6. Extract the names with words and images ####
-nameBoxes <- function(data1, page.cols = NULL, prices, buffer = page.tables$charheight/3, page.tables = NULL) { #buffer on order of 1/2 small char size, 1/4 larege
+nameBoxes <- function(data1, page.cols = NULL, prices, px = px1, buffer = page.tables$charheight/2, page.tables = NULL, charsize.cutoff = .4, text.level = "textline", oem = 3) { 
+  #buffer on order of 1/2 small char size, 1/4 larege; charsize.cutoff determines by percentage same type size whether a line-above should be included in a name box
   if (is.null(page.cols) & is.null(page.tables)) {break("Need at least one of page.cols (if IDs present) or page.tables")}
   if (!is.null(page.cols$id_cols)) {
     table.boxes = vector(mode = "list", length = page.cols$n_id_cols)
     table.boxes.words = vector(mode = "list", length = page.cols$n_id_cols)
+    table.boxes.words.reocr = vector(mode = "list", length = page.cols$n_id_cols)
     for (i in 1:page.cols$n_id_cols) {
       table1 = filter(page.cols$ids, table == i)
       table2 = subset(prices, page.cols$price_cols$table==i)[[1]]
@@ -630,25 +672,37 @@ nameBoxes <- function(data1, page.cols = NULL, prices, buffer = page.tables$char
       r = rep(min(filter(page.cols$price_cols, table == i)$col_left), length(l)) + buffer
       b = table1$bottom - buffer
       t = table2$top + buffer
-      table.boxes[[i]] = data.frame(left = l, bottom = b, right = r, top = t)
+      table.boxes[[i]] = data.frame(l, b, r, t)
       table.boxes.words[[i]] =  lapply(1:nrow(table.boxes[[i]]), function(x) {
-        filter(data1, (left >= l[x] & right <= (r[x] + buffer*5)) & #extra buffer on the right
-              (bottom >= b[x] & top <= t[x] + buffer))
+        dplyr::filter(data1, left >= l[x] & left <= r[x], 
+                      right < ( min(filter(page.cols$price_cols, table == i)$col_right) - 2*buffer ),
+                      bottom >= b[x], top <= t[x])
       })
+      r =  sapply(table.boxes.words[[i]], function(x) max(x$right)) + buffer #update r
+      table.boxes[[i]] = data.frame(l, b, r, t) #update r
+      
+      table.boxes.words.reocr[[i]] = lapply(1:nrow(table.boxes[[i]]), function(x) {
+              tpx = tesseract(px, engineMode = oem)
+              SetRectangle(tpx, l[x], b[x], r[x]-l[x], t[x]-b[x]) #buffers already in
+              gb = GetBoxes(tpx, level = text.level)
+              if(text.level  == "textline") {gb$text = gsub("\n", "", gb$text)}
+              gb
+            })
     }
   } else {
     tables = page.tables[["tables"]]
     prices.tables = rep(1:length(tables), times = sapply(tables, nrow)) #indexing by table
     table.boxes = vector(mode = "list", length = length(tables))
     table.boxes.words = vector(mode = "list", length = length(tables))
+    table.boxes.words.reocr = vector(mode = "list", length = length(tables))
     for (i in 1:length(tables)) {
       
       #get table left, right, row bottoms and row tops
-      l = attr(tables[[i]], "left")
-      r = tables[[i]][1,1] #right is is LEFT of prices
+      l = attr(tables[[i]], "left") - buffer
+      r = tables[[i]][1,1] + buffer #right is LEFT of prices
       colsintable = subset(prices, prices.tables==i)
-      b = sort(do.call("rbind", colsintable)$bottom)
-      t = sort(do.call("rbind", colsintable)$top)
+      b = sort(do.call("rbind", colsintable)$bottom) - buffer
+      t = sort(do.call("rbind", colsintable)$top) + buffer
       
       tmp.boxes = filter(data1, left >= l, left <= min(colsintable[[1]]$left), top <= max(t) + buffer*8, bottom > min(b) - buffer*8)
       
@@ -663,32 +717,45 @@ nameBoxes <- function(data1, page.cols = NULL, prices, buffer = page.tables$char
       if (buffer == "dynamic") {buffer= min(char.sizes)/2}
       
       #filter out duplicates
-      b = b[(b - lead(b, 1)) < -page.cols$charheight | is.na(b - lead(b, 1))] 
-      t = t[(t - lead(t, 1)) < -page.cols$charheight | is.na(t - lead(t, 1))]
+      b = b[(b - lead(b, 1)) < -page.cols$charheight | is.na(b - lead(b, 1))] - buffer
+      t = t[(t - lead(t, 1)) < -page.cols$charheight | is.na(t - lead(t, 1))] + buffer
       
       if (length(b) != length(t)) {break("in nameBoxes: price data incomplete")}
       
       #if text above the price is in the bigger character type then include it the name
       table.boxes.words[[i]] = vector(mode = "list", length = length(t))
       for (j in 1:length(t)) {
-        tmp.name = filter(tmp.boxes, left < r & (top <= (t[j]+buffer) & bottom >= (b[j]-2*max(char.sizes))) )
-        tmp.name = filter(tmp.name, right < mean(tables[[i]][1,])) #remove anything glued to a price
+        tmp.name = filter( tmp.boxes, left < r & (top <= t[j] & bottom >= b[j]-2*max(char.sizes)) ) #sets how high to look, assumes at most two-row names
+        tmp.name = filter( tmp.name, right < mean(tables[[i]][1,])) #remove anything glued to a price
         if (nrow(tmp.name)==0) {next} else {
-          if (mean(tmp.name$char.sizes == max(char.sizes)) >= .4) {
-            if (j == 1) {b[j] = min(tmp.name$bottom)} 
-            if (j > 1) {b[j] = max(min(tmp.name$bottom - min(char.sizes)), t[j-1])}
+          # update b
+          if (mean(tmp.name$char.sizes == max(char.sizes)) >= charsize.cutoff) { #could add another condition here for text width
+            if (j == 1) {b[j] = min(tmp.name$bottom) - buffer} 
+            if (j > 1) {b[j] = max(min(tmp.name$bottom - min(char.sizes)), t[j-1]) - buffer}
             if (max(tmp.name$right) > r) {r = max(tmp.name$right)}
           }
+          tmp.name = filter( tmp.boxes, left < r & (top <= t[j] & bottom >= b[j]) )
+          tmp.name = filter( tmp.name, right < mean(tables[[i]][1,]))
         } #include another row in name, make sure below other price
         table.boxes.words[[i]][[j]] = tmp.name
       }
       tmp.lines = max(sapply(colsintable, nrow))
       table.boxes[[i]] = data.frame(left = rep(l, tmp.lines), bottom = b, right = rep(r, tmp.lines), top = t)
+      
+      table.boxes.words.reocr[[i]] = lapply(seq_along(b), function(x) {
+        tpx = tesseract(px, engineMode = oem)
+        SetRectangle(tpx, l, b[x], r-l, t[x]-b[x] + buffer) 
+        gb = GetBoxes(tpx, level = text.level)
+        if (text.level == "textline") {gb$text = gsub("\n", "", gb$text)}
+        gb
+      })
+      
     }
   }
   names(table.boxes) = paste("table", 1:length(table.boxes), sep = "_")
   names(table.boxes.words) = paste("table", 1:length(table.boxes.words), sep = "_")
-  return(list(locations = table.boxes, words = table.boxes.words))
+  names(table.boxes.words.reocr) = paste("table", 1:length(table.boxes.words), sep = "_")
+  return(list(locations = table.boxes, words_old = table.boxes.words, words = table.boxes.words.reocr))
 }
 
 # 7. Return final results - IDs, prices, names (with locations, words and image) ####
@@ -698,7 +765,7 @@ nameBoxes <- function(data1, page.cols = NULL, prices, buffer = page.tables$char
 # RUN ####
 ####################################################################################################
 # preprocess ####
-file1 = "UCD_Lehmann_0237" #0011, 1106, 0237, 3392, 1451(hard)
+file1 = "UCD_Lehmann_0237" #0011, 1106, 0237, 3392, 1452 (hard), 0069
 img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = "")
 if (!file.exists(img1)) {
   if (!exists("sample_files")) {sample_files = readRDS("~/Documents/DSI/wine-price-extraction/dsi/Data/sample_files.RDS")}
@@ -750,7 +817,7 @@ if (!is.null(page.cols$ids)) {
   cat("We guess there's", page.cols$n_id_cols, "table(s)\n")
   tmp.maybe_missing = rep(page.cols$id_cols$entries, each = page.cols$n_price_cols/page.cols$n_id_cols) - sapply(page.cols$prices, nrow)
   if (max(tmp.maybe_missing) > 0) {
-    cat("Column(s)", which(tmp.maybe_missing>0), "may be missing", tmp.maybe_missing[tmp.maybe_missing>0], "entry")
+    cat("Column(s)", which(tmp.maybe_missing>0), "may be missing", tmp.maybe_missing[tmp.maybe_missing>0], "# of entry")
   } else {cat("Columns don't seem to be missing entries")}
 }
 
@@ -775,6 +842,8 @@ if (!is.null(page.cols$ids)) {
 
 # 5 ####
 
+page.cols = removeExtra(page.cols, removeType = "ids", charwidth.cutoff = 2)
+
 page.cols = addMissing(page.cols, buffer = page.cols$charheight)
 
 page.cols = removeExtra(page.cols)
@@ -785,8 +854,8 @@ if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img 
 
 # 6 ####
 
-name.boxes = nameBoxes(data1, page.cols = page.cols, prices = page.cols$prices,
-                       buffer = page.tables$charheight/2, page.tables = page.tables)
+name.boxes = nameBoxes(data1, page.cols = page.cols, prices = page.cols$prices, px = px1,
+                       buffer = page.tables$charheight/2, page.tables = page.tables, text.level = "word") #will want to experimetn with textline vs. word here - textline good when words split by spaces when they shouldn't be
 
 # 7 ####
 
@@ -805,13 +874,14 @@ final.prices = lapply(1:max(page.cols$price_cols$table), function(x) {
 
 # all
 final.data = list(prices = final.prices, name.locations = name.boxes[["locations"]],
-                  name.words = name.boxes[["words"]])
+                  name.words = name.boxes[["words"]], name.words.old = name.boxes[["words_old"]])
 
 setwd(wd)
 saveRDS(final.data, paste("wine-price-extraction/dsi/Data/", file1, ".RDS", sep = ""))
 
 ################## check 4 / share image####
 #make fake confidence for box colors
+
 tmp.boxes = do.call("rbind", name.boxes[[1]])
 png(paste("wine-price-extraction/dsi/Data/", file1, "_deskew.png", sep=""), width = 4000, height = 6000)
 plot(tesseract(px1), img = px1)
@@ -822,4 +892,5 @@ dev.off()
 png(paste("wine-price-extraction/dsi/Data/", file1, "_price_boxes.png", sep=""), width = 1000, height = 1500)
 plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
 dev.off()
+
 
