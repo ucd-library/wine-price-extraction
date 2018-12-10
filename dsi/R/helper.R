@@ -132,7 +132,7 @@ charTypes <- function(boxes, types = 2, conf.min = 50) { #using k-means
   return(list(membership = cluster, means = boxes.kmeans$centers))
 }
 
-#converts a data frame of left, bottom, right, top boxes to left, bottom, width, height for the checkBoxes function
+#converts a data frame of left, bottom, right, top boxes to left, bottom, width, height for the x function
 makeCheckBox <- function(df, type  = c("forCheckBox", "forBbox")) {
   if (type[1] == "forCheckBox") return(data.frame(left = df$left, bottom  = df$bottom, width = df$right - df$left, height = df$top - df$bottom))
   if (type[1] == "forBbox") return(data.frame(left = df$left, bottom  = df$bottom, right = df$left + df$width, top = df$bottom + df$height))
