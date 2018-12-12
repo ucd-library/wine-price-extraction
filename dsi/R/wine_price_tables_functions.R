@@ -3,22 +3,22 @@
 
 source("wine-price-extraction/dsi/R/helper.R")
 
-# 2. Get iterative column info  ####
+# 1. Get iterative column info  ####
 
 # returns found prices, price column locations, number of prices found, character height,
 # column justification, id column locations (left edge), and found ids
 # image attribute only used for height
-pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { #need img until image size attribute implemented
+pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, column.header = c("Bottle", "Case", "Quart")) { #need img until image size attribute implemented
   
   if(is.null(img) & is.null(img.height)) {stop("Need image or image height")}
   
   data1$price = isPrice(data1$text)
   data1$type = isPrice(data1$text, maybe = TRUE)
+  data1$center = (data1$left + data1$right)/2
   charheight = median((filter(data1, price) %>% mutate(diff = top - bottom))$diff)
   data1 = filter(data1, !(left <  2*charheight)) #margin: don't want to catch prices from previous page
   
   prices =  data1[isPrice(data1$text),] 
-  prices$center = (prices$left + prices$right)/2
   
   #2a. initial column info ####
   
@@ -31,60 +31,64 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
   colData = prices %>% group_by(cluster) %>%
     summarize(col_left = min(left), col_right = max(right),
               col_bottom = min(prices$bottom), col_top = max(prices$top))
-  colData$slope = rep(0,k)
   max.clust = which.max(clust1$clusinfo[,1]) #largest cluster
   
   #2b. Find more prices. Chose to do this to get most complete possible table. ####
   
   if (is.null(img.height)) height1 = dim(readJPEG(img))[1] #note we'll use the image attribute here later
-  bottle.or.case = vector("character", k) # add column header "bottle" or "case" if possible
-  bottle.or.case.bottom = vector("numeric", k) # add top line of "bottle" or "case" if possible
+  column.header = vector("character", k) # add column header "bottle" or "case" if possible
+  column.header.bottom = vector("numeric", k) # add top line of "bottle" or "case" if possible
   
+  slope = img.height #default to vertical slope
   for (i in 1:k) {
-    #column alignment
-    lm.tmp = lm(height1 - top ~ prices[[just]], data = prices, subset = (clust1$clustering == i)) 
     
-    jitter.amt = .001
-    while (is.na(lm.tmp$coefficients[[2]] )) {
-          lm.tmp = lm(height1 - top ~ jitter(prices[[just]], amount = jitter.amt), data = prices,
-                subset = (clust1$clustering == i)) 
-          jitter.amt = jitter.amt*10
-    }
+      #if at least two entries, consider non-vertical slope update
+      if (sum(clust1$clustering == i) >= 2) {
+        #incorporate column alignment
+        prices.lm.tmp = subset(prices, clust1$clustering == i)
+        try({lm.left = lm(img.height - top ~ left, data = prices.lm.tmp)})
+        try({lm.right = lm(img.height - top ~ right, data = prices.lm.tmp)})
+        try({lm.center = lm(img.height - top ~ center, data = prices.lm.tmp)})
+        try({lm.slopes = sapply(list(lm.left, lm.right, lm.center), function(x) {(x$coefficients)[[2]]})})
+        slope = max(lm.slopes)
+      }
+      if ( !is.finite(slope) | slope == img.height) {
+         slope = img.height #probably don't need
+         near = abs(data1[[just]] - median(prices.lm.tmp[[just]])) < charheight
+         near.column.header = abs(data1[[just]] - median(prices.lm.tmp[[just]])) < 2*charheight #more leeway for works
+         if(show.plot) {plot(prices.lm.tmp[[just]], prices.lm.tmp$top, xlim = c(0,4000), ylim = c(0,img.height)); abline(v = median(prices.lm.tmp[[just]]), col = "red")}
+      } else {
+        lm.best = list(lm.left, lm.right, lm.center)[[which.max(lm.slopes)]]
+        yintercept = lm.best$coefficients[[1]]
+        near = abs((data1$top - data1[[just]]*slope - yintercept)/slope) < charheight #slope puts it on the right scale if slope is very large (near vertical)
+        near.column.header = abs((data1$top - data1[[just]]*slope - yintercept)/slope) < charheight*2
+        if(show.plot) {plot(prices.lm.tmp[[just]], prices.lm.tmp$top, xlim = c(0,4000), ylim = c(0,img.height)); abline(lm.best, col = "red")}
+      }
+      
+      #look for column header (e.g. "Bottle")
+      look1 = (near.column.header == TRUE) 
 
-    #print(lm.tmp)
-    if(show.plot) {abline(lm.tmp)}
-    if(i == max.clust) {slope = as.numeric(lm.tmp$coefficients[2])} #use slope from largest cluster
+      header.matches = sapply(column.header, function(x) {
+        data1[look1,][adist(data1[look1, "text"], x) <= 1 | str_detect(data1[look1, "text"], x), ] 
+      })
+
+      #if (nrow(Bottle) >= 1 & nrow(Case) == 0 ) {column.header[i] = "Bottle"; column.header.bottom[i] = Bottle$bottom}
+      #if (nrow(Case) >= 1 & nrow(Bottle) == 0 ) {column.header[i] = "Case"; column.header.bottom[i] = Case$bottom}
     
-    colData$slope[i] = as.numeric(lm.tmp$coefficients[2])
-    
-    #find what's on the line
-    near = abs((data1$top - data1$right*lm.tmp$coefficients[2] - lm.tmp$coefficients[1]
-    )/lm.tmp$coefficients[2]) < charheight
-    if(show.plot) {
-      points(data1$top ~ data1[[just]], col = 1 + as.numeric(near))
-    }
-    
-    #look for column header "Bottle" or "Case"
-    look1 = (near == TRUE) 
-    #use levenshtein distance <= 1 or contains "Bottle" or "Case":
-    Bottle = data1[look1,][adist(data1[look1, "text"], "Bottle") <= 1 | str_detect(data1[look1, "text"], "Bottle"), ] 
-    Case = data1[look1,][adist(data1[look1, "text"], "Case") <= 1 | str_detect(data1[look1, "text"], "Case"), ]
-    if (nrow(Bottle) >= 1 & nrow(Case) == 0 ) {bottle.or.case[i] = "Bottle"; bottle.or.case.bottom[i] = Bottle$bottom}
-    if (nrow(Case) >= 1 & nrow(Bottle) == 0 ) {bottle.or.case[i] = "Case"; bottle.or.case.bottom[i] = Case$bottom}
-    
-    #look for more prices
-    look2 = (look1 & data1$price == FALSE)
-    data1$text.new = "FALSE"
-    data1$text.new[look2 & data1$type == "number"] =  sapply(data1[look2 & data1$type == "number","text"], numToPrice)
-    cat("grabbed", sum(data1$text.new!="FALSE"), "new prices\n") 
-    data1$price[data1$text.new!="FALSE"] = TRUE
-    data1$text[data1$text.new!="FALSE"] = data1$text.new[data1$text.new!="FALSE"]
+      #look for more prices
+      look2 = (near == TRUE & data1$price == FALSE)
+      data1$text.new = "FALSE"
+      data1$text.new[look2 & data1$type == "number"] =  sapply(data1[look2 & data1$type == "number","text"], numToPrice)
+      cat("grabbed", sum(data1$text.new!="FALSE"), "new prices\n") 
+      data1$price[data1$text.new!="FALSE"] = TRUE
+      data1$text[data1$text.new!="FALSE"] = data1$text.new[data1$text.new!="FALSE"]
   }
-  bottle.or.case = bottle.or.case[order(colData$col_left)]
-  bottle.or.case.bottom = bottle.or.case.bottom[order(colData$col_left)]
+    
+  column.header = column.header[order(colData$col_left)]
+  column.header.bottom = column.header.bottom[order(colData$col_left)]
   
   #what do we have now?
-  prices2 = filter(data1, price==TRUE)
+  prices2 = filter(data1, price==TRUE) %>% select(-matches("center"))
   #recheck type
   prices2$type = isPrice(prices2$text, maybe = TRUE)
   cat("progress: ", c(nrow(prices), "prices, then", nrow(prices2)), "\n")
@@ -102,8 +106,8 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
               entries = n())
   max.clust = which.max(clust2$clusinfo[,1]) #largest cluster
   colData2 = colData2 %>% arrange(col_left)
-  colData2$bottle.or.case = bottle.or.case #bottle.or.case already ordered left to right
-  colData2$bottle.or.case.bottom = bottle.or.case.bottom #bottle.or.case.bottom already ordered left to right
+  colData2$column.header = column.header #column.header already ordered left to right
+  colData2$column.header.bottom = column.header.bottom #column.header.bottom already ordered left to right
   
   # reformate and detect outliers by right edge
   tmp.prices = lapply(1:max(prices2$cluster), function(x) filter(prices2, cluster==x))
@@ -115,23 +119,27 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
   #2d. id column info ####
   # numbers
   if (sum(data1$type=="ID") <= max(2, round(max.clust/3))) {
-    tmp.numbers = filter(data1, type == "number", grepl(text, pattern="^[0-9]*$")) %>% arrange(left)
+    tmp.numbers = filter(data1, type == "number", grepl(text, pattern="^[0-9]*$")) %>% arrange(left) %>% select(-matches("center"))
     tmp.numbers.cum = sapply(tmp.numbers$left, function(x) {sum(x > tmp.numbers$left)})
     idtype = "number"
   } else {
-    tmp.numbers = filter(data1, type == "ID") %>% arrange(left)
+    tmp.numbers = filter(data1, type == "ID") %>% arrange(left) %>% select(-matches("center"))
     tmp.numbers.cum = sapply(tmp.numbers$left, function(x) {sum(x > tmp.numbers$left)})
     idtype = "ID"
   }
   
   #plot(tmp.numbers$left, tmp.numbers.cum, type="l")
   tmp.cpt = tmp.numbers$left[cpt.mean(tmp.numbers.cum, method='PELT')@cpts]
-  tmp.cpt = tmp.cpt[-which(diff(tmp.cpt) < charheight/4)] #filter duplicates
+  if ( length(  which(diff(tmp.cpt) < charheight/4)  ) > 0 ) {
+    tmp.cpt = tmp.cpt[-which(diff(tmp.cpt) < charheight/4)] #filter duplicates
+  }
   
   #are there at least _ numbers near each cpt?
-  id_cols = tmp.cpt[(rowSums(abs(outer(tmp.cpt, tmp.numbers$left,  "-")) < charheight/4)) > 
+  id_cols = tmp.cpt[(rowSums(abs(outer(tmp.cpt, tmp.numbers$left,  "-")) < charheight/3)) >
                       max(table(prices2$cluster))/2]
+  
   if(length(id_cols) > 0) {
+    
     # make sure in a table
     ids = filter(tmp.numbers, type == idtype,
                  apply(abs(outer(tmp.numbers$left, id_cols, "-")), 1, min) < charheight,
@@ -140,20 +148,46 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE) { 
     # saw a weird case (1106.jpg) where one ID was being read twice.
     # Eliminate lower-confidence duplicate
     if(is.null(dim(ids))) ids = ids[[1]]
-    ids = removeDuplicates(ids)
+    ids = removeDuplicates(ids, justify = "none")
     ids$table = sapply(ids$left, function(x) {which.min(abs(x-id_cols))}) #assume one id col per table
     
-    id_cols = ids %>% group_by(table) %>% summarize(col_left = min(left),
+    #remove if too close to a price column (may happen if periods aren't being read well)
+    # check left-right same
+    id_cols_overlap  = which(abs(outer(id_cols, colData2$col_left, "-")) < charheight, arr.ind = T)
+  
+    # check top-bottom overlap
+    if (length(id_cols_overlap) > 0)   {
+      for (row in 1:nrow(id_cols_overlap)) {
+        if (length(id_cols > 0)) {
+          # is top (bottom) of ids above (less than) bottom (top) of prices?
+          c1 = min(filter(ids, table == id_cols_overlap[row])$bottom) < #top of ids above
+          colData2[as.numeric(id_cols_overlap[row,2]),c("col_top")] #bottom of prices
+          # is bottom (top) of ids below top (bottom) of prices?
+          c2 = max(filter(ids, table == id_cols_overlap[row])$top) > #bottom of ids below
+            colData2[as.numeric(id_cols_overlap[row,2]),c("col_bottom")] #top of prices
+          if (c1 | c2) {
+            id_cols = id_cols[-id_cols_overlap[row]]
+            cat("Removed a column of ids which we think was actually prices")
+            ids = filter(ids, !table == id_cols_overlap[row])
+          }
+        }
+      }
+    }
+  }
+    
+  # if still IDs, save them
+  if (length(id_cols) > 0) {
+        ids$table = as.numeric(as.factor(ids$table))
+        id_cols = ids %>% group_by(table) %>% summarize(col_left = min(left),
                                                     col_right = max(right),
                                                     col_top = max(top),
                                                     col_bottom = min(bottom),
                                                     entries = n()) %>% arrange(col_left)
-  } else {
-    id_cols = NULL
-    ids = NULL
-  }
+        
+    
+        cat(nrow(ids), "ids found")    
+  } else {id_cols = NULL; ids = NULL}
   
-  cat(nrow(ids), "ids found")
   #2e. return ####
   
   return(list(prices = tmp.prices,
@@ -191,8 +225,8 @@ updatePageCols <- function(page.cols, type = "price") {
   if (type == "ids") {
     page.cols$id_cols$entries = as.vector(table(page.cols$ids$table)[order(  as.numeric(names(table(page.cols$ids$table))) )]) #assumes page.cols$id_cols ordered by table
     # expand columns boundaries if necessary
-    page.cols$id_cols[,c("col_left","col_bottom")] = (  page.cols$ids %>% group_by(table) %>% summarize(left = min(left), bottom = min(bottom)) )[,-1]
-    page.cols$id_cols[,c("col_right","col_top")] = (  page.cols$ids %>% group_by(table) %>% summarize(right = max(right), top = max(top)) )[,-1]
+    page.cols$id_cols[,c("col_left","col_bottom")] = (  page.cols$ids %>% group_by(table) %>% summarize(left = min(left), bottom = min(bottom)) %>% ungroup())[,-1]
+    page.cols$id_cols[,c("col_right","col_top")] = (  page.cols$ids %>% group_by(table) %>% summarize(right = max(right), top = max(top)) %>% ungroup())[,-1]
   }
   
   return(page.cols)
@@ -202,12 +236,12 @@ updatePageCols <- function(page.cols, type = "price") {
 priceCols <- function(prices, minGap) {
   prices$center = (prices$left + prices$right)/2
   clust = list(
-    L = sapply(1:max(1, min(10, (nrow(prices)-2))), function(x) {
+    L = sapply(1:max(1, min(10, (nrow(prices)-2))), function(x) { # range of possible columns in the table
       pam1 = pam(prices$left, k = x)
       obj1 = pam1$objective[[2]] #evaluation of cluster objective
       min.size = min(pam1$clusinfo[,1]) #minimum cluster size
       clust.dist = abs(outer(c(pam1$medoids), c(pam1$medoids), "-"))
-      min.dist = min(clust.dist[clust.dist > 0])
+      suppressWarnings({min.dist = min(clust.dist[clust.dist > 0])})
       return(c(obj1, min.size, min.dist))
     }),
     R = sapply(1:max(1, min(10, (nrow(prices)-2))), function(x) {
@@ -215,7 +249,7 @@ priceCols <- function(prices, minGap) {
       obj1 = pam1$objective[[2]] #evaluation of cluster objective
       min.size = min(pam1$clusinfo[,1]) #minimum cluster size
       clust.dist = abs(outer(c(pam1$medoids), c(pam1$medoids), "-"))
-      min.dist = min(clust.dist[clust.dist > 0])
+      suppressWarnings({min.dist = min(clust.dist[clust.dist > 0])})
       c(obj1, min.size, min.dist)
     }),
     Ce = sapply(1:max(1, min(10, (nrow(prices)-2))), function(x) {
@@ -223,7 +257,7 @@ priceCols <- function(prices, minGap) {
       obj1 = pam1$objective[[2]] #evaluation of cluster objective
       min.size = min(pam1$clusinfo[,1]) #minimum cluster size
       clust.dist = abs(outer(c(pam1$medoids), c(pam1$medoids), "-"))
-      min.dist = min(clust.dist[clust.dist > 0])
+      suppressWarnings({min.dist = min(clust.dist[clust.dist > 0])})
       c(obj1, min.size, min.dist)
     })
   )
@@ -241,13 +275,13 @@ priceCols <- function(prices, minGap) {
   return(list(column_info = clust1, k = k, just = just))
 }
 
-# 3. Extract text from columns, find more prices and IDs ####
+# 2. Extract text from columns, find more prices and IDs ####
 
 # check for new prices and return updated page.cols ####
-addPrices <- function(page.cols) {
+addPrices <- function(page.cols, px) {
   
   tmp.boxes.from.cols_price = lapply(1:page.cols$n_price_cols, boxesFromCols,
-                                     page.cols$price_cols,px1, buffer = page.cols$charheight/3)
+                                     page.cols$price_cols, px, buffer = page.cols$charheight/3)
   
   # only add new ones, only replace ones that got better
   page.cols$prices = lapply(1:page.cols$n_price_cols, function(x) {
@@ -285,16 +319,16 @@ addPrices <- function(page.cols) {
     page.cols$prices[[x]]$text.new = str_remove(page.cols$prices[[x]]$text.new, "^\\.+")
     return(page.cols$prices[[x]])
   })
-  cat("Did this process add or take away PRICES? (all >= 0 good):", sapply(page.cols$prices, nrow) - page.cols$price_cols$entries)
+  cat("Did addPrices process add or take away PRICES? (all >= 0 good):", sapply(page.cols$prices, nrow) - page.cols$price_cols$entries)
   
   # update other stuff
   page.cols = updatePageCols(page.cols)
 }
 
 # check for new IDs and return updated page.cols ####
-addIds <- function(page.cols) {
+addIds <- function(page.cols, px) {
   
-  tmp.boxes.from.cols_id = lapply(1:page.cols$n_id_cols, boxesFromCols, page.cols$id_cols, px1, buffer = page.cols$charheight/3)
+  tmp.boxes.from.cols_id = lapply(1:page.cols$n_id_cols, boxesFromCols, page.cols$id_cols, px, buffer = page.cols$charheight/3)
   
   new.ids = do.call("rbind", lapply(1:page.cols$n_id_cols, function(x) {
     
@@ -332,7 +366,7 @@ addIds <- function(page.cols) {
     return(new.ids)
   }))
   
-  cat("Did this process add or take away IDs (>= 0 good)?",   new.ids  %>% group_by(table) %>% group_size() - page.cols$id_cols$entries)
+  cat("Did addIds process add or take away IDs (>= 0 good)?\n",   new.ids  %>% group_by(table) %>% group_size() - page.cols$id_cols$entries)
   
   # update  stuff
   # ids
@@ -343,8 +377,6 @@ addIds <- function(page.cols) {
 # for extracting new information from identified column
 boxesFromCols <- function(index, colData, px, buffer = 5) {
   colDataRow = colData[index,]
-  #px = pixRead(img)
-  #prot = pixRotate(px, -atan(1/colDataRow$slope))
   tpx = tesseract(px)
   SetRectangle(tpx, dims = c(colDataRow$col_left - buffer, max(0, colDataRow$col_bottom - buffer), #bottom is "TOP" in help. ugh.
                              colDataRow$col_right - colDataRow$col_left + 2*buffer, #since left also has a buffer
@@ -362,7 +394,7 @@ compareTypes <- function(pair) {
   else {return(1)}
 }
 
-# 4. Find table locations using changepoint method. Check against IDs (if possible); group columns by table ####
+# 3. Find table locations using changepoint method. Check against IDs (if possible); group columns by table ####
 
 pageTables <- function(data1, prices, page.cols, buffer = page.cols$charheight/3) {
   
@@ -423,14 +455,18 @@ pageTables <- function(data1, prices, page.cols, buffer = page.cols$charheight/3
   cpts = v.regions@cpts
   vars = v.regions@param.est$variance
   
-  #we can use this to find one that's after a space, tmp@param.est$variance should be close to zero
-  for (t in 1:n.table) {
-    if (t) {
-      attr(tables[[t]], "left") = max(cpts[(cpts < (tables[[t]][1,1] - (tables[[t]][1,2] - tables[[t]][2,1])))]) - buffer
+  # we can use this to find one that's after a space, tmp@param.est$variance should be close to zero
+  # tables is a list with  one entry for each table, one row in  it for each column
+  tables = lapply(tables, function(t) {
+    if ( !is.null(dim(t)) && nrow(t)>1 ) { #compare right of first table to left of next table
+      attr(t, "left") = max(cpts[(cpts < (t[1,1] - (t[1,2] - t[2,1])))]) - buffer
+      return(t)
     } else {
-      attr(tables[[t]], "left") = max(cpts[cpts < tables[[t]][1] - buffer])
+      attr(t, "left") = max(cpts[cpts < t[1] - buffer])
+      return(t)
     }
-  }
+  })
+
   return(list(breaks = cpts, breaks.var = vars, tables = tables, charheight = page.cols$charheight))
 }
 
@@ -449,12 +485,12 @@ whichTable <- function(page.tables, page.cols) {
   }
 }
 
-# 5. Check again for missing prices and now IDs too ####
+# 4. Check again for missing prices and now IDs too ####
 ##  if no ids, just look for mismatches between #prices in columns in tables 
 ##  if ids, also look for mismatches between #ids and #prices in tables 
 ##  Should do nothing if not mismatches found
 
-addMissing <- function(page.cols, buffer = page.cols$charheight) {
+addMissing <- function(page.cols, page.tables, buffer = page.cols$charheight, img.height, px) {
   
   # assumes everything's ordered correctly
   if(!is.null(page.cols$ids)) {
@@ -475,7 +511,7 @@ addMissing <- function(page.cols, buffer = page.cols$charheight) {
     filter(`sum(missing.by.price)` > 0) %>% .[,"table"]
   
   if (nrow(incomplete.by.price) > 0) {
-    cat("Table", unlist(incomplete.by.price), "might be missing prices")
+    cat("\nTable", unlist(incomplete.by.price), "might be missing prices")
     for (elem in unlist(incomplete.by.price)) {
       tmp.cols.missing = page.cols$prices[page.cols$price_cols$table == elem & page.cols$price_cols$missing.by.price]
       tmp.cols.full = page.cols$prices[page.cols$price_cols$table == elem & !page.cols$price_cols$missing.by.price]
@@ -492,7 +528,7 @@ addMissing <- function(page.cols, buffer = page.cols$charheight) {
                         length(missing.spots[x])),
             height =  full.top[missing.spots[[x]]] - full.bot[missing.spots[[x]]]
           )})
-        boxes = lapply(missing.boxes, checkBoxes, px1, height = height1, buffer = buffer)
+        boxes = lapply(missing.boxes, checkBoxes, px, height = img.height, buffer = buffer)
         boxes = lapply(boxes, function(x) {
           x$text.new = str_extract(x$text, "[0-9].*")
           if (sum(is.na(x$text)) > 0) {cat("Missing entries not all prices", x$text)}
@@ -513,69 +549,74 @@ addMissing <- function(page.cols, buffer = page.cols$charheight) {
   
   # 2. by prices less than or misaligend with ids ####
   # are prices and ids misaligned?
-  misaligned = sapply(1:length(page.cols$prices), function(x) {
-    t.price.tmp = (page.cols$prices)[[x]]$top
-    t.id.tmp = filter(page.cols$ids, table == as.numeric(page.cols$price_cols[x,"table"]))$top
-    if (quantile(abs(t.price.tmp - t.id.tmp), .25) > (buffer * 4)) {
-      cat("misaligned", x, "\n")
-      return(TRUE)
-    } else {return(FALSE)}
-  })
   
-  page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% 
-    mutate(table.size = max(entries),
-           missing.by.price = entries < table.size,
-           missing.by.id = (entries < n_ids),
-           missing.id = n_ids < entries) %>% ungroup() %>%
-    mutate(missing.by.id = missing.by.id | misaligned)
-  
-  incomplete.by.id = filter(page.cols$price_cols, missing.by.id) # note this is a data frame rather than a list of table numbers
-  
-  if (nrow(incomplete.by.id) > 0) {
-    cat(nrow(incomplete.by.id), "columns might be missing prices")
-    for (row in 1:nrow(incomplete.by.id)) {
-      #match the ids and prices
-      tmp.table = as.numeric(incomplete.by.id[row,"table"])
-      tmp.column = as.numeric(incomplete.by.id[row,"column"])
-      tmp.ids = filter(page.cols$ids, table == tmp.table)
-      tmp.i = which(page.cols$price_cols$table == tmp.table)[tmp.column]
-      tmp.prices = page.cols$prices[[tmp.i]]
-      
-      tmp.lr = page.tables$tables[[tmp.table]]
-      if (is.null(dim(tmp.lr))) {left = tmp.lr[1]; right = tmp.lr[2]} else {
-        left = tmp.lr[tmp.column, 1]; right = tmp.lr[tmp.column, 2]
+  if (!is.null(page.cols$ids)) {
+    misaligned = sapply(1:length(page.cols$prices), function(x) {
+      t.price.tmp = (page.cols$prices)[[x]]$top
+      t.id.tmp = filter(page.cols$ids, table == as.numeric(page.cols$price_cols[x,"table"]))$top
+      if (quantile(abs(t.price.tmp - t.id.tmp), .25) > (buffer * 4)) {
+        cat("misaligned", x, "\n")
+        return(TRUE)
+      } else {return(FALSE)}
+    })
+    
+    page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% 
+      mutate(table.size = max(entries),
+             missing.by.price = entries < table.size,
+             missing.by.id = (entries < n_ids),
+             missing.id = n_ids < entries) %>% ungroup() %>%
+      mutate(missing.by.id = missing.by.id | misaligned)
+    
+    incomplete.by.id = filter(page.cols$price_cols, missing.by.id) # note this is a data frame rather than a list of table numbers
+    
+    if (nrow(incomplete.by.id) > 0) {
+      cat(nrow(incomplete.by.id), "columns might be missing prices")
+      for (row in 1:nrow(incomplete.by.id)) {
+        #match the ids and prices
+        tmp.table = as.numeric(incomplete.by.id[row,"table"])
+        tmp.column = as.numeric(incomplete.by.id[row,"column"])
+        tmp.ids = filter(page.cols$ids, table == tmp.table)
+        tmp.i = which(page.cols$price_cols$table == tmp.table)[tmp.column]
+        tmp.prices = page.cols$prices[[tmp.i]]
+        
+        tmp.lr = page.tables$tables[[tmp.table]]
+        if (is.null(dim(tmp.lr))) {left = tmp.lr[1]; right = tmp.lr[2]} else {
+          left = tmp.lr[tmp.column, 1]; right = tmp.lr[tmp.column, 2]
+        }
+        
+        #find missing
+        ids.missing.prices = which(apply(abs(outer(tmp.ids$top, tmp.prices$top, "-")), 1, min) > 2*buffer) #might need x if three-line name
+        n.missing = length(ids.missing.prices)
+        missing.boxes = data.frame(
+          left = rep(left, n.missing),
+          bottom = tmp.ids[ids.missing.prices, "bottom"],
+          width = rep(right, n.missing) - rep(left, n.missing),
+          height = tmp.ids[ids.missing.prices, "top"] - tmp.ids[ids.missing.prices, "bottom"]
+        )
+        boxes = checkBoxes(missing.boxes, px, height = img.height, buffer = buffer)
+        #boxes = filter(boxes, price), since we know there's an ID, don't filter out, leave in with price False
+        if (sum(!is.na(str_extract(boxes$text, "[0-9].*"))) > 0) {cat("Missing entries detected", boxes$text)}
+        
+        if (!is.null(boxes)) {
+          boxes$text.new = boxes$text
+          boxes$type = isPrice(boxes$text, maybe = T, dollar = F)
+          boxes$cluster = page.cols$prices[[tmp.i]]$cluster[1] #all cluster values in that table should be the same
+          page.cols$prices[[tmp.i]] = rbind(page.cols$prices[[tmp.i]], boxes[,names(page.cols$prices[[tmp.i]])]) %>% arrange(top)
+        }
       }
-      
-      #find missing
-      ids.missing.prices = which(apply(abs(outer(tmp.ids$top, tmp.prices$top, "-")), 1, min) > 2*buffer) #might need x if three-line name
-      n.missing = length(ids.missing.prices)
-      missing.boxes = data.frame(
-        left = rep(left, n.missing),
-        bottom = tmp.ids[ids.missing.prices, "bottom"],
-        width = rep(right, n.missing) - rep(left, n.missing),
-        height = tmp.ids[ids.missing.prices, "top"] - tmp.ids[ids.missing.prices, "bottom"]
-      )
-      boxes = checkBoxes(missing.boxes, px1, height = height1, buffer = buffer)
-      #boxes = filter(boxes, price), since we know there's an ID, don't filter out, leave in with price False
-      if (sum(!is.na(str_extract(boxes$text, "[0-9].*"))) > 0) {cat("Missing entries detected", boxes$text)}
-      
-      if (!is.null(boxes)) {
-        boxes$text.new = boxes$text
-        boxes$type = isPrice(boxes$text, maybe = T, dollar = F)
-        boxes$cluster = page.cols$prices[[tmp.i]]$cluster[1] #all cluster values in that table should be the same
-        page.cols$prices[[tmp.i]] = rbind(page.cols$prices[[tmp.i]], boxes[,names(page.cols$prices[[tmp.i]])]) %>% arrange(top)
-      }
+      page.cols = updatePageCols(page.cols, type = "price")
     }
-    page.cols = updatePageCols(page.cols, type = "price")
   }
   
-  
   # 3. by ids less than prices ####
-  page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% mutate(missing.id = n_ids < entries)
-  incomplete.id = filter(page.cols$price_cols, missing.id)
   
-  if (nrow(incomplete.id) > 0) {
-     for (row in 1:nrow(incomplete.by.id)) {
+  if (!is.null(page.cols$ids)) {
+    
+    page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% mutate(missing.id = n_ids < entries)
+    incomplete.id = filter(page.cols$price_cols, missing.id)
+    
+    if (nrow(incomplete.id) > 0) {
+      for (row in 1:nrow(incomplete.id)) {
         #match the ids and prices
         tmp.table = as.numeric(incomplete.id[row,"table"])
         tmp.ids = filter(page.cols$ids, table == tmp.table)
@@ -586,17 +627,17 @@ addMissing <- function(page.cols, buffer = page.cols$charheight) {
         n.missing = length(prices.missing.ids)
         
         if(n.missing > 0) {
-            missing.boxes = data.frame(
-              left = rep(median(tmp.ids$left), n.missing),
-              bottom = tmp.prices[prices.missing.ids,"bottom"],
-              width = rep( quantile(tmp.ids$right, .9) - quantile(tmp.ids$left, .1), n.missing),
-              height = rep(2*page.cols$charheight, n.missing))
-          }
-          
-        boxes = checkBoxes(missing.boxes, px1, height = height1, buffer = buffer)
-        boxes = filter(boxes, grepl("[0-9].*", boxes$text), nchar(boxes$text) < 2*max(nchar(tmp.ids$text))) #some ids like N-1 only have one number
-      
-        if (!is.null(boxes) & nrow(boxes) > 0) {
+          missing.boxes = data.frame(
+            left = rep(median(tmp.ids$left), n.missing),
+            bottom = tmp.prices[prices.missing.ids,"bottom"],
+            width = rep( quantile(tmp.ids$right, .9) - quantile(tmp.ids$left, .1), n.missing),
+            height = rep(2*page.cols$charheight, n.missing)
+          )
+          boxes = checkBoxes(missing.boxes, px, height = img.height, buffer = buffer)
+          try({boxes = filter(boxes, grepl("[0-9].*", boxes$text), nchar(boxes$text) < 2*max(nchar(tmp.ids$text)))}) #some ids like N-1 only have one number
+        }
+        
+        if (!is.null(boxes) && nrow(boxes) > 0) {
           cat("Missing entries detected", boxes$text)
           boxes$text.new = boxes$text
           boxes$type = isPrice(boxes$text, maybe = T, dollar = F)
@@ -604,7 +645,8 @@ addMissing <- function(page.cols, buffer = page.cols$charheight) {
           page.cols$ids = rbind(page.cols$ids, boxes[,names(page.cols$ids)]) %>% arrange(table, top)
         }
       }
-    page.cols = updatePageCols(page.cols, type = "ids")
+      page.cols = updatePageCols(page.cols, type = "ids")
+    }
   }
   return(page.cols)  
 }
@@ -612,22 +654,23 @@ addMissing <- function(page.cols, buffer = page.cols$charheight) {
 # Remove false positive prices by checking if they're numbers (not prices) and have weird left or right places
 # Remove false positive ids by checking if their character width is way off --- don't remove so many that there are less ids than prices
 
-removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "prices", charwidth.cutoff = 2, bottleTypes = c("Bottle", "Case") ) { #charWidth.cutoff for removing false positive ids by charwidth outlier status
+removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "prices", charwidth.cutoff = 2, column.header = c("Bottle", "Case", "Quart") ) { #charWidth.cutoff for removing false positive ids by charwidth outlier status
   
   if (! removeType %in% c("prices", "ids", "all")) stop("removeType must be 'prices', 'ids', or 'all'")
-  
+  if ( is.null(page.cols$ids) & removeType == "all" ) {removeType = "prices"}
+    
   #if we found good bottle and case labels for all columns we can presume anything way above is a false positive
-  if (mean(page.cols$price_cols$bottle.or.case %in% bottleTypes)==1) {
+  if (mean(page.cols$price_cols$column.header %in% column.header)==1) {
     page.cols$prices = lapply(page.cols$prices, function(x) {
       tmp.col = which(page.cols$price_cols$cluster == x$cluster[1])
-      filter(x, x$bottom > as.numeric(page.cols$price_cols[tmp.col,"bottle.or.case.bottom"] - buffer*5))
+      filter(x, x$bottom > as.numeric(page.cols$price_cols[tmp.col,"column.header.bottom"] - buffer*5))
     })
     page.cols = updatePageCols(page.cols, type = "price")
-    page.cols = updatePageCols(page.cols, type = "ids")
+    if (!is.null(page.cols$ids)) page.cols = updatePageCols(page.cols, type = "ids")
   }
   
   if (removeType == "prices" | removeType == "all") {
-    page.cols$prices = lapply(page.cols$prices, removeDuplicates, buffer = buffer)
+    page.cols$prices = lapply(page.cols$prices, removeDuplicates, buffer = buffer, justify = page.cols$justify)
     
     page.cols$prices = lapply(page.cols$prices, function(x) {
       if (page.cols$justify == "center") {
@@ -642,6 +685,8 @@ removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "
   }
   
   if (removeType == "ids" | removeType == "all") {
+    page.cols$ids = removeDuplicates(page.cols$ids, buffer = buffer, justify = page.cols$justify) %>% arrange(table, top)
+    
     extra_id = page.cols$id_cols$entries - aggregate(entries ~ table, FUN = max, data = page.cols$price_cols)$entries
     charwidth = charWidth(page.cols$ids)
     charwidth_range = max(charwidth) - min(charwidth)
@@ -683,8 +728,8 @@ checkBoxes <- function(df, px, buffer = 10, level = "textline", height, checker 
 }
 # df is left, bottom, width, height
 
-# 6. Extract the names with words and images ####
-nameBoxes <- function(data1, page.cols = NULL, prices, px = px1, buffer = page.tables$charheight/2, page.tables = NULL, charsize.cutoff = .4, psm = 3, text.level = "textline") { 
+# 5. Extract the names with words and images ####
+nameBoxes <- function(data1, page.cols = NULL, prices, px , buffer = page.tables$charheight/2, page.tables = NULL, charsize.cutoff = .4, psm = 3, text.level = "textline") { 
   #buffer on order of 1/2 small char size, 1/4 larege; charsize.cutoff determines by percentage same type size whether a line-above should be included in a name box
   #psm i(3) mportant for last stage with reocr
   if (is.null(page.cols) & is.null(page.tables)) {stop("Need at least one of page.cols (if IDs present) or page.tables")}
@@ -702,7 +747,7 @@ nameBoxes <- function(data1, page.cols = NULL, prices, px = px1, buffer = page.t
       r = rep(min(filter(page.cols$price_cols, table == i)$col_left), length(l)) + buffer
       b = id_table$bottom - buffer
       # we use the bottom (top) of the prices as the lower bound for the name box, but have to be careful if more prices than names
-      t = price_table$top + buffer 
+      t = price_table$top #better match without buffer
       t = price_table$top[apply(abs(outer(id_table$top, t, "-")), 1, which.min)] + buffer
       
       table.boxes[[i]] = data.frame(l, b, r, t)
@@ -711,20 +756,23 @@ nameBoxes <- function(data1, page.cols = NULL, prices, px = px1, buffer = page.t
                       right < ( min(filter(page.cols$price_cols, table == i)$col_right) - 2*buffer ),
                       bottom >= b[x], top <= t[x])
       })
-      r =  sapply(table.boxes.words[[i]], function(x) max(x$right)) + buffer #update r
+      r.tmp =  sapply(table.boxes.words[[i]], function(x) max(x$right)) + buffer #update r
+      r[is.finite(r.tmp)] = r.tmp[is.finite(r.tmp)]
+      t[t<b] = b[t<b] + 2*page.cols$charheight # if stuck to row above, use default name height
       table.boxes[[i]] = data.frame(l, b, r, t) #update r
+      
       
       # see if top overlaps with next row -- if so update for re-ocring
       overlap_below = lapply(t, function(x) {filter(data1, bottom < x, (x - bottom) < buffer/2, top > (bottom + buffer), left > min(l), right < median(r) )})
       update_t = which(sapply(overlap_below, nrow) > 2)
-      cat("Found", length(update_t), "overlap(s) with row below when checking name boxes")
+      cat("Found", length(update_t), "overlap(s) with row below when checking name boxes\n")
       if (length(update_t) > 0) {
         t_new = sapply(overlap_below[update_t], function(x) min(x$bottom))
         update_t = update_t[t_new > price_table$top[update_t]] # new t should be below old on the page]
         t[update_t] = t_new
         overlap_below = lapply(t, function(x) {filter(data1, bottom < x, (x - bottom) < buffer/2, top > (bottom + buffer), left > l, right < r )})
         update_t = sapply(overlap_below, nrow) > 2
-        cat("Now", sum(update_t), "overlaps with row below when checking name boxes")
+        cat("Now", sum(update_t), "overlaps with row below when checking name boxes\n")
         table.boxes[[i]] = data.frame(l, b, r, t) #update r
       }
       
@@ -755,7 +803,7 @@ nameBoxes <- function(data1, page.cols = NULL, prices, px = px1, buffer = page.t
       tmp.boxes = filter(data1, left >= l, left <= min(colsintable[[1]]$left), top <= max(t) + buffer*8, bottom > min(b) - buffer*8)
       
       #remove absurdly large text
-      charwidth = (tmp.boxes$right-tmp.boxes$left)/nchar(tmp.boxes$text)
+      charwidth = charWidth(tmp.boxes)
       tmp.boxes = filter(tmp.boxes, abs(scale(charwidth)) < 10)
       
       char.types = charTypes(tmp.boxes, types = 2, conf.min = 50) #only uses somewhat high-conf examples for finding char types
@@ -806,4 +854,4 @@ nameBoxes <- function(data1, page.cols = NULL, prices, px = px1, buffer = page.t
   return(list(locations = table.boxes, words_old = table.boxes.words, words = table.boxes.words.reocr))
 }
 
-# 7. Return final results - IDs, prices, names (with locations, words and image) ####
+# 6. Return final results - IDs, prices, names (with locations, words and image) ####

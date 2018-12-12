@@ -138,9 +138,11 @@ makeCheckBox <- function(df, type  = c("forCheckBox", "forBbox")) {
   if (type[1] == "forBbox") return(data.frame(left = df$left, bottom  = df$bottom, right = df$left + df$width, top = df$bottom + df$height))
 }
 
-removeDuplicates <- function(table, buffer = 10) { #price or id table, should have left, bottom, right, top and confidence  
-  look.for.duplicates = apply(table[,c("left","bottom","right","top")], 1, 
-                              function(x) {apply(table[,c("left","bottom","right","top")], 1, 
+removeDuplicates <- function(table, buffer = 10, justify = "right") { #price or id table, should have left, bottom, right, top and confidence  
+  look.columns = c("bottom", "top")
+  if (justify == "right" | justify == "left") {look.columns = c(look.columns, justify)}
+  look.for.duplicates = apply(table[, look.columns], 1, 
+                              function(x) {apply(table[, look.columns], 1, 
                                   function(y) {max(abs(y-x))})})
   look.for.duplicates = data.frame(which(apply(look.for.duplicates, 1, "<",  buffer), arr.ind = T)) %>%  filter(., row > col)
   if(nrow(look.for.duplicates) > 0) {
