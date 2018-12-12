@@ -22,15 +22,15 @@
 # -remove non-word chars with spaces (with some exceptions), e.g. "Saint-d'Emilion" -> "Saint d'Emilion"
 # -remove countries from other columns
 # -remove values shorter than 5 chars (usually dummy values)
+# -remove values that are duplicated among dictionaries (e.g. same value in Province and Region)
 # 
 
 
 ####################
 # FIXME:
-# -some values are replicated in two columns, e.g. province and region_1 have Bordeaux, decide which to delete
-# 
+# -values duplicated among dictionaries are being removed, but sometimes we should keep duplicates, e.g. Prosecco is region and type of wine
+#
 # TODO:
-# -merge countries, provinces, regions, producers into one table
 # -add columns with diacritics, so we can have a 'true' value
 # -add region2 to region1 before cleanning
 #
@@ -95,7 +95,7 @@ clear_column = function(column_to_clear, keep_country) {
   if (keep_country) {
     return(subset);
   } else {
-    return(as.data.frame(subset[,c(1)]));
+    return(subset[,c(1)]);
   }
 }
 
@@ -107,7 +107,7 @@ conn = odbcDriverConnect('driver={SQL Server};server=localhost;database=DataFest
 countries = sqlQuery(conn, "SELECT Country FROM Countries");
 
 # read wine csv data encoded with utf-8
-wine_data = read.csv(file="C:\\Users\\ssaganowski\\Desktop\\wines\\corpus\\wine_data.csv", header=TRUE, sep=",", encoding="UTF-8");
+wine_data = read.csv(file="C:\\Users\\ssaganowski\\Desktop\\wines\\corpus\\wine_data.csv", header=TRUE, sep=",", encoding="UTF-8", stringsAsFactors = FALSE);
 
 
 # clear province column
@@ -120,6 +120,8 @@ colnames(provinces) =  c("Province", "Country");
 regions = clear_column("region_1", TRUE);
 # set column name as in SQL table
 colnames(regions) =  c("Region", "Country");
+# remove values that are in provinces
+regions = regions[!regions$Region %in% provinces$Province,];
 
 
 # clear producer column
@@ -130,17 +132,29 @@ colnames(producers) =  c("Producer", "Country");
 # For some reason kaggle experts entered Chile as a country more often than France. There may be more errors like this.
 row_id = which(producers$Producer %in% c("Domaines Barons de Rothschild Lafite"));
 producers$Country[row_id] = "France";
-
-# clear designation column
-designations = clear_column("designation", FALSE);
-# set column name as in SQL table
-colnames(designations) =  c("Designation");
-
+# remove values that are in other dictionaries
+producers = producers[!producers$Producer %in% provinces$Province,];
+producers = producers[!producers$Producer %in% regions$Region,];
 
 # clear variety column
 varieties = clear_column("variety", FALSE);
+# remove values that are in other dictionaries
+varieties = varieties[!varieties %in% provinces$Province];
+varieties = varieties[!varieties %in% regions$Region];
+varieties = as.data.frame(varieties[!varieties %in% producers$Producer]);
 # set column name as in SQL table
 colnames(varieties) =  c("Variety");
+
+# clear designation column
+designations = clear_column("designation", FALSE);
+# remove values that are in other dictionaries
+designations = designations[!designations %in% provinces$Province];
+designations = designations[!designations %in% regions$Region];
+designations = designations[!designations %in% producers$Producer];
+designations = as.data.frame(designations[!designations %in% varieties$Variety]);
+# set column name as in SQL table
+colnames(designations) =  c("Designation");
+
 
 
 # store in db
