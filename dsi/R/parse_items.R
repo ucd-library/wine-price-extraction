@@ -127,7 +127,9 @@ init_result = function() {
     brackets_text_hit = NULL, # flag telling if this part of text had a match in dictionary
     file_name = NULL,         # page being processed, e.g. UCD_Lehmann_0011
     confidence = NULL,        # how reliable results are: 100% means all hits were in the dictionaries
-    inspect = NULL            # tells which fields should be inspected (cause they were not a full hit or had other issues)
+    inspect = NULL,           # tells which fields should be inspected (cause they were not a full hit or had other issues)
+    dictionary_hit = FALSE,   # tells if there was any dictionary hit
+    any_hit = FALSE           # tells if there was any hit at all (e.g. id, year, color, dictionary hits, etc.)
   );
   
   return(result);
@@ -697,6 +699,14 @@ parse_item = function(item_text, item_text_conf) {
   # 11. assign country based on province / region / producer
   result = assign_country(result);
   
+  # check if we had hits (for stats)
+  if (!is.null(result$province) | !is.null(result$region) | !is.null(result$producer) | !is.null(result$designation) | !is.null(result$variety)) {
+    result$dictionary_hit = TRUE;
+    result$any_hit = TRUE;
+  }
+  if (!is.null(result$id) | !is.null(result$year) | !is.null(result$color)) {
+    result$any_hit = TRUE;
+  }
   
   return(result);
 }
@@ -710,7 +720,8 @@ init_page_stats = function() {
     # general
     items = 0,          # number of items in RDS file
     dictionary_hits = 0,# total number of dictionary hits
-    items_no_hits = 0,  # number of items that didn't have any hit in dictionaries (full, decent, or sub)
+    items_no_dict_hits = 0,  # number of items that didn't have any hit in dictionaries (full, decent, or sub)
+    items_no_hits = 0,  # number of items that didn't have any hit at all (not even id)
     inspect = 0,        # how many items have to be inspected
     
     # number of non-dictionary attributes found (non-null attributes in result_object)
@@ -810,8 +821,12 @@ update_page_stats = function(stats, result) {
 
   # total dictionary hits
   stats$dictionary_hits = sum(stats$matches_matrix);
-  # items without any hit
-  if (stats$dictionary_hits == 0) {
+  # items without a dictionary hit
+  if (result$dictionary_hit == FALSE) {
+    stats$items_no_dict_hits = stats$items_no_dict_hits + 1;
+  }
+  # items without any hit at all
+  if (result$any_hit == FALSE) {
     stats$items_no_hits = stats$items_no_hits + 1;
   }
   # inspect
@@ -828,23 +843,107 @@ format_page_stats = function(stats) {
   
   text = "\n";
   
-  text = paste0(text, "\n          items:  ", stats$items);
-  text = paste0(text, "\n        inspect:  ", stats$inspect, " (", round((stats$inspect / stats$items) * 100, 0), "%)");
-  text = paste0(text, "\n     total hits:  ", stats$dictionary_hits, " (", round(stats$dictionary_hits / stats$items, 2), " per item)");
-  text = paste0(text, "\n     upper hits:  ", sum(stats$hits_matrix[,1]));
-  text = paste0(text, "\n     lower hits:  ", sum(stats$hits_matrix[,2]));
-  text = paste0(text, "\n   bracket hits:  ", sum(stats$hits_matrix[,3]));
-  text = paste0(text, "\n      ids found:  ", stats$id);
-  text = paste0(text, "\n   colors found:  ", stats$color);
-  text = paste0(text, "\n    years found:  ", stats$year);
-  text = paste0(text, "\ncountries found:  ", stats$country);
-  text = paste0(text, "\n      countries:  ", paste(stats$top_countries, collapse = " "));
-  text = paste0(text, "\n   hits matrix:\n");
+  text = paste0(text, "\n             items:  ", stats$items);
+  text = paste0(text, "\n           inspect:  ", stats$inspect, " (", round((stats$inspect / stats$items) * 100, 0), "%)");
+  text = paste0(text, "\n        total hits:  ", stats$dictionary_hits, " (", round(stats$dictionary_hits / stats$items, 2), " per item)");
+  text = paste0(text, "\n     items no hits:  ", stats$items_no_hits, " (", round((stats$items_no_hits / stats$items) * 100, 0), "%)");
+  text = paste0(text, "\nitems no dict hits:  ", stats$items_no_dict_hits, " (", round((stats$items_no_dict_hits / stats$items) * 100, 0), "%)");
+  text = paste0(text, "\n        upper hits:  ", sum(stats$hits_matrix[,1]));
+  text = paste0(text, "\n        lower hits:  ", sum(stats$hits_matrix[,2]));
+  text = paste0(text, "\n      bracket hits:  ", sum(stats$hits_matrix[,3]));
+  text = paste0(text, "\n         ids found:  ", stats$id);
+  text = paste0(text, "\n      colors found:  ", stats$color);
+  text = paste0(text, "\n       years found:  ", stats$year);
+  text = paste0(text, "\n   countries found:  ", stats$country);
+  text = paste0(text, "\n         countries:  ", paste(stats$top_countries, collapse = " "));
+  text = paste0(text, "\n       hits matrix:\n");
   
   
   return(text);
 }
 
+
+# Picks better result among two provided results.
+# The function will give:
+# 1 point for each non-empty attribute from: id, year, color
+# 3 points for full match
+# 1.5 points for each decent match (FIX ME: 1.5 instead of 2 because only that we can reause "type_of_match" function)
+# 1 point for each sub-match
+# Winner is selected based on the total number of point.
+# TODO: refactor!
+pick_better_result = function(result1, result2) {
+  points1 = 0;
+  points2 = 0;
+  
+  if (!is.null(result1$id)){
+    points1 = points1 + 1;
+  }
+  if (!is.null(result1$year)) {
+    points1 = points1 + 1;
+  }
+  if (!is.null(result1$color)) {
+    points1 = points1 + 1;
+  }
+  if (!is.null(result1$province)) {
+    match_type = type_of_match(result1$province_sim);
+    points1 = points1 + (3 / match_type);
+  }
+  if (!is.null(result1$region)) {
+    match_type = type_of_match(result1$region_sim);
+    points1 = points1 + (3 / match_type);
+  }
+  if (!is.null(result1$producer)) {
+    match_type = type_of_match(result1$producer_sim);
+    points1 = points1 + (3 / match_type);
+  }
+  if (!is.null(result1$designation)) {
+    match_type = type_of_match(result1$designation_sim);
+    points1 = points1 + (3 / match_type);
+  }
+  if (!is.null(result1$variety)) {
+    match_type = type_of_match(result1$variety_sim);
+    points1 = points1 + (3 / match_type);
+  }
+  
+  
+  if (!is.null(result2$id)){
+    points2 = points2 + 1;
+  }
+  if (!is.null(result2$year)) {
+    points2 = points2 + 1;
+  }
+  if (!is.null(result2$color)) {
+    points2 = points2 + 1;
+  }
+  if (!is.null(result2$province)) {
+    match_type = type_of_match(result2$province_sim);
+    points2 = points2 + (3 / match_type);
+  }
+  if (!is.null(result2$region)) {
+    match_type = type_of_match(result2$region_sim);
+    points2 = points2 + (3 / match_type);
+  }
+  if (!is.null(result2$producer)) {
+    match_type = type_of_match(result2$producer_sim);
+    points2 = points2 + (3 / match_type);
+  }
+  if (!is.null(result2$designation)) {
+    match_type = type_of_match(result2$designation_sim);
+    points2 = points2 + (3 / match_type);
+  }
+  if (!is.null(result2$variety)) {
+    match_type = type_of_match(result2$variety_sim);
+    points2 = points2 + (3 / match_type);
+  }
+  
+  cat0("\npoints re-ocr: ", points1, "; points first ocr: ", points2);
+  
+  if (points1 >= points2) {
+    return(result1)
+  } else {
+    return(result2)
+  }
+}
 
 # Parse given page.
 # As an input requires Jane's RDS file.
@@ -887,8 +986,15 @@ parse_page = function(RDS_path) {
       # get table name (for confidence tables)
       tab_name = names(items$name.words)[table_no];
       
-      # parse single item
-      item_result = parse_item(j$text, items$name.words.old[[tab_name]][[item_no]][,c("text", "confidence")]);
+      # parse single item using re-ocr'ed text
+      result_reocr = parse_item(j$text, items$name.words.old[[tab_name]][[item_no]][,c("text", "confidence")]);
+      
+      # and using first ocr result
+      text = paste(items$name.words.old[[tab_name]][[item_no]][,c("text")], collapse = " ");
+      result_first_ocr = parse_item(text, items$name.words.old[[tab_name]][[item_no]][,c("text", "confidence")]);
+      
+      # pick better result
+      item_result = pick_better_result(result_reocr, result_first_ocr);
       
       # print results, and append them to output file
       result_text = format_result(item_result);
@@ -1017,7 +1123,8 @@ init_global_stats = function() {
     pages = 0,          # number of pages parsed
     items = 0,          # number of items in RDS file
     dictionary_hits = 0,# total number of dictionary hits
-    items_no_hits = 0,  # number of items that didn't have any hit in dictionaries (full, decent, or sub)
+    items_no_dict_hits = 0,  # number of items that didn't have any hit in dictionaries (full, decent, or sub)
+    items_no_hits = 0,  # number of items that didn't have any hit at all (not even id)
     inspect = 0,        # how many items have to be inspected
     
     # number of attributes found (non-null attributes in result_object)
@@ -1047,6 +1154,7 @@ compute_global_stats = function(page_stats_list) {
   for (i in page_stats_list) {
     stats$items = stats$items + i$items;
     stats$dictionary_hits = stats$dictionary_hits + i$dictionary_hits;
+    stats$items_no_dict_hits = stats$items_no_dict_hits + i$items_no_dict_hits;
     stats$items_no_hits = stats$items_no_hits + i$items_no_hits;
     stats$inspect = stats$inspect + i$inspect;
     stats$id = stats$id + i$id;
@@ -1085,7 +1193,8 @@ format_global_stats = function(stats) {
   text = paste0(text, "\n             items:  ", stats$items);
   text = paste0(text, "\n           inspect:  ", stats$inspect, " (", round((stats$inspect / stats$items) * 100, 0), "%)");
   text = paste0(text, "\n        total hits:  ", stats$dictionary_hits, " (", round(stats$dictionary_hits / stats$items, 2), " per item)");
-  text = paste0(text, "\nitems no dict hits:  ", stats$items_no_hits, " (", round((stats$items_no_hits / stats$items) * 100, 0), "%)");
+  text = paste0(text, "\n     items no hits:  ", stats$items_no_hits, " (", round((stats$items_no_hits / stats$items) * 100, 0), "%)");
+  text = paste0(text, "\nitems no dict hits:  ", stats$items_no_dict_hits, " (", round((stats$items_no_dict_hits / stats$items) * 100, 0), "%)");
   text = paste0(text, "\n         ids found:  ", stats$id);
   text = paste0(text, "\n      colors found:  ", stats$color);
   text = paste0(text, "\n       years found:  ", stats$year);
@@ -1103,10 +1212,10 @@ format_global_stats = function(stats) {
 
 # parse all pages in the folder
 setwd("C:/Users/ssaganowski/Desktop/wines");
-global_stats = parse_folder("input_full/");
+global_stats = parse_folder("input/");
 cat(format_global_stats(global_stats));
 
 # parse single page
-#parse_page("input/UCD_Lehmann_3794.RDS")
+parse_page("input/UCD_Lehmann_3794.RDS")
 
 
