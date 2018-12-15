@@ -1,12 +1,12 @@
 # Extracting accurate prices from tables
 
 # TO DO
-# Make recognition of column header (e.g. Bottle, Case, Quart) smarter with levenschtein distance
 # (long-term) expand search area for column headers if not easily caught above table 
 # Error in sample.int(m, k) : invalid first argument -- e.g. 0190, 0260 (in addMissing or later)
 # apply(sapply(page.tables[["tables"]], function(t) in whichTable -- e.g. 0503
 # add dynamic name box size for non-id pages (nameBoxes)
 # addMissing can be streamlined, fix so it doesn't break if run twice, finish missings ids once i see an example
+# Make recognition of column header (e.g. Bottle, Case, Quart) smarter with levenschtein distance
 # smarter buffer
 # make column recognition incorporate text justification
 # cluster tops and bottoms if multiple charts on page
