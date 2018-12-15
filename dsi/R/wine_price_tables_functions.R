@@ -375,9 +375,9 @@ addIds <- function(page.cols, px) {
 }
 
 # for extracting new information from identified column
-boxesFromCols <- function(index, colData, px, buffer = 5) {
+boxesFromCols <- function(index, colData, px, buffer = 5, psm = 3) {
   colDataRow = colData[index,]
-  tpx = tesseract(px)
+  tpx = tesseract(px, pageSegMode = 3)
   SetRectangle(tpx, dims = c(colDataRow$col_left - buffer, max(0, colDataRow$col_bottom - buffer), #bottom is "TOP" in help. ugh.
                              colDataRow$col_right - colDataRow$col_left + 2*buffer, #since left also has a buffer
                              colDataRow$col_top - colDataRow$col_bottom + buffer))
