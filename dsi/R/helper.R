@@ -154,3 +154,25 @@ removeDuplicates <- function(table, buffer = 10, justify = "right") { #price or 
   table
 }
 
+extractPrice = function(x, dollar = FALSE) 
+  {
+    if (dollar == FALSE) {
+      extraction = str_extract(x, "[0-9]+[.,][0-9]{2}") #(?![0-9])
+      if (is.na(extraction)) {return(FALSE)} else {return(extraction)}
+    } else {
+      extraction = str_extract(x, "\\$[0-9]+[.,][0-9]{2}")
+      if (is.na(extraction)) {return(FALSE)} else {return(extraction)}
+    }
+  }
+
+#from duncan?
+fixPrice =
+  #
+  # fixPrice("249")
+  # fixPrice("12,49")
+  function(x)
+  {
+    x = gsub(",", ".", x)
+    gsub("^([0-9]+)([0-9]{2})$", "\\1.\\2", x)
+  }
+
