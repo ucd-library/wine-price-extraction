@@ -2,17 +2,19 @@
 
 # TO DO
 # (long-term) expand search area for column headers if not easily caught above table 
-# Error in sample.int(m, k) : invalid first argument -- e.g. 0190, 0260 (in addMissing or later)
-# apply(sapply(page.tables[["tables"]], function(t) in whichTable -- e.g. 0503
-# add dynamic name box size for non-id pages (nameBoxes)
 # addMissing can be streamlined, fix so it doesn't break if run twice, finish missings ids once i see an example
-# Make recognition of column header (e.g. Bottle, Case, Quart) smarter with levenschtein distance
 # smarter buffer
 # make column recognition incorporate text justification
 # cluster tops and bottoms if multiple charts on page
 # have addPrice and addIDs use better page segmentation mode (probably 3)
 # make sure page segmentation mode is being reset properly at all levels (see warning)
+# In nameBoxes without ID, add row justification to help choose bottom or top for number of rows
 
+# After benchmark:
+# resolve code differences between dynamic name box size in id vs. non-id case. which is better?
+# make min.col.width in pageTables visible to user/global?
+# Make recognition of column header (e.g. Bottle, Case, Quart) smarter with levenschtein distance
+# in pageTables, add a check here to eliminate changepoint before a space that separates names from price cols
 
 # workflow:
   # 1. Deskew and get boxes -- use existing Rtess functions. helpful to deskew first.
@@ -39,12 +41,9 @@ library(cluster)
 library(changepoint)
 
 source("wine-price-extraction/dsi/R/wine_price_tables_functions.R")
-source("wine-price-extraction/dsi/R/helper.R") #sourced from above
+source("wine-price-extraction/dsi/R/helper.R") 
 
-####################################################################################################
-# RUN ####
-####################################################################################################
-
+# MAIN  FUNCTION, encompassing all numbered steps below ----
 price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix.threshold = NULL, pix.newValue = NULL, save.root = ".") {
   img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = "")
   if (!file.exists(img1)) {
@@ -105,7 +104,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   
   # 4 ####
   
-  # Find table locations using changepoint method 
+  # Find table locations using changepoint method, return tables item with table, border and column locations
   page.tables = pageTables(data1, page.cols$prices, page.cols, buffer = page.cols$charheight/3)
   # Add table and column var to price column table
   page.cols$price_cols$table = whichTable(page.tables, page.cols)
@@ -136,10 +135,10 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
   if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
   
-  # 6 #### (this will fail if no words in the name)
+  # 6 (this will fail if no words in the name) #### 
   
   try({name.boxes = nameBoxes(data1, page.cols = page.cols, prices = page.cols$prices, px = px1, 
-                              buffer = page.tables$charheight/2, page.tables = page.tables,
+                              buffer = page.cols$charheight/2, page.tables = page.tables,
                               text.level = "word", psm = 3)}) #will want to experimetn with textline vs. word here - textline good when words split by spaces when they shouldn't be
   
   # 7 ####
@@ -152,7 +151,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
       prices = lapply(subset(page.cols$prices, page.cols$price_cols$table == x), 
                       function(y) y$text.new)
     )
-    names(final.prices[[x]]$prices) = subset(page.cols$price_cols, page.cols$price_cols$table == x)$bottle.or.case
+    names(final.prices[[x]]$prices) = subset(page.cols$price_cols, page.cols$price_cols$table == x)$column.header
     final.prices[[x]]
   })
   
@@ -187,20 +186,27 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   return(list(final.data = final.data, page.cols = page.cols))
 }
 
+####################################################################################################
+# RUN ####
+####################################################################################################
+
 # Example ----
 
-file1 = "UCD_Lehmann_0011" #0011, 1106, 0237, 3392, 1452 (hard), 0069 
-debugonce(price_table_extraction)
-price_table_extraction(file1, image.check = FALSE, save.root = wd) #pix.threshold = 150, pix.newValue = 0
+fullBoxes = readRDS("~/Documents/DSI/OCR_SherryLehmann/FullBoxes.rds")
+
+file1 = "UCD_Lehmann_0208" #0011, 1106, 0237, 3392, 1452 (hard), 0069, 1802, 3943, 0066, 0455
+#debugonce(price_table_extraction)
+#price_table_extraction(file1, image.check = FALSE, save.root = wd) #pix.threshold = 150, pix.newValue = 0
+data1 = fullBoxes[[paste0(file1,".jpg")]]
+price_table_extraction(file1, image.check = FALSE, save.root = wd, data1 = data1) #pix.threshold = 150, pix.newValue = 0
 
 # Run on a fileset ----
-
 fileset = str_extract(list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"), ".*[^\\.jpg]")
 fileset = subset(fileset, str_detect(fileset, "UCD_Lehmann_[0-9]{4}"))
 output = vector("list", length(fileset))
 names(output) = fileset
-i = 0; pix.threshold = NULL; pix.newValue = NULL
 
+i = 0; pix.threshold = NULL; pix.newValue = NULL
 for (file1 in fileset) {
   i = i+1; cat(file1, i)
   img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = "")
@@ -213,12 +219,14 @@ for (file1 in fileset) {
   height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
   
   px1 = deskew(pixConvertTo8(pixRead(img1)))
-  data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)
+  data1 = fullBoxes[[paste0(file1,".jpg")]]
+  #data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)
   if (median(data1$confidence) > 30 & sum(isPrice(data1$text, dollar = FALSE)) >= 3) {
     try({output[[i]] = price_table_extraction(file1, image.check = FALSE, data1)})
-  } if (is.null(output[[i]])) {
+  }
+  if (is.null(output[[i]])) {
     output[[i]]= c("median_conf" = median(data1$confidence), "n_price" = sum(isPrice(data1$text, dollar = FALSE)))
-    }
+  }
 }
 
 # Results ----

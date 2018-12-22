@@ -5,13 +5,17 @@
 
 isPrice = #Jane's version - different than Duncan's isPrice
   
-  function(x, dollar = FALSE, maybe = FALSE) {
+  function(x, dollar = FALSE, maybe = FALSE, years = c(1800,2000)) {
     
     x = as.character(x)
     
     sapply(x, function(x) {
       
       if ( grepl("^([0-9]+\\.[0-9]{2}$)", x)) { return(TRUE) }
+      
+      if ( grepl("^([0-9]+\\.[0-9]{2})\\ ([0-9]+\\.[0-9]{2})", x)) {
+        ifelse(maybe, "two prices", FALSE)
+      }
       
       else if( grepl("^\\$([0-9]+)\\.[0-9]{2}.{0,2}$", x) | grepl("^\\$([0-9]+).{0,2}$", x)) {
         warning(paste0("Is this (", x, ") a price with a dollar sign? ", collapse = " "))
@@ -30,7 +34,7 @@ isPrice = #Jane's version - different than Duncan's isPrice
       
       else if( grepl(".*([0-9]+)\\.[0-9]{2}", x )) {
         warning(paste0("Is this (", x, ") a price preceded by something else? ", collapse = " "))
-        ifelse(maybe,  "*number", FALSE) #useful for looking at lines
+        ifelse(maybe, if (dollar == FALSE) {FALSE} else {"*number"}, FALSE) #useful for looking at lines
       }
       
       else if( grepl("^\\$([0-9]+)\\.[0-9]{2}", x) | grepl("^\\$([0-9]+)", x)) {
@@ -39,8 +43,14 @@ isPrice = #Jane's version - different than Duncan's isPrice
       }
       
       else if( grepl("^([0-9])", x)) {
-        #warning(paste0("This  (", x, ") seems to be number, but not a price ", collapse = " "))
-        ifelse(maybe, "number", FALSE)
+        year = 0 #default
+        if (length(years) == 2) {
+          first.dig.low = strtrim(years[1], 1)
+          first.dig.high = strtrim(years[2], 1)
+          year = as.numeric(str_extract(x, paste0("[", first.dig.low, "|", first.dig.high,"]", "[0-9]{3}")))
+          if (!is.na(year) & (year >= years[1] & year <= years[2])) warning(paste0("This  (", x, ") seems to be a year, not a price ", collapse = " "))
+        }
+        ifelse(maybe & is.na(year), "number", FALSE)
       }
       
       else if( grepl("^[nN].{0,1}[0-9]+$", x)) {
@@ -132,6 +142,61 @@ charTypes <- function(boxes, types = 2, conf.min = 50) { #using k-means
   return(list(membership = cluster, means = boxes.kmeans$centers))
 }
 
+# Function to see if prices should be clustered  by checking for different character sizes matching locational clusters
+splitCol <- function(prices, type = "h", px = px1, buffer = page.cols$charheight/3, height = height1, min.presplit = 4, min.postsplit = 1, max.impurity = 0) {
+  #h for horizonatl, #v for vertical
+  if (nrow(prices) < min.presplit) {return(NULL)}
+  
+  # if a column has entries with two prices, split the column by a horizontal divide
+  if (type == "h") {
+    two.prices = isPrice(prices$text, maybe = TRUE)=="two prices"
+    if (sum(two.prices)>0) {
+      split.prices = checkBoxes(makeCheckBox(prices[two.prices,]), px1, buffer = buffer, height = height1, level = "word", psm =  3)
+      split.prices.left1 = quantile(split.prices$left, .25)
+      split.prices.right1 = quantile(split.prices$right, .25)
+      split.prices.left2 = quantile(split.prices$left, .75)
+      split.prices$type = isPrice(split.prices$text, maybe = TRUE, dollar = FALSE)
+      split.prices$text.new = extractPrice(split.prices$text, dollar = FALSE)
+      split.prices$cluster = prices$cluster[1]
+      # add the new prices from splitting old entries
+      prices = rbind(prices[-which(two.prices),], split.prices[,names(prices)]) %>% arrange(top)
+      prices$cluster[abs(prices$left - split.prices.left1) < abs(prices$left - split.prices.left2)] = 1 + max(page.cols$price_cols$cluster)
+    }
+  return(prices = split(prices, prices$cluster))
+  }
+  
+  if (type == "v") {
+  
+    prices = prices %>% arrange(top)
+    pricewidths = charWidth(prices) 
+    compare.clusterings = sapply(1:floor(length(pricewidths)/3), function(x) {
+      possible.cluster = kmeans(pricewidths, centers = x)
+      c(possible.cluster$tot.withinss, min(possible.cluster$size))
+    })
+    # stop looking if clustering returns clusters <=  minimum allowed size
+    max.possible.vclusters = min(floor(length(pricewidths)/3),  min(which(compare.clusterings[2,] <= min.postsplit))-1)
+    
+    #see if character size clusters match location clusters
+    if (max.possible.vclusters > 1) {
+      cluster.purity = sapply(seq_along(2:max.possible.vclusters), function(x) {
+        charsize.cluster = kmeans(pricewidths, centers = x, nstart = 100)
+        if (min(charsize.cluster$size) <= min.postsplit) {return(0)} else {
+            charsize.order = rank(sapply(1:x, function(x) min(which(charsize.cluster$cluster == x))))
+            perfect.cluster = rep(charsize.order, times = charsize.cluster$size)
+            RecordLinkage::levenshteinSim(paste(charsize.cluster$cluster, collapse=""),
+                                        paste(perfect.cluster, collapse=""))
+          }
+      })
+      if (is.finite(which(cluster.purity==1))) {
+        charsize.cluster = kmeans(pricewidths, centers = 1+max(which(cluster.purity==1)), nstart = 100)
+        prices$cluster[charsize.cluster$cluster==2] = 1 + max(page.cols$price_cols$cluster)
+      return(prices = split(prices, prices$cluster))
+      } else {return(prices)}
+    }
+      #which(cluster.impurity==0)
+  }
+}
+
 #converts a data frame of left, bottom, right, top boxes to left, bottom, width, height for the x function
 makeCheckBox <- function(df, type  = c("forCheckBox", "forBbox")) {
   if (type[1] == "forCheckBox") return(data.frame(left = df$left, bottom  = df$bottom, width = df$right - df$left, height = df$top - df$bottom))
@@ -157,13 +222,13 @@ removeDuplicates <- function(table, buffer = 10, justify = "right") { #price or 
 extractPrice = function(x, dollar = FALSE) 
   {
     if (dollar == FALSE) {
-      extraction = str_extract(x, "[0-9]+[.,][0-9]{2}") #(?![0-9])
-      if (is.na(extraction)) {return(FALSE)} else {return(extraction)}
+      extraction = str_extract(x, "[0-9]+\\.{0,1}[0-9]+.{0,1}$") #(?![0-9])
+      if (length(extraction)==0) {return(FALSE)} else {return(extraction)}
     } else {
       extraction = str_extract(x, "\\$[0-9]+[.,][0-9]{2}")
       if (is.na(extraction)) {return(FALSE)} else {return(extraction)}
     }
-  }
+}
 
 #from duncan?
 fixPrice =
