@@ -69,6 +69,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   #data1[isPrice(data1$text),]
   
   # 2 ####
+  if (sum(isPrice(data1$text)) == 0) {return("No prices detected. If prices suspected try a new pix.threshold.")}
   page.cols = pageCols(data1, img.height = height1)
   
   ############# img check 2 ####
@@ -89,8 +90,6 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
   if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
   
-  #plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", prices), img = px1)
-  
   ############# table check 1 ####
   if (!is.null(page.cols$ids)) {
     cat("We guess there's", page.cols$n_id_cols, "table(s)\n")
@@ -105,16 +104,13 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   # 4 ####
   
   # Find table locations using changepoint method, return tables item with table, border and column locations
-  page.tables = pageTables(data1, page.cols$prices, page.cols, buffer = page.cols$charheight/3)
-  # Add table and column var to price column table
-  page.cols$price_cols$table = whichTable(page.tables, page.cols)
-  page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% mutate(column = rank(cluster))
+  page.cols = pageTables(data1, page.cols, buffer = page.cols$charheight/3)
   
   ############# table check 2 ####
   # Check that left edge based on ID columns, if present, equals changepoint method (page.tables) left-edge
   # Default to method based on ID columns
   if (!is.null(page.cols$ids)) {
-    tmp.left.diffs = page.cols$id_cols$col_left - round(unlist(lapply(page.tables$tables, attr, "left")))
+    tmp.left.diffs = page.cols$id_cols$col.left - page.cols$price_cols$table.left.cpt
     cat("Difference in left-edge detected using ID col method vs. changepoint method",
         tmp.left.diffs, "\n")
     cat("This is", tmp.left.diffs/page.cols$charheight,  "times estimated character height\n")
@@ -127,7 +123,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
     page.cols = removeExtra(page.cols, removeType = "ids", charwidth.cutoff = 2) #default remove type is prices
   }
   
-  page.cols = addMissing(page.cols, page.tables, buffer = page.cols$charheight, img.height = height1, px1)
+  page.cols = addMissing(page.cols, buffer = page.cols$charheight, img.height = height1, px1)
   
   page.cols = removeExtra(page.cols, removeType = "all") 
   
@@ -136,10 +132,8 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
   
   # 6 (this will fail if no words in the name) #### 
-  
   try({name.boxes = nameBoxes(data1, page.cols = page.cols, prices = page.cols$prices, px = px1, 
-                              buffer = page.cols$charheight/2, page.tables = page.tables,
-                              text.level = "word", psm = 3)}) #will want to experimetn with textline vs. word here - textline good when words split by spaces when they shouldn't be
+                              buffer = page.cols$charheight/2, text.level = "word", psm = 3)}) #will want to experimetn with textline vs. word here - textline good when words split by spaces when they shouldn't be
   
   # 7 ####
   
@@ -194,7 +188,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
 
 fullBoxes = readRDS("~/Documents/DSI/OCR_SherryLehmann/FullBoxes.rds")
 
-file1 = "UCD_Lehmann_0208" #0011, 1106, 0237, 3392, 1452 (hard), 0069, 1802, 3943, 0066, 0455
+file1 = "UCD_Lehmann_0237" #0011, 0237, 3392, 1452 (hard), 0069, 1802, 3943, 0066, 0455 #needs new color threshold 1106
 #debugonce(price_table_extraction)
 #price_table_extraction(file1, image.check = FALSE, save.root = wd) #pix.threshold = 150, pix.newValue = 0
 data1 = fullBoxes[[paste0(file1,".jpg")]]
