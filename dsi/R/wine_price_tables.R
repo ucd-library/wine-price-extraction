@@ -18,7 +18,7 @@
 
 # workflow:
   # 1. Deskew and get boxes -- use existing Rtess functions. helpful to deskew first.
-  # 2. Get initial column info -> find more possible prices -> get final column info 
+  # 2. Get initial column info -> more possible prices -> get final column info 
   # -- bounds and slopes, justification of column text, character height
   # 3. Extract text from columns, find more prices and IDs
   # 4. Find table locations using changepoint method, group columns by table
@@ -30,9 +30,6 @@
 # Setup ####
 ####################################################################################################
 
-wd = "~/Documents/DSI" #path to wine-price-extraction repo
-setwd(wd)
-
 library(Rtesseract)
 library(tidyverse)
 library(stringr)
@@ -40,11 +37,16 @@ library(jpeg)
 library(cluster)
 library(changepoint)
 
+wd = "~/Documents/DSI" #path to wine-price-extraction repo
+setwd(wd)
+
 source("wine-price-extraction/dsi/R/wine_price_tables_functions.R")
 source("wine-price-extraction/dsi/R/helper.R") 
 
 # MAIN  FUNCTION, encompassing all numbered steps below ----
 price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix.threshold = NULL, pix.newValue = NULL, save.root = ".") {
+  
+  # 0 Setup ####
   img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = "")
   if (!file.exists(img1)) {
     if (!exists("sample_files")) {sample_files = readRDS("~/Documents/DSI/wine-price-extraction/dsi/Data/sample_files.RDS")}
@@ -66,7 +68,9 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50)
   if (!is.null(pix.threshold) & !is.null(pix.newValue)) {px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)}
   if (is.null(data1)) {data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)}
-  #data1[isPrice(data1$text),]
+  #if(! file.exists(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))) {
+  #  saveRDS(data1, paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))
+  #}
   
   # 2 ####
   if (sum(isPrice(data1$text)) == 0) {return("No prices detected. If prices suspected try a new pix.threshold.")}
@@ -78,13 +82,11 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   
   # 3 ####
   
-  # check for new prices and return updated page.cols ####
-  page.cols = addPrices(page.cols, px1) 
+  # check for new prices ####
+  page.cols = addPrices(page.cols, px1)
   
   # check for new ids ####
-  if (!is.null(page.cols$ids)) {
-    page.cols = addIds(page.cols, px1)
-  }
+  if (!is.null(page.cols$ids)) { page.cols = addIds(page.cols, px1) }
   
   ############# img check 3 ####
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
@@ -114,7 +116,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
     cat("Difference in left-edge detected using ID col method vs. changepoint method",
         tmp.left.diffs, "\n")
     cat("This is", tmp.left.diffs/page.cols$charheight,  "times estimated character height\n")
-    if(max(100*(tmp.left.diffs)/page.cols$charheight) > 100) {cat("Error?? Greater than character's difference")}
+    if(max(100*(tmp.left.diffs)/page.cols$charheight) > 100) {cat("Error?? Greater than character's difference\n")}
   }
   
   # 5 ####
@@ -135,6 +137,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   try({name.boxes = nameBoxes(data1, page.cols = page.cols, prices = page.cols$prices, px = px1, 
                               buffer = page.cols$charheight/2, text.level = "word", psm = 3)}) #will want to experimetn with textline vs. word here - textline good when words split by spaces when they shouldn't be
   
+  
   # 7 ####
   
   # ids (if there) and prices
@@ -153,7 +156,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   if (exists("name.boxes")) {
     
     final.data = list(prices = final.prices, name.locations = name.boxes[["locations"]],
-                      name.words = name.boxes[["words"]], name.words.old = name.boxes[["words_old"]])
+                      name.words = name.boxes[["words"]], name.words.old = name.boxes[["words_old"]], page.cols = page.cols)
     
     ################## image check 4a / save name box image ####
     tmp.boxes = do.call("rbind", name.boxes[[1]])
@@ -184,17 +187,19 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
 # RUN ####
 ####################################################################################################
 
-# Example ----
+# 1. Example ----
 
-fullBoxes = readRDS("~/Documents/DSI/OCR_SherryLehmann/FullBoxes.rds")
+#don't use this because not deskewed
+#fullBoxes = readRDS("~/Documents/DSI/OCR_SherryLehmann/FullBoxes.rds")
+#data1 = fullBoxes[[paste0(file1,".jpg")]]
+#price_table_extraction(file1, image.check = FALSE, save.root = wd, data1 = data1) #pix.threshold = 150, pix.newValue = 0
 
-file1 = "UCD_Lehmann_0237" #0011, 0237, 3392, 1452 (hard), 0069, 1802, 3943, 0066, 0455 #needs new color threshold 1106
+file1 = "UCD_Lehmann_0190" #0011, 0237, 3392, 1452 (hard), 0069, 1802, 3943, 0066, 0455 #needs new color threshold 1106
+data1 = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))
 #debugonce(price_table_extraction)
-#price_table_extraction(file1, image.check = FALSE, save.root = wd) #pix.threshold = 150, pix.newValue = 0
-data1 = fullBoxes[[paste0(file1,".jpg")]]
-price_table_extraction(file1, image.check = FALSE, save.root = wd, data1 = data1) #pix.threshold = 150, pix.newValue = 0
+price_table_extraction(file1, image.check = FALSE, save.root = wd, data1 = data1) #pix.threshold = 150, pix.newValue = 0,
 
-# Run on a fileset ----
+# 2. Run on a fileset ----
 fileset = str_extract(list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"), ".*[^\\.jpg]")
 fileset = subset(fileset, str_detect(fileset, "UCD_Lehmann_[0-9]{4}"))
 output = vector("list", length(fileset))
@@ -202,7 +207,7 @@ names(output) = fileset
 
 i = 0; pix.threshold = NULL; pix.newValue = NULL
 for (file1 in fileset) {
-  i = i+1; cat(file1, i)
+  i = i+1; cat(file1, i, "\n")
   img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = "")
   if (!file.exists(img1)) {
     if (!exists("sample_files")) {sample_files = readRDS("~/Documents/DSI/wine-price-extraction/dsi/Data/sample_files.RDS")}
@@ -213,8 +218,10 @@ for (file1 in fileset) {
   height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
   
   px1 = deskew(pixConvertTo8(pixRead(img1)))
-  data1 = fullBoxes[[paste0(file1,".jpg")]]
-  #data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)
+  #data1 = fullBoxes[[paste0(file1,".jpg")]] # don't use this because not deskewed
+  if(file.exists(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))) {
+    data1 = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))
+  } else {data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)}
   if (median(data1$confidence) > 30 & sum(isPrice(data1$text, dollar = FALSE)) >= 3) {
     try({output[[i]] = price_table_extraction(file1, image.check = FALSE, data1)})
   }
@@ -223,7 +230,7 @@ for (file1 in fileset) {
   }
 }
 
-# Results ----
+# 3. Results ----
 
 #2. Second round
 

@@ -5,7 +5,7 @@
 
 isPrice = #Jane's version - different than Duncan's isPrice
   
-  function(x, dollar = FALSE, maybe = FALSE, years = c(1800,2000)) {
+  function(x, dollar = FALSE, maybe = FALSE, years = c(1800,2000), warn = FALSE) {
     
     x = as.character(x)
     
@@ -13,32 +13,27 @@ isPrice = #Jane's version - different than Duncan's isPrice
       
       if ( grepl("^([0-9]+\\.[0-9]{2}$)", x)) { return(TRUE) }
       
-      if ( grepl("^([0-9]+\\.[0-9]{2})\\ ([0-9]+\\.[0-9]{2})", x)) {
+      else if ( grepl("^([0-9]+\\.[0-9]{2})\\ ([0-9]+\\.[0-9]{2})", x)) {
         ifelse(maybe, "two prices", FALSE)
       }
       
       else if( grepl("^\\$([0-9]+)\\.[0-9]{2}.{0,2}$", x) | grepl("^\\$([0-9]+).{0,2}$", x)) {
-        warning(paste0("Is this (", x, ") a price with a dollar sign? ", collapse = " "))
+        if (warn) (paste0("Is this (", x, ") a price with a dollar sign? ", collapse = " "))
         ifelse(dollar, TRUE, FALSE)
       }
       
       else if( grepl("^([0-9]+)\\.[0-9]{2}", x )) {
-        warning(paste0("Is this (", x, ") a price followed by something else? ", collapse = " "))
-        ifelse(maybe,  "number*", FALSE)
+        if (warn) (paste0("Is this (", x, ") a price followed by something else? ", collapse = " "))
+        ifelse(maybe,  "price*", FALSE)
       }
-      
-      else if( grepl("^.{0,2}([0-9]+)\\.[0-9]{2}", x )) { #price with at most two non-dollar characters before it
-        warning(paste0("Is this (", x, ") a price preceded by something else? ", collapse = " "))
-        return(TRUE)
-      }
-      
+
       else if( grepl(".*([0-9]+)\\.[0-9]{2}", x )) {
-        warning(paste0("Is this (", x, ") a price preceded by something else? ", collapse = " "))
-        ifelse(maybe, if (dollar == FALSE) {FALSE} else {"*number"}, FALSE) #useful for looking at lines
+        if (warn) warning(paste0("Is this (", x, ") a price preceded by something else? ", collapse = " "))
+        ifelse(maybe, "*price", FALSE) #useful for looking at lines
       }
       
       else if( grepl("^\\$([0-9]+)\\.[0-9]{2}", x) | grepl("^\\$([0-9]+)", x)) {
-        warning(paste0("Is this (", x, ") a price with a dollar sign followed by something else? ", collapse = " "))
+        if (warn) warning(paste0("Is this (", x, ") a price with a dollar sign followed by something else? ", collapse = " "))
         ifelse(dollar, TRUE, FALSE)
       }
       
@@ -48,19 +43,20 @@ isPrice = #Jane's version - different than Duncan's isPrice
           first.dig.low = strtrim(years[1], 1)
           first.dig.high = strtrim(years[2], 1)
           year = as.numeric(str_extract(x, paste0("[", first.dig.low, "|", first.dig.high,"]", "[0-9]{3}")))
-          if (!is.na(year) & (year >= years[1] & year <= years[2])) warning(paste0("This  (", x, ") seems to be a year, not a price ", collapse = " "))
+          if (!is.na(year) & ((year >= years[1] & year <= years[2]) & warn)) warning(paste0("This  (", x, ") seems to be a year, not a price ", collapse = " "))
         }
-        ifelse(maybe & is.na(year), "number", FALSE)
+        ifelse(maybe & is.na(year), if (grepl("^([0-9]){3}" , x)) "number" else ("FALSE") , FALSE) #our IDS have at least 3 numbers
       }
       
       else if( grepl("^[nN].{0,1}[0-9]+$", x)) {
-        #warning(paste0("This  (", x, ") seems to be number, but not a price ", collapse = " "))
+        if (warn) (paste0("This  (", x, ") seems to be an ID ", collapse = " "))
         ifelse(maybe, "ID", FALSE)
       }
       
       else{return(FALSE)}
     })
   }
+
 
 numToPrice = function(numAsChar, dollar = FALSE) {
   #dollar False to not allow numbers will dollar sign in front 
@@ -122,17 +118,18 @@ textTypes <- function(cat_files, catalog = NULL){
   return(text.types)
 }
 
-#get a sample image
+# For precendence between detected prices
+compareTypes <- function(pair) {
+  if (pair[1] != "TRUE" & pair[2] == "TRUE") {return(2)}
+  if (pair[1] == "FALSE" & "number" %in% pair[2] ) {return(2)}
+  else {return(1)}
+}
 
-#setwd("~/Documents/DSI/OCR_SherryLehmann/Sample")
-#img1 = ""
-#while(!grepl("jpg", img1)) {
-#  img1 = sample(list.files(".", recursive = T), 1)
-#}
 charWidth <- function(boxes) {
   (boxes$right-boxes$left)/nchar(boxes$text)
 }
 
+# Types of text by character width
 charTypes <- function(boxes, types = 2, conf.min = 50) { #using k-means
   boxes$charwidth = charWidth(boxes)
   boxes.use = filter(boxes, confidence > conf.min) # only use somewhat high conf boxes for finding char types
@@ -142,8 +139,22 @@ charTypes <- function(boxes, types = 2, conf.min = 50) { #using k-means
   return(list(membership = cluster, means = boxes.kmeans$centers))
 }
 
+# for extracting new information from identified column
+boxesFromCols <- function(index, colData, px, buffer = 5, psm = 3) {
+  colDataRow = colData[index,]
+  tpx = tesseract(px, pageSegMode = 3)
+  SetRectangle(tpx, dims = c(colDataRow$col.left - buffer, max(0, colDataRow$col.bottom - buffer), #bottom is "TOP" in help. ugh.
+                             colDataRow$col.right - colDataRow$col.left + 2*buffer, #since left also has a buffer
+                             colDataRow$col.top - colDataRow$col.bottom + buffer))
+  
+  gb = GetBoxes(tpx, level = "textline")
+  gb$text = gsub("\n", "", gb$text)
+  return(gb)
+}
+
 # Function to see if prices should be clustered  by checking for different character sizes matching locational clusters
-splitCol <- function(prices, type = "h", px = px1, buffer = page.cols$charheight/3, height = height1, min.presplit = 4, min.postsplit = 1, max.impurity = 0) {
+splitCol <- function(prices, type = "h", px = px1, buffer = page.cols$charheight/3, height = height1,
+                     new.index = 1, min.presplit = 4, min.postsplit = 1, max.impurity = 0) {
   #h for horizonatl, #v for vertical
   if (nrow(prices) < min.presplit) {return(NULL)}
   
@@ -160,9 +171,9 @@ splitCol <- function(prices, type = "h", px = px1, buffer = page.cols$charheight
       split.prices$cluster = prices$cluster[1]
       # add the new prices from splitting old entries
       prices = rbind(prices[-which(two.prices),], split.prices[,names(prices)]) %>% arrange(top)
-      prices$cluster[abs(prices$left - split.prices.left1) < abs(prices$left - split.prices.left2)] = 1 + max(page.cols$price_cols$cluster)
+      prices$cluster[abs(prices$left - split.prices.left1) < abs(prices$left - split.prices.left2)] = new.index
     }
-  return(prices = split(prices, prices$cluster))
+  return(prices = split(prices))
   }
   
   if (type == "v") {
@@ -170,29 +181,30 @@ splitCol <- function(prices, type = "h", px = px1, buffer = page.cols$charheight
     prices = prices %>% arrange(top)
     pricewidths = charWidth(prices) 
     compare.clusterings = sapply(1:floor(length(pricewidths)/3), function(x) {
-      possible.cluster = kmeans(pricewidths, centers = x)
+      possible.cluster = kmeans(pricewidths, centers = x, nstart = 100)
       c(possible.cluster$tot.withinss, min(possible.cluster$size))
     })
-    # stop looking if clustering returns clusters <=  minimum allowed size
+    # stop looking if clustering returns all clusters <=  minimum allowed size
     max.possible.vclusters = min(floor(length(pricewidths)/3),  min(which(compare.clusterings[2,] <= min.postsplit))-1)
     
     #see if character size clusters match location clusters
     if (max.possible.vclusters > 1) {
-      cluster.purity = sapply(seq_along(2:max.possible.vclusters), function(x) {
-        charsize.cluster = kmeans(pricewidths, centers = x, nstart = 100)
-        if (min(charsize.cluster$size) <= min.postsplit) {return(0)} else {
+      cluster.purity = sapply(2:max.possible.vclusters, function(x) {
+        charsize.cluster = pam(pricewidths, k = x) #switched to mediod clustering so more robust, less randomness
+        if (min(charsize.cluster$clusinfo[,1]) <= min.postsplit) {return(0)} else { #min(charsize.cluster$clusinfo[,1]) is cluster sizes
             charsize.order = rank(sapply(1:x, function(x) min(which(charsize.cluster$cluster == x))))
-            perfect.cluster = rep(charsize.order, times = charsize.cluster$size)
+            perfect.cluster = rep(charsize.order, times = charsize.cluster$clusinfo[,1])
             RecordLinkage::levenshteinSim(paste(charsize.cluster$cluster, collapse=""),
                                         paste(perfect.cluster, collapse=""))
           }
       })
-      if (is.finite(which(cluster.purity==1))) {
-        charsize.cluster = kmeans(pricewidths, centers = 1+max(which(cluster.purity==1)), nstart = 100)
-        prices$cluster[charsize.cluster$cluster==2] = 1 + max(page.cols$price_cols$cluster)
-      return(prices = split(prices, prices$cluster))
-      } else {return(prices)}
+      #print(cluster.purity)
+      if (sum(cluster.purity==1) > 0) {
+        charsize.cluster = kmeans(pricewidths, centers = 1+max(which(cluster.purity==1)), nstart = 1000, iter.max = 1000)
+        prices$cluster[charsize.cluster$cluster!=1] = new.index-2+charsize.cluster$cluster[charsize.cluster$cluster!=1]
+      }
     }
+    return(prices)
       #which(cluster.impurity==0)
   }
 }
@@ -219,7 +231,7 @@ removeDuplicates <- function(table, buffer = 10, justify = "right") { #price or 
   table
 }
 
-extractPrice = function(x, dollar = FALSE) 
+extractPrice <- function(x, dollar = FALSE) 
   {
     if (dollar == FALSE) {
       extraction = str_extract(x, "[0-9]+\\.{0,1}[0-9]+.{0,1}$") #(?![0-9])
@@ -228,6 +240,40 @@ extractPrice = function(x, dollar = FALSE)
       extraction = str_extract(x, "\\$[0-9]+[.,][0-9]{2}")
       if (is.na(extraction)) {return(FALSE)} else {return(extraction)}
     }
+}
+
+addRows <- function(page.cols, buffer = page.cols$charheight/2) {
+  # Assign row numbers by table
+  all.prices = do.call("rbind", page.cols$prices)
+  n.tables = n_distinct(page.cols$price_cols$table)
+  all.prices = lapply(1:n.tables, function(i) {
+    table.prices = filter(all.prices, table == i) %>% arrange(top, bottom)
+    table.prices$row = c(1, cumsum(diff(sort(table.prices$top))>buffer)+1)
+    table.prices
+  })
+  all.prices = do.call("rbind", all.prices)
+  page.cols$prices = split(all.prices, all.prices$cluster)
+  return(page.cols)
+}
+
+findHeader <- function(colData, column.header, buffer) {
+  
+  # look for column header (e.g. "Bottle")
+  
+  header = apply(colData, 1, function(x) {
+    l = which(names(colData) == c("col.left"))
+    r = which(names(colData) == c("col.right"))
+    b = which(names(colData) == c("col.bottom"))
+    # larger bottom buffer in case top line(s) of table missing
+    text = filter(data1, left > x[l] - 2*buffer, left < x[r], bottom < x[b], top > x[b] - 4*buffer)
+    # choose the lowest one on page if several
+    if (nrow(text) > 0) {
+      (filter(text, grepl(paste(column.header, collapse = "|"), text)) %>% arrange(-bottom) %>% select(text, bottom, top))[1,]
+    }
+  })
+
+  header = do.call("rbind", header)
+  return(header)
 }
 
 #from duncan?
