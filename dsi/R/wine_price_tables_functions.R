@@ -854,17 +854,18 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       table.boxes = vector(mode = "list", length = n.tables)
       table.boxes.words = vector(mode = "list", length = n.tables)
       table.boxes.words.reocr = vector(mode = "list", length = n.tables)
+      all.prices = do.call("rbind", prices)
+      
       for (i in 1:n.tables) {
       
         #get table left, right, row bottoms and row tops
         tmp.cols = filter(page.cols$price_cols, table ==i)
         l = tmp.cols$table.left.cpt[1]
         r = min(tmp.cols$col.left) + 2*buffer 
-        colsintable = subset(prices, sapply(sapply(prices, `[[`, "table"), first)==i)
-        b = sort(do.call("rbind", colsintable)$bottom) - buffer
-        t = sort(do.call("rbind", colsintable)$top) + buffer
+        b = (filter(all.prices, table ==i) %>% group_by(row) %>% summarize(b = median(bottom)))[["b"]] - buffer
+        t = (filter(all.prices, table ==i) %>% group_by(row) %>% summarize(t = median(top)))[["t"]] + buffer
       
-        tmp.boxes = filter(data1, right >= l, left <= min(colsintable[[1]]$left), top <= max(t) + buffer*8, bottom > min(b) - buffer*8)
+        tmp.boxes = filter(data1, right >= l, left <= r - 2*buffer, top < max(t) + buffer*8, bottom > min(b) - buffer*8)
       
         #remove absurdly large text
         charwidth = charWidth(tmp.boxes)
@@ -876,12 +877,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
         tmp.boxes$char.sizes = char.types$means[char.types$membership]
         if (buffer == "dynamic") {buffer= min(char.sizes)/2}
       
-        #filter out duplicates -- add row justification here later to choose bottom or top
-        keep1 = (b - lead(b, 1)) < -page.cols$charheight | is.na(b - lead(b, 1)) & (t - lead(t, 1)) < -page.cols$charheight | is.na(t - lead(t, 1))
-        b = b[keep1]
-        t = t[keep1] 
-        if (length(b) != length(t)) {break("in nameBoxes: price data incomplete")}
-      
+        #add *row* justification here later to choose bottom or top
         l = rep(l, length(b))
         r = rep(r, length(b))
       
@@ -899,7 +895,8 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
             }
             tmp.name = filter( tmp.boxes, left < r[j], bottom >= b[j], right < tmp.price_cols$table.right[1] - buffer,  top <= t[j])
             # update l - can only get bigger
-            if (l[j] > min(tmp.name$left) & (l[j] - min(tmp.name$left) < page.cols$charheight*4)) {l[j] = min(tmp.name$left) - buffer}#-- put maximum move on this?
+            if (l[j] > min(tmp.name$left) & (l[j] - min(tmp.name$left) < page.cols$charheight*4)) {l[j] = min(tmp.name$left) - buffer}
+            #-- put maximum move on this?
             # update r
             if (r[j] - max(tmp.name$right) < page.cols$charheight*4) {r[j] = max(tmp.name$right) + buffer}
           } #include another row in name, make sure below other price
@@ -910,12 +907,12 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       # implemented differently than for IDS. Which is better?
       # find words that the current t value strikes through
       overlap_below = lapply(t, function(x) {
-        x = filter(data1, bottom < x, x <top, left > min(l), right < median(r))
-        if (nrow(x) > 2) {
-          c1 = abs(charWidth(x) - min(char.sizes)) < abs(charWidth(x) - max(char.sizes)) #not the big text size
-          c2 = charWidth(x) < 2*max(char.sizes) #remove weirdly large text
-          x = filter(x, c1, c2)
-          if (!is.null(x) & nrow(x) > 2) return(x) else {NULL}}
+        words = filter(data1, bottom < x-2*buffer, x < top, left > min(l), right < median(r))
+        if (nrow(words) > 2) {
+          c1 = abs(charWidth(words) - min(char.sizes)) < abs(charWidth(words) - max(char.sizes)) #not the big text size
+          c2 = charWidth(words) < 2*max(char.sizes) #remove weirdly large text
+          words = filter(words, c1, c2)
+          if (!is.null(words) & nrow(words) > 2) return(words) else {NULL}}
         })
       update_t = which(!sapply(overlap_below, is.null))
                        
@@ -928,7 +925,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
         cat("Now", length(update_t), "overlaps with row below when checking name boxes\n")
       }
       
-      table.boxes[[i]] = data.frame(left = rep(l, length(b)), bottom = b, right = rep(r, length(b)), top = t)
+      table.boxes[[i]] = data.frame(left = l, bottom = b, right = r, top = t)
 
       # reocr
       table.boxes.words.reocr[[i]] = lapply(seq_along(b), function(x) {
