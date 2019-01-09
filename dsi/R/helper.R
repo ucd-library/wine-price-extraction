@@ -180,7 +180,7 @@ splitCol <- function(prices, type = "h", px = px1, buffer = page.cols$charheight
   
     prices = prices %>% arrange(top)
     pricewidths = charWidth(prices) 
-    compare.clusterings = sapply(1:floor(length(pricewidths)/3), function(x) {
+    compare.clusterings = sapply(1:min(floor(length(pricewidths)/3), length(unique(pricewidths))), function(x) {
       possible.cluster = kmeans(pricewidths, centers = x, nstart = 100)
       c(possible.cluster$tot.withinss, min(possible.cluster$size))
     })
@@ -207,6 +207,41 @@ splitCol <- function(prices, type = "h", px = px1, buffer = page.cols$charheight
     return(prices)
       #which(cluster.impurity==0)
   }
+}
+
+#where boxes is a result of a checkBoxes call on missing.boxes with rbind = FALSE
+checkMissingBoxes <- function(boxes, missing.boxes, type = "price", cluster = cols.missing[[x]]$cluster[1], table = cols.missing[[x]]$table[1]) {
+  
+  if (type == "price") {pattern = "[0-9].*"}
+  else if (type == "ID") {pattern = "[A-Z]-[0-9].*"}
+  else {pattern = "[0-9].*"}
+  
+  lapply(1:length(boxes), function(i) {
+    box = boxes[[i]]
+    if (!is.null(boxes[[i]])) {
+      box$text.new = str_extract(box$text, pattern)
+      box$price = isPrice(box$text.new, dollar = FALSE, maybe = FALSE)
+      box$type = isPrice(box$text.new, maybe = T, dollar = F)
+      box$cluster = cluster
+      box$table = table
+      box = filter(box, type!="FALSE")
+      if (nrow(box) > 1) {
+        box = arrange(box, type=="FALSE")
+        box = box[1,]; cat("Two prices where one should be?", box$text.new)
+      }
+    } 
+    if (is.null(boxes[[i]]) || nrow(box) == 0) { # including newly emptied box
+      box = makeCheckBox(missing.boxes[i,], type = "forBbox")
+      box$text = ""
+      box$confidence = 0
+      box$price = FALSE
+      box$text.new = ""
+      box$type = "FALSE"
+      box$cluster = cluster
+      box$table = table
+    }
+    return(box) 
+  })
 }
 
 #converts a data frame of left, bottom, right, top boxes to left, bottom, width, height for the x function
@@ -246,8 +281,12 @@ addRows <- function(page.cols, buffer = page.cols$charheight/2) {
   # Assign row numbers by table
   all.prices = do.call("rbind", page.cols$prices)
   n.tables = n_distinct(page.cols$price_cols$table)
+  
   all.prices = lapply(1:n.tables, function(i) {
     table.prices = filter(all.prices, table == i) %>% arrange(top, bottom)
+    buffer2 = mean((table.prices %>% group_by(cluster) %>% mutate(diff = c(diff(top),NA)) %>% 
+            summarize(med.diff = median(diff, na.rm = T)))[["med.diff"]])
+    buffer = max(page.cols$charheight/2, buffer2/2)
     table.prices$row = c(1, cumsum(diff(sort(table.prices$top))>buffer)+1)
     table.prices
   })
@@ -271,7 +310,8 @@ findHeader <- function(colData, column.header, buffer) {
       (filter(text, grepl(paste(column.header, collapse = "|"), text)) %>% arrange(-bottom) %>% select(text, bottom, top))[1,]
     }
   })
-
+  header = lapply(header, function(x) {if (length(x)==0) {data.frame(text = NA, bottom = NA, top = NA)} else {x}})
+  
   header = do.call("rbind", header)
   return(header)
 }
