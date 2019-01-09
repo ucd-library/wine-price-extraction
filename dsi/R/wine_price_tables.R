@@ -68,7 +68,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50)
   if (!is.null(pix.threshold) & !is.null(pix.newValue)) {px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)}
   if (is.null(data1)) {data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)}
-  if(! file.exists(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))) {saveRDS(data1, paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))}
+  #if(! file.exists(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))) {saveRDS(data1, paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))}
   
   # 2 ####
   if (sum(isPrice(data1$text)) + sum(isPrice(data1$text, maybe = T)=="*price") == 0) {return("No prices detected. If prices suspected try a new pix.threshold.")}
@@ -190,15 +190,15 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
 #data1 = fullBoxes[[paste0(file1,".jpg")]]
 #price_table_extraction(file1, image.check = FALSE, save.root = wd, data1 = data1) #pix.threshold = 150, pix.newValue = 0
 
-file1 = "UCD_Lehmann_1802" #0455, 3392#needs new color threshold 1106, #1452 (hard), 1802
-#checked 0069, 3943, 0066, 0011, 0237, 0190, 1452, 1802
+file1 = "UCD_Lehmann_0455" #0455, 3392 
+#checked 0069, 3943, 0066, 0011, 0237, 0190, 1452 (hard), 1802, 0644 (mixed ID types), 1176 (needs new color threshold?)
 data1 = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))
 
 #img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = ""); px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50);  height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
 #plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1)
 
 #debugonce(price_table_extraction)
-price_table_extraction(file1, image.check = FALSE, save.root = wd) #pix.threshold = 150, pix.newValue = 0,
+price_table_extraction(file1, image.check = FALSE, save.root = wd, data1 = data1) #pix.threshold = 150, pix.newValue = 0,
 
 # 2. Run on a fileset ----
 fileset = str_extract(list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"), ".*[^\\.jpg]")

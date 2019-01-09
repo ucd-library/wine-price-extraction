@@ -251,18 +251,20 @@ makeCheckBox <- function(df, type  = c("forCheckBox", "forBbox")) {
 }
 
 removeDuplicates <- function(table, buffer = 10, justify = "right") { #price or id table, should have left, bottom, right, top and confidence  
-  look.columns = c("bottom", "top")
-  if (justify == "right" | justify == "left") {look.columns = c(look.columns, justify)}
-  look.for.duplicates = apply(table[, look.columns], 1, 
+  if (nrow(table) > 1) {
+    look.columns = c("bottom", "top")
+    if (justify == "right" | justify == "left") {look.columns = c(look.columns, justify)}
+    look.for.duplicates = apply(table[, look.columns], 1, 
                               function(x) {apply(table[, look.columns], 1, 
                                   function(y) {max(abs(y-x))})})
-  look.for.duplicates = data.frame(which(apply(look.for.duplicates, 1, "<",  buffer), arr.ind = T)) %>%  filter(., row > col)
-  if(nrow(look.for.duplicates) > 0) {
-    remove = apply(look.for.duplicates, 1, function(x) {
-      x[which.min(table[x,"confidence"])]
-    })
-    table = table[-remove,]
-  }
+    look.for.duplicates = data.frame(which(apply(look.for.duplicates, 1, "<",  buffer), arr.ind = T)) %>%  filter(., row > col)
+    if(nrow(look.for.duplicates) > 0) {
+      remove = apply(look.for.duplicates, 1, function(x) {
+        x[which.min(table[x,"confidence"])]
+      })
+      table = table[-remove,]
+    }
+  }  
   table
 }
 
