@@ -170,7 +170,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
     idtype = "ID"
   }
   
-  #remove IDS in price columns
+  # remove IDS in price columns
   if (nrow(tmp.numbers) > 0) {
     for (i in 1:nrow(prices2)) {
       #use individual instead of column in case column very wide
@@ -178,9 +178,12 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
                            (( left > prices2[i,"left"] - 2*charheight & left < prices2[i,"right"]) & 
                            abs(top - prices2[i,"top"]) < 10*charheight ))
       tmp.numbers = filter(tmp.numbers, left < max(data1$left)*.9) #cant have IDs too far right on page
-    
     }
+  }
   
+  # if any left, 
+  if (nrow(tmp.numbers) > 0) {
+
     tmp.numbers.cum = sapply(1:max(tmp.numbers$left), function(x) {sum(x > tmp.numbers$left)})
     tmp.cpt = cpt.mean(tmp.numbers.cum, method='BinSeg', Q = nrow(colData2))@cpts
     if ( length(  which(diff(tmp.cpt) < charheight/3)  ) > 0 ) {
@@ -319,12 +322,16 @@ updatePageCols <- function(page.cols, type = "price") {
   
   if (type == "ids") {
     
+    page.cols$id_cols = page.cols$ids %>% group_by(table) %>% summarize(
+      col.left = min(left),
+      col.right = max(left),
+      col.bottom = min(bottom),
+      col.top= max(top),
+      entries = n())
+      
+    page.cols$id_cols = page.cols$id_cols %>% arrange(table) #just in case
     page.cols$ids$row = (page.cols$ids %>% group_by (table) %>% mutate(row = rank(bottom, ties.method = "first")))$row
-    # updated entries
-    page.cols$id_cols$entries = as.vector(table(page.cols$ids$table)[order(  as.numeric(names(table(page.cols$ids$table))) )]) #assumes page.cols$id_cols ordered by table
-    # expand columns boundaries if necessary
-    page.cols$id_cols[,c("col.left","col.bottom")] = (  page.cols$ids %>% group_by(table) %>% summarize(left = min(left), bottom = min(bottom)) %>% ungroup())[,-1]
-    page.cols$id_cols[,c("col.right","col.top")] = (  page.cols$ids %>% group_by(table) %>% summarize(right = max(right), top = max(top)) %>% ungroup())[,-1]
+    
   }
   
   return(page.cols)
@@ -762,16 +769,17 @@ removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "
       
       #remove prices with no overlap with rest of column and not (by left) close to another
       #not close to another
+      x$center = (x$left + x$right)/2  #in case center justified
       diffs1 = abs(outer(x[[page.cols$justify]], x[[page.cols$justify]], "-")); diag(diffs1) = NA
       c1 = apply(diffs1, 1, min, na.rm = T) > buffer/2
       x = filter(x, ! ( (x$right < median(x$left)| x$left > median(x$right)) & c1) )
       
       if (page.cols$justify == "center") {
-        x = filter(x, ! (abs(scale(  (x$left + x$right)/2 )) > 2.5 & type == "number") )
-        x
+        x = filter(x, ! (abs(scale( x[["center"]] )) > 2.5 & type == "number") )
+        x %>% select(-matches("center"))
       } else { #check both to be conservative. Otherwise may just be white space
         x = filter(x, ! ((abs(scale(x[["left"]])) > 2.5 & type == "number") & (abs(scale(x[["right"]])) > 2.5 & type == "number")) )
-        x
+        x %>% select(-matches("center"))
       }
 
     }) 
@@ -857,7 +865,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
     else if (exists("tmp.ids") && nrow(tmp.ids) > 0) {
 
       tmp.prices = prices[[as.character((tmp.cols %>% arrange(col.left))[1,"cluster"])]]
-      l = tmp.ids$left - buffer
+      l = pmax(0, tmp.ids$left - buffer) # in case buffer drags off page
       r = rep(min(filter(page.cols$price_cols, table == i)$col.left), length(l)) + buffer
       b = tmp.ids$bottom - buffer
       # we use the bottom (top) of the prices as the lower bound for the name box, but have to be careful if more prices than names
@@ -973,6 +981,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       }
       
       table.boxes[[i]] = data.frame(l = l, b = b, r = r, t = t)
+      l = pmax(0, l) #in case buffer puts off page
 
       # reocr
       table.boxes.words.reocr[[i]] = lapply(seq_along(b), function(x) {

@@ -190,7 +190,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
 #data1 = fullBoxes[[paste0(file1,".jpg")]]
 #price_table_extraction(file1, image.check = FALSE, save.root = wd, data1 = data1) #pix.threshold = 150, pix.newValue = 0
 
-file1 = "UCD_Lehmann_0455" #0455, 3392 
+file1 = "UCD_Lehmann_2968" #0455, 3392 
 #checked 0069, 3943, 0066, 0011, 0237, 0190, 1452 (hard), 1802, 0644 (mixed ID types), 1176 (needs new color threshold?)
 data1 = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))
 
@@ -232,6 +232,10 @@ for (file1 in fileset) {
 }
 
 # 3. Results ----
+
+# 3. Third round (beta 0)
+
+# 
 
 #2. Second round
 

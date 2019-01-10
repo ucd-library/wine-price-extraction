@@ -156,7 +156,7 @@ boxesFromCols <- function(index, colData, px, buffer = 5, psm = 3) {
 splitCol <- function(prices, type = "h", px = px1, buffer = page.cols$charheight/3, height = height1,
                      new.index = 1, min.presplit = 4, min.postsplit = 1, max.impurity = 0) {
   #h for horizonatl, #v for vertical
-  if (nrow(prices) < min.presplit) {return(NULL)}
+  if (nrow(prices) < min.presplit) {return(prices)}
   
   # if a column has entries with two prices, split the column by a horizontal divide
   if (type == "h") {
