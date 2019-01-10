@@ -330,8 +330,9 @@ updatePageCols <- function(page.cols, type = "price") {
       entries = n())
       
     page.cols$id_cols = page.cols$id_cols %>% arrange(table) #just in case
-    page.cols$ids$row = (page.cols$ids %>% group_by (table) %>% mutate(row = rank(bottom, ties.method = "first")))$row
-    
+    if (exists("table", page.cols$ids) & exists("table", page.cols$price_cols)) {page.cols = addRows(page.cols, type = "ids")} else {
+      page.cols$ids$row = (page.cols$ids %>% group_by (table) %>% mutate(row = rank(bottom, ties.method = "first")))$row
+    }
   }
   
   return(page.cols)

@@ -279,21 +279,53 @@ extractPrice <- function(x, dollar = FALSE)
     }
 }
 
-addRows <- function(page.cols, buffer = page.cols$charheight/2) {
-  # Assign row numbers by table
-  all.prices = do.call("rbind", page.cols$prices)
-  n.tables = n_distinct(page.cols$price_cols$table)
+addRows <- function(page.cols, buffer = page.cols$charheight/2, type = "price") {
   
-  all.prices = lapply(1:n.tables, function(i) {
-    table.prices = filter(all.prices, table == i) %>% arrange(top, bottom)
-    buffer2 = mean((table.prices %>% group_by(cluster) %>% mutate(diff = c(diff(top),NA)) %>% 
+  if (! type %in% c("price", "ids")) {stop("type to add rows to should be price or ids")}
+  
+  if (type == "price") {
+    # Assign row numbers by table
+    all.prices = do.call("rbind", page.cols$prices)
+    n.tables = n_distinct(page.cols$price_cols$table)
+  
+    all.prices = lapply(1:n.tables, function(i) {
+      table.prices = filter(all.prices, table == i) %>% arrange(top, bottom)
+      buffer2 = mean((table.prices %>% group_by(cluster) %>% mutate(diff = c(diff(top),NA)) %>% 
             summarize(med.diff = median(diff, na.rm = T)))[["med.diff"]])
-    buffer = max(page.cols$charheight/2, buffer2/2)
-    table.prices$row = c(1, cumsum(diff(sort(table.prices$top))>buffer)+1)
-    table.prices
-  })
-  all.prices = do.call("rbind", all.prices)
-  page.cols$prices = split(all.prices, all.prices$cluster)
+      buffer = max(page.cols$charheight/2, buffer2/2)
+      table.prices$row = c(1, cumsum(diff(sort(table.prices$top))>buffer)+1)
+      table.prices
+    })
+    all.prices = do.call("rbind", all.prices)
+    page.cols$prices = split(all.prices, all.prices$cluster)
+  }
+  
+  if (type == "ids") {
+    all.prices = do.call("rbind", page.cols$prices)
+    list.table.ids = lapply(unique(page.cols$ids$table), function(i) {
+      table.ids = filter(page.cols$ids, table == i)
+      tmp.prices = filter(all.prices, table == as.numeric(i)) %>% arrange(top, left)
+      row.mins = tmp.prices %>% group_by(row) %>% summarize(top = min(top))
+      row.try = sapply(table.ids$top, function(x) {
+          as.numeric(row.mins[min(which(x < row.mins$top + buffer)),1])
+        })
+      if (sum(!is.na(row.try))==0) {
+        warning("Something is wrong? All table ids are below table prices. ids rows not updated")
+        table.ids = table.ids %>% arrange(top, left) %>% mutate(row = 1:nrow(.))
+        return(table.ids)
+      } else if (sum(is.na(row.try))>0) {
+        row.try[is.na(row.try)] = max(row.try, na.rm = T) + 1:sum(is.na(row.try))
+        warning(cat("Some ids, (", sum(is.na(row.try)), ") are below table prices.\n"))
+        table.ids$row = row.try
+        return(table.ids)
+      } else {
+        table.ids$row = row.try
+        return(table.ids)
+      }
+    })
+    page.cols$ids = do.call("rbind", list.table.ids)
+  }
+  
   return(page.cols)
 }
 

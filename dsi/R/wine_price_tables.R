@@ -1,20 +1,15 @@
 # Extracting accurate prices from tables
 
 # TO DO
-# (long-term) expand search area for column headers if not easily caught above table 
-# addMissing can be streamlined, fix so it doesn't break if run twice, finish missings ids once i see an example
-# smarter buffer
-# make column recognition incorporate text justification
-# cluster tops and bottoms if multiple charts on page
-# have addPrice and addIDs use better page segmentation mode (probably 3)
-# make sure page segmentation mode is being reset properly at all levels (see warning)
-# In nameBoxes without ID, add row justification to help choose bottom or top for number of rows
-
-# After benchmark:
-# resolve code differences between dynamic name box size in id vs. non-id case. which is better?
-# make min.col.width in pageTables visible to user/global?
-# Make recognition of column header (e.g. Bottle, Case, Quart) smarter with levenschtein distance
-# in pageTables, add a check here to eliminate changepoint before a space that separates names from price cols
+# (short term)
+#
+# (after benchmark)
+#   resolve code differences between dynamic name box size in id vs. non-id case. which is better?
+# (long-term)
+#   expand search area for column headers if not easily caught above table 
+#   smarter buffer with more exposure to user
+#   add row justifiation, e.g. for better outlining of nameBoxes
+#   make min.col.width in pageTables visible to user/global?
 
 # workflow:
   # 1. Deskew and get boxes -- use existing Rtess functions. helpful to deskew first.
@@ -22,7 +17,7 @@
   # -- bounds and slopes, justification of column text, character height
   # 3. Extract text from columns, find more prices and IDs
   # 4. Find table locations using changepoint method, group columns by table
-  # 5. Check again for missing prices and now IDs 
+  # 5. Check again for missing prices and now IDs, remove/clean extraneous or duplicates
   # 6. Locate and extract names boxes (words and images)
   # 7. Return final results (ids, prices, name boxes)
 
@@ -139,11 +134,13 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   # ids (if there) and prices
   final.prices = vector("list", max(page.cols$price_cols$table))
   final.prices = lapply(1:max(page.cols$price_cols$table), function(x) {
+    
     final.prices[[x]] = list(
-      if (!is.null(page.cols$ids)) {ids = unlist(page.cols$ids %>% filter(table == x) %>% .$text)},
-      prices = lapply(subset(page.cols$prices, page.cols$price_cols$table == x), 
-                      function(y) y$text.new)
-    )
+      ids = ifelse(!is.null(page.cols$ids) && sum(page.cols$ids$table == x) > 0,
+                   list(page.cols$ids %>% filter(table == x) %>% select(row, text)),
+                   list(NULL)) ,
+      prices = lapply(subset(page.cols$prices, page.cols$price_cols$table == x), select, c("row","text.new")))
+    
     names(final.prices[[x]]$prices) = subset(page.cols$price_cols, page.cols$price_cols$table == x)$col.header
     final.prices[[x]]
   })
@@ -190,7 +187,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
 #data1 = fullBoxes[[paste0(file1,".jpg")]]
 #price_table_extraction(file1, image.check = FALSE, save.root = wd, data1 = data1) #pix.threshold = 150, pix.newValue = 0
 
-file1 = "UCD_Lehmann_2968" #0455, 3392 
+file1 = "UCD_Lehmann_0011" #0455, 3392 
 #checked 0069, 3943, 0066, 0011, 0237, 0190, 1452 (hard), 1802, 0644 (mixed ID types), 1176 (needs new color threshold?)
 data1 = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))
 
@@ -235,7 +232,18 @@ for (file1 in fileset) {
 
 # 3. Third round (beta 0)
 
-# 
+# all 61 ran
+
+test = output[[1]]
+
+#output will be organized by row on page, then left to right
+test$page.cols$price_cols = test$page.cols$price_cols %>% arrange(table.row, col.left)
+n.tables = n_distinct(test$page.cols$price_cols$table)
+n.columns = n_distinct(test$page.cols$price_cols$cluster)
+n.columns.per.table = (test$page.cols$price_cols %>% group_by(table) %>% summarize(n = n_distinct(column)))[["n"]]
+n.entries.per.column = test$page.cols$price_cols$entries
+
+
 
 #2. Second round
 
@@ -247,19 +255,10 @@ output.text = output[sapply(output, length)==2] #34
 table(unlist(lapply(output.text, function(x) {length((x[[1]])[[1]][[1]][[1]])})))
 tmp = lapply(output.text, function(x) {(x[[1]])[[1]][[1]][2]})
 length(tmp)
+
 #1. First round 
+
 #58 are null (code failed)
-#output.null = fileset[sapply(output, is.null)] #58
-#output.text = fileset[sapply(output, length)==2] #34
-#data.frame(file1 = output.text, do.call("rbind", output[sapply(output, length)==2]))
-
-
-#moved the no price table files to a seperate folder
-for (file in paste0(output.text, ".jpg"))
-  system(paste0("mv OCR_SherryLehmann/SampleCatalogPages/", file," OCR_SherryLehmann/SampleCatalogPages/no_price_tables"))
-# FALSE NEGATIVE: 1176
-# Note that some other pages have prices or tables but not both in the price-table format.
-# The most common case we might be intrested in is names and ids with a large price nearby
 
 # Create an option to try failures with 
 # If still fail, try new pix thresholds. This should help with 1176, for example
