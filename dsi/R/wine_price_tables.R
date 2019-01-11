@@ -2,9 +2,11 @@
 
 # TO DO
 # (short term)
-#
+#   based on truth making -> code to eliminate duplicates in DIFFERENT tables/merge columns vertically (0027)
+#   
 # (after benchmark)
 #   resolve code differences between dynamic name box size in id vs. non-id case. which is better?
+#   make the search for “stuff” (words) between columns in pageTables better 
 # (long-term)
 #   expand search area for column headers if not easily caught above table 
 #   smarter buffer with more exposure to user
@@ -16,7 +18,7 @@
   # 2. Get initial column info -> more possible prices -> get final column info 
   # -- bounds and slopes, justification of column text, character height
   # 3. Extract text from columns, find more prices and IDs
-  # 4. Find table locations using changepoint method, group columns by table
+  # 4. Find table locations using changepoint method, group columns by table, order tables by row on page, then left to right
   # 5. Check again for missing prices and now IDs, remove/clean extraneous or duplicates
   # 6. Locate and extract names boxes (words and images)
   # 7. Return final results (ids, prices, name boxes)
@@ -31,6 +33,7 @@ library(stringr)
 library(jpeg)
 library(cluster)
 library(changepoint)
+library(RecordLinkage)
 
 wd = "~/Documents/DSI" #path to wine-price-extraction repo
 setwd(wd)
@@ -39,7 +42,10 @@ source("wine-price-extraction/dsi/R/wine_price_tables_functions.R")
 source("wine-price-extraction/dsi/R/helper.R") 
 
 # MAIN  FUNCTION, encompassing all numbered steps below ----
-price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix.threshold = NULL, pix.newValue = NULL, save.root = ".") {
+price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix.threshold = NULL, pix.newValue = NULL, save.root = ".",
+                                   column.header = c("bottle", "case", "quart", "fifth")) {
+  
+  #column.header is convered to lower for comparison
   
   # 0 Setup ####
   img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = "")
@@ -63,11 +69,11 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50)
   if (!is.null(pix.threshold) & !is.null(pix.newValue)) {px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)}
   if (is.null(data1)) {data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)}
-  #if(! file.exists(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))) {saveRDS(data1, paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))}
+  if(! file.exists(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))) {saveRDS(data1, paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))}
   
   # 2 ####
   if (sum(isPrice(data1$text)) + sum(isPrice(data1$text, maybe = T)=="*price") == 0) {return("No prices detected. If prices suspected try a new pix.threshold.")}
-  page.cols = pageCols(data1, img.height = height1)
+  page.cols = pageCols(data1, img.height = height1, column.header = column.header)
   
   ############# img check 2 ####
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1)
@@ -135,13 +141,18 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   final.prices = vector("list", max(page.cols$price_cols$table))
   final.prices = lapply(1:max(page.cols$price_cols$table), function(x) {
     
+    table.prices = subset(page.cols$prices, sapply(page.cols$prices, function(x) {x$table[1]}) == x)
+    # within table, make sure columns ordered from left to right
+    table.prices = table.prices[order(sapply(table.prices, function(x) {min(x$left)}))] 
+    
     final.prices[[x]] = list(
       ids = ifelse(!is.null(page.cols$ids) && sum(page.cols$ids$table == x) > 0,
                    list(page.cols$ids %>% filter(table == x) %>% select(row, text)),
                    list(NULL)) ,
-      prices = lapply(subset(page.cols$prices, page.cols$price_cols$table == x), select, c("row","text.new")))
+      prices = lapply(table.prices, select, row, text.new))
     
-    names(final.prices[[x]]$prices) = subset(page.cols$price_cols, page.cols$price_cols$table == x)$col.header
+    names(final.prices[[x]]$prices) = (filter(page.cols$price_cols, table == x) %>% 
+                                         arrange(col.left))[["col.header"]]
     final.prices[[x]]
   })
   
@@ -189,6 +200,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
 
 file1 = "UCD_Lehmann_0011" #0455, 3392 
 #checked 0069, 3943, 0066, 0011, 0237, 0190, 1452 (hard), 1802, 0644 (mixed ID types), 1176 (needs new color threshold?)
+# 1591 (dollar sign used)
 data1 = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))
 
 #img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = ""); px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50);  height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
@@ -230,40 +242,48 @@ for (file1 in fileset) {
 
 # 3. Results ----
 
-# 3. Third round (beta 0)
+# (Third round (beta 0) --> all 61 ran (up from about 1/6 and then 1/2)
 
-# all 61 ran
+### Analyze ###
 
-test = output[[1]]
+# truth in "~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/"
+# list.files("~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/")
 
-#output will be organized by row on page, then left to right
-test$page.cols$price_cols = test$page.cols$price_cols %>% arrange(table.row, col.left)
-n.tables = n_distinct(test$page.cols$price_cols$table)
-n.columns = n_distinct(test$page.cols$price_cols$cluster)
-n.columns.per.table = (test$page.cols$price_cols %>% group_by(table) %>% summarize(n = n_distinct(column)))[["n"]]
-n.entries.per.column = test$page.cols$price_cols$entries
+file.number = "0011"
+test.prices = readRDS(paste0("~/Documents/DSI/wine-price-extraction/dsi/Data/UCD_Lehmann_",file.number,".RDS"))$prices
+test.prices.truth = readRDS(paste0("~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/UCD_Lehmann_",
+              file.number,"_price_truth.RDS"))$prices
 
+# From mine
+test.prices$page.cols$price_cols = test.prices$page.cols$price_cols %>% arrange(table.row, col.left)
+test.stat = list(n.tables = length(test.prices),
+n.columns.per.table = sapply(test.prices, function(x) {length(x$prices)}),
+n.entries.per.column = sapply(test.prices, function(x) {sapply(x$prices, nrow)})) # each column is a table
 
+# Compare truth
+truth.stat = list(n.tables = length(test.prices.truth),
+n.columns.per.table = sapply(test.prices.truth, function(x) {length(x$prices)}),
+n.entries.per.column = sapply(test.prices.truth, function(x) {sapply(x$prices, nrow)})) # each column is a table
 
-#2. Second round
+# Where same number of entries, compare values
 
-# 37 null
-# 30 with some results
-# 18 name boxes
+apply(which(test.stat$n.entries.per.column == truth.stat$n.entries.per.column, arr.ind = T), function(x) {
+  
+  # differences in dollar amounts
+  as.numeric(test.prices.truth[[x[2]]]$prices[[x[1]]]$text.new) - 
+    as.numeric(test.prices[[x[2]]]$prices[[x[1]]]$text.new)
+  
+  # digit differences or levenschtein?
+  sapply(1:test.stat$n.entries.per.column[x[1],x[2]], function(i) {
+    levenshteinDist(test.prices.truth[[x[2]]]$prices[[x[1]]]$text.new[i], 
+                   test.prices[[x[2]]]$prices[[x[1]]]$text.new[i]) })
+  
+  lapply(1:test.stat$n.entries.per.column[x[1],x[2]], function(i) {
+         strsplit(test.prices.truth[[x[2]]]$prices[[x[1]]]$text.new[i], split = "")[[1]] == 
+         strsplit(test.prices[[x[2]]]$prices[[x[1]]]$text.new[i], split = "")[[1]]}) 
+}
 
-output.text = output[sapply(output, length)==2] #34
-table(unlist(lapply(output.text, function(x) {length((x[[1]])[[1]][[1]][[1]])})))
-tmp = lapply(output.text, function(x) {(x[[1]])[[1]][[1]][2]})
-length(tmp)
-
-#1. First round 
-
-#58 are null (code failed)
-
-# Create an option to try failures with 
-# If still fail, try new pix thresholds. This should help with 1176, for example
-
-price_table_extraction("UCD_Lehmann_1176", image.check = FALSE, pix.threshold = 150, pix.newValue = 0)
-
+# Where same number of total rows, compare values
+# Otherwise, list mismatch size
 
 

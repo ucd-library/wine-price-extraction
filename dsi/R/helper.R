@@ -338,10 +338,17 @@ findHeader <- function(colData, column.header, buffer) {
     r = which(names(colData) == c("col.right"))
     b = which(names(colData) == c("col.bottom"))
     # larger bottom buffer in case top line(s) of table missing
-    text = filter(data1, left > x[l] - 2*buffer, left < x[r], bottom < x[b], top > x[b] - 4*buffer)
-    # choose the lowest one on page if several
-    if (nrow(text) > 0) {
-      (filter(text, grepl(paste(column.header, collapse = "|"), text)) %>% arrange(-bottom) %>% select(text, bottom, top))[1,]
+    text1 = filter(data1, left > x[l] - 2*buffer, left < x[r], bottom < x[b], top > x[b] - 4*buffer)
+    
+    if (nrow(text1) > 0) {
+      # filter by levenshtein distance one or zero
+      text1 = filter(text1, sapply(tolower(text1$text), function(x) {min(levenshteinDist(x, tolower(column.header)))}) <= 1)
+      # choose the lowest one on page if several
+      if (nrow(text1) > 0) {
+        (text1 %>% arrange(-bottom))[1,c("text", "bottom", "top")]
+      }
+      #exact match code
+      #(filter(text1, grepl(paste(column.header, collapse = "|"), text)) %>% arrange(-bottom) %>% select(text, bottom, top))[1,]
     }
   })
   header = lapply(header, function(x) {if (length(x)==0) {data.frame(text = NA, bottom = NA, top = NA)} else {x}})

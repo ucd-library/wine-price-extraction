@@ -10,7 +10,9 @@ source("wine-price-extraction/dsi/R/helper.R")
 # image attribute only used for height
 # implements no prices in first 10% of page, no ids in last 10% (as deteremined by range of data1$left)
 
-pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, column.header = c("Bottle", "Case", "Quart")) { #need img until image size attribute implemented
+pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, column.header = c("bottle", "case", "quart", "fifth")) {
+  #need img until image size attribute implemented
+  #column.header is convered to lower for comparison
   
   #2. Create prices from data1 ####
   if(is.null(img) & is.null(img.height)) {return(break("Need image or image height"))}
@@ -747,13 +749,14 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
 # Remove false positive prices by checking if they're numbers (not prices) and have weird left or right places
 # Remove false positive ids by checking if their character width is way off --- don't remove so many that there are less ids than prices
 
-removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "prices", charwidth.cutoff = 2, column.header = c("Bottle", "Case", "Quart") ) { #charWidth.cutoff for removing false positive ids by charwidth outlier status
+removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "prices", charwidth.cutoff = 2) {
+  #charWidth.cutoff for removing false positive ids by charwidth outlier status
   
   if (! removeType %in% c("prices", "ids", "all")) stop("removeType must be 'prices', 'ids', or 'all'")
   if ( is.null(page.cols$ids) & removeType == "all" ) {removeType = "prices"}
     
   #if we found good bottle and case labels for all columns we can presume anything way above is a false positive
-  if (mean(page.cols$price_cols$col.header %in% column.header)==1) {
+  if (sum(is.na(page.cols$price_cols$col.header)) == 0) {
     page.cols$prices = lapply(page.cols$prices, function(x) {
       tmp.col = which(page.cols$price_cols$cluster == x$cluster[1])
       filter(x, x$bottom > as.numeric(page.cols$price_cols[tmp.col,"col.header.bottom"] - buffer*5))
@@ -819,7 +822,7 @@ checkBoxes <- function(df, px, buffer = 10, level = "textline", height, checker 
   tmp.list = apply(df, 1, function(x) {
     SetRectangle(tpx, dims = c(max(x[1] - buffer,0), max(x[2] - buffer,0), min(height,x[3] + 2*buffer), min(height, x[4] + 2*buffer)))
     gb = GetBoxes(tpx, level = level)
-    if (gb$left[1] > 0) { #otherwise means an error or nothing found
+    if (length(gb$left) > 0 && gb$left[1] > 0) { #otherwise means an error or nothing found
       gb$text = gsub("\n", "", gb$text)
       if (!is.null(checker)) {
         gb$price = checker(gb$text)
@@ -863,7 +866,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
     if (structure.bad) {table.boxes[[i]] = table.boxes.words[[i]] = table.boxes.words.reocr[[i]] = NULL}
     
     # Use ids  
-    else if (exists("tmp.ids") && nrow(tmp.ids) > 0) {
+    else if (exists("tmp.ids", inherits = FALSE) && nrow(tmp.ids) > 0) {
 
       tmp.prices = prices[[as.character((tmp.cols %>% arrange(col.left))[1,"cluster"])]]
       l = pmax(0, tmp.ids$left - buffer) # in case buffer drags off page

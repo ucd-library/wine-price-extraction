@@ -26,7 +26,7 @@ wine_evaluate <- function(output, truth) {
 
 # saveRDS(UCD_Lehmann_0011_price_truth, "~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/UCD_Lehmann_0011_price_truth.RDS")
 
-truth1 = "1835"
+truth1 = "1544"
 truthdata = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/Truth2/",truth1,"_column2.RDS"))
 try({truthdata = data.frame(truthdata)})
 truthdata = data.frame(apply(truthdata, 2, as.character), stringsAsFactors = F)
@@ -37,22 +37,25 @@ truthdata$Bottle = sub(pattern = "^0\\.",  "\\.", x = truthdata$Bottle)
 truthdata$Bottle = sub(pattern = "(^[0-9]+$)",  "\\1.00", x = truthdata$Bottle)
 truthdata$Case = sub(pattern = "(^[0-9]+$)",  "\\1.00", x = truthdata$Case)
 truthdata$Case = sub(pattern = "(\\.[0-9]{1}$)",  "\\10", x = truthdata$Case)
+truthdata$CaseArrival = sub(pattern = "(\\.[0-9]{1}$)",  "\\10", x = truthdata$CaseArrival)
+truthdata$CaseArrival = sub(pattern = "(^[0-9]+$)",  "\\1.00", x = truthdata$CaseArrival)
+
 truthdata
 
 # insert
 
 truthoutput = readRDS(paste0("~/Documents/DSI/wine-price-extraction/dsi/Data/UCD_Lehmann_",truth1,".RDS"))
 # From truthfile
-i = 2; 
+i = 2
 truthoutput$prices[[i]]$ids[[1]] = data.frame(row = 1:length(truthdata$Description),
-                                              name = truthdata$Description, stringsAsFactors = F)
+                                              name = as.character(truthdata$Description), stringsAsFactors = F)
 
-truthoutput$prices[[i]]$prices[[1]] = data.frame(row = 1:length(truthdata$Bottle),
-                                                 text.new = as.character(truthdata$Bottle),
+truthoutput$prices[[i]]$prices[[4]] = data.frame(row = 1:length(truthdata$QuartCase),
+                                                 text.new = as.character(truthdata$QuartCase),
                                                  stringsAsFactors = F)
 
-truthoutput$prices[[i]]$prices[[2]] = data.frame(row = 1:length(truthdata$Case),
-                                                 text.new = as.character(truthdata$Case),
+truthoutput$prices[[i]]$prices[[2]] = data.frame(row = 1:length(truthdata$CaseArrival),
+                                                 text.new = as.character(truthdata$CaseArrival),
                                                  stringsAsFactors = F)
 
 truthoutput$prices
@@ -82,6 +85,11 @@ truthoutput$prices[[2]]$prices[[2]]$row = 1:8
 names(truthoutput$prices[[1]]$prices) = c("bottle", "2 bottles")
 names(truthoutput$prices[[1]]$prices) = c("Bottle","Case")
 names(truthoutput$prices[[2]]$prices) = c("Bottle","Case")
+names(truthoutput$prices[[3]]$prices) = c("Bottle")
+names(truthoutput$prices[[4]]$prices) = c("Bottle")
+names(truthoutput$prices[[1]]$prices) = c("Case NOW","Case Price Upon Arrival","You Save")
+names(truthoutput$prices[[2]]$prices) = c("Fifth Bottle","Fifth Case","Quart Bottle","Quart Case")
+
 
 # save
 saveRDS(truthoutput, paste0("~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/UCD_Lehmann_",truth1,"_price_truth.RDS"))
