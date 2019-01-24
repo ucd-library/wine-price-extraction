@@ -7,6 +7,7 @@
 # (after benchmark)
 #   resolve code differences between dynamic name box size in id vs. non-id case. which is better?
 #   make the search for “stuff” (words) between columns in pageTables better 
+#   switch paste statements and file locations to universal (e.g. use file.path and image argument)
 # (long-term)
 #   expand search area for column headers if not easily caught above table 
 #   smarter buffer with more exposure to user
@@ -193,12 +194,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
 
 # 1. Example ----
 
-#don't use this because not deskewed
-#fullBoxes = readRDS("~/Documents/DSI/OCR_SherryLehmann/FullBoxes.rds")
-#data1 = fullBoxes[[paste0(file1,".jpg")]]
-#price_table_extraction(file1, image.check = FALSE, save.root = wd, data1 = data1) #pix.threshold = 150, pix.newValue = 0
-
-file1 = "UCD_Lehmann_0011" #0455, 3392 
+file1 = "UCD_Lehmann_0027" #0455, 3392 
 #checked 0069, 3943, 0066, 0011, 0237, 0190, 1452 (hard), 1802, 0644 (mixed ID types), 1176 (needs new color threshold?)
 # 1591 (dollar sign used)
 data1 = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))
@@ -206,7 +202,6 @@ data1 = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/ful
 #img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = ""); px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50);  height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
 #plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1)
 
-#debugonce(price_table_extraction)
 price_table_extraction(file1, image.check = FALSE, save.root = wd, data1 = data1) #pix.threshold = 150, pix.newValue = 0,
 
 # 2. Run on a fileset ----
@@ -239,51 +234,4 @@ for (file1 in fileset) {
     output[[i]]= c("median_conf" = median(data1$confidence), "n_price" = sum(isPrice(data1$text, dollar = FALSE)))
   }
 }
-
-# 3. Results ----
-
-# (Third round (beta 0) --> all 61 ran (up from about 1/6 and then 1/2)
-
-### Analyze ###
-
-# truth in "~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/"
-# list.files("~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/")
-
-file.number = "0011"
-test.prices = readRDS(paste0("~/Documents/DSI/wine-price-extraction/dsi/Data/UCD_Lehmann_",file.number,".RDS"))$prices
-test.prices.truth = readRDS(paste0("~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/UCD_Lehmann_",
-              file.number,"_price_truth.RDS"))$prices
-
-# From mine
-test.prices$page.cols$price_cols = test.prices$page.cols$price_cols %>% arrange(table.row, col.left)
-test.stat = list(n.tables = length(test.prices),
-n.columns.per.table = sapply(test.prices, function(x) {length(x$prices)}),
-n.entries.per.column = sapply(test.prices, function(x) {sapply(x$prices, nrow)})) # each column is a table
-
-# Compare truth
-truth.stat = list(n.tables = length(test.prices.truth),
-n.columns.per.table = sapply(test.prices.truth, function(x) {length(x$prices)}),
-n.entries.per.column = sapply(test.prices.truth, function(x) {sapply(x$prices, nrow)})) # each column is a table
-
-# Where same number of entries, compare values
-
-apply(which(test.stat$n.entries.per.column == truth.stat$n.entries.per.column, arr.ind = T), function(x) {
-  
-  # differences in dollar amounts
-  as.numeric(test.prices.truth[[x[2]]]$prices[[x[1]]]$text.new) - 
-    as.numeric(test.prices[[x[2]]]$prices[[x[1]]]$text.new)
-  
-  # digit differences or levenschtein?
-  sapply(1:test.stat$n.entries.per.column[x[1],x[2]], function(i) {
-    levenshteinDist(test.prices.truth[[x[2]]]$prices[[x[1]]]$text.new[i], 
-                   test.prices[[x[2]]]$prices[[x[1]]]$text.new[i]) })
-  
-  lapply(1:test.stat$n.entries.per.column[x[1],x[2]], function(i) {
-         strsplit(test.prices.truth[[x[2]]]$prices[[x[1]]]$text.new[i], split = "")[[1]] == 
-         strsplit(test.prices[[x[2]]]$prices[[x[1]]]$text.new[i], split = "")[[1]]}) 
-}
-
-# Where same number of total rows, compare values
-# Otherwise, list mismatch size
-
 
