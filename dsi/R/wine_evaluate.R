@@ -197,12 +197,24 @@ for (i in 1:length(fileset1)) {
   evaluate.output[[i]]
 }
 
-evaluate.singlestat = data.frame(t(sapply(evaluate.output, function(eval) {
-  c("n.tables" = eval$n.tables, "n.columns.total" = eval$n.columns.total, "n.entries.total" = eval$n.entries.total)
+evaluate.internal = data.frame(t(sapply(evaluate.output, function(eval) {
+  c("n.tables" = eval$n.tables,
+    "n.columns.total" = eval$n.columns.total,
+    "n.entries.total" = eval$n.entries.total,
+    "n.columns.per.table" = paste(eval$n.columns.per.table, collapse = ","),
+    "n.entries.per.column" = paste(unlist(eval$n.entries.per.column), collapse = ","),
+    "column.names" = paste(names(unlist(eval$n.entries.per.column)), collapse = ",")
+    )
   })))
+rownames(evaluate.internal) = fileset1
 
-output_singlestat = ggplot(melt(evaluate.singlestat)) + geom_histogram(aes(x = value, group = variable)) + facet_grid(~variable, scales = "free_x")
-ggsave(output_singlestat, filename = "~/Documents/DSI/wine-price-extraction/dsi/Data/output_singlestat.png")
+write.csv(evaluate.internal, "~/Documents/DSI/wine-price-extraction/dsi/Data/output_summary_internal.csv")
+
+#plot that
+output_summary_internal_singlestat = ggplot(melt(evaluate.internal %>% select("n.tables", "n.columns.total", "n.entries.total"), id.vars = NULL) %>%
+                             mutate(value = as.numeric(value))) + 
+                              geom_histogram(aes(x = value, group = variable)) + facet_grid(~variable, scales = "free_x")
+ggsave(output_summary_singlestat, filename = "~/Documents/DSI/wine-price-extraction/dsi/Data/output_summary_internal_singlestat.png")
 
 # B. For files we have truth for ####
 
