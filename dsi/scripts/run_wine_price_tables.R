@@ -1,4 +1,4 @@
-# See wine_price_tables.R for overview of the workflow and To Do's associated with price_table_extraction function called below
+# See R/wine_price_tables.R for overview of the workflow and To Do's associated with price_table_extraction function called below
 # Jane Carlen
 
 ####################################################################################################
