@@ -1,4 +1,6 @@
 ###################
+# Stanislaw Saganowski
+#
 # We can easily check two things:
 # 1. If price format matches a number
 # 2. If bottle-case ratio is around 11

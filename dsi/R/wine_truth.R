@@ -87,9 +87,12 @@ Sample26 = do.call(rbind, Sample26)
 Sample26$file = str_extract(rownames(Sample26), ".*(?=\\.)")
 #have to index from file by name
 
-##   Catalogs with the top 10 most marks ####
+##   Catalogs with the most marks ####
+# top 10 
 mark_pages10 = subset(marks, marks$catalog_id %in% names(sort(table(marks$catalog_id), decreasing = T)[1:10]))
-
+# order
+marks_top_files = marks_image %>% group_by(file.jpg, Sample) %>% summarize(n =n()) %>% arrange(-n) %>% filter(n > 20 & !is.na(file.jpg))
+write.csv(marks_top_files, "~/Documents/DSI/wine-price-extraction/dsi/Data/marks_top_files.csv")
 
 ########################################################################################################################
 

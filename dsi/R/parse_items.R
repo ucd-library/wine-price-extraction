@@ -51,35 +51,10 @@ library(dplyr)
 library(tidyverse)
 library(RODBC)
 library(RecordLinkage)
+library(gsubfn) #for cat0
 
-
-# similarity threshold above which we consider two strings as potential match
-SIMILARITY_THRESHOLD = 0.8;
-lockBinding("SIMILARITY_THRESHOLD", globalenv())
-# pattern threshold - percentage of items that have to meet criteria to accept considered rule as a general pattern
-PATTERN_THRESHOLD = 0.7;
-lockBinding("PATTERN_THRESHOLD", globalenv())
-
-
-# create database connection
-conn = odbcDriverConnect('driver={SQL Server};server=localhost;database=DataFest;trusted_connection=true')
-
-
-# get provinces from SQL
-provinces = sqlQuery(conn, paste("SELECT Province, Country FROM kProvinces", sep=""));
-# get regions from SQL
-regions = sqlQuery(conn, paste("SELECT Region, Country FROM kRegions", sep=""));
-# get producers from SQL
-producers = sqlQuery(conn, paste("SELECT Producer, Country FROM kProducers", sep=""));
-# get designations from SQL
-designations = sqlQuery(conn, paste("SELECT Designation FROM kDesignations", sep=""));
-# get varieties from SQL
-varieties = sqlQuery(conn, paste("SELECT Variety FROM kVarieties", sep=""));
-
-
-close(conn);
-
-
+# See stan_run_parse_items for additional setup steps, e.g. setting SIMILARITY_THRESHOLD and PATTERN_THRESHOLD values
+# and loading dictionaries
 
 # Initializes result object. 
 # Returns empty result object.
@@ -259,7 +234,8 @@ find_brackets = function(result_object) {
   # if found trim from text and look for confidence
   if (!is.na(brackets)) {
     result_object$brackets_text = substr(brackets, 2, nchar(brackets) - 1);
-    result_object$brackets_conf = subset(result_object$text_conf, grepl(pattern = paste(strsplit(brackets, " ")[[1]], collapse="|"), text, fixed = TRUE), select = c(1:2));
+    result_object$brackets_conf = subset(result_object$text_conf,
+                                         grepl(pattern = paste(strsplit(brackets, " ")[[1]], collapse="|"), text, fixed = TRUE), select = c(1:2));
     text = gsub(brackets, "", result_object$text, fixed = TRUE);
     text = remove_spaces(text);
     result_object$text = text;
@@ -1209,13 +1185,5 @@ format_global_stats = function(stats) {
   return(text);
 }
 
-
-# parse all pages in the folder
-setwd("C:/Users/ssaganowski/Desktop/wines");
-global_stats = parse_folder("input/");
-cat(format_global_stats(global_stats));
-
-# parse single page
-parse_page("input/UCD_Lehmann_3794.RDS")
 
 

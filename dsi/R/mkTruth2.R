@@ -1,5 +1,7 @@
 # Jane Carlen
 #
+# UPDATE: I ended up fixing the price_table_extraction output instead of using this because it was easier and already in the right format
+# 
 # GOAL: Polish the truth in "Truth1" which was created with mkTruth.R
 # Truth1 is available in the DSL drive and here: http://dsi.ucdavis.edu/WineCatalogs/Truth1.tar.gz 
 # You must set your "pathtotruth" and "pathtorepo" directory below accordingly
