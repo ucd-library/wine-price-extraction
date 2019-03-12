@@ -3,7 +3,7 @@
 # TO DO
 # (short term)
 #   based on truth making -> code to eliminate duplicates in DIFFERENT tables/merge columns vertically (0027)
-#   
+#   better decision-making between years and prices missing periods (e.g $19.50 vs. 1950). See isPrice.
 # (after benchmark)
 #   resolve code differences between dynamic name box size in id vs. non-id case. which is better?
 #   make the search for “stuff” (words) between columns in pageTables better 
@@ -45,9 +45,8 @@ source("wine-price-extraction/dsi/R/helper.R")
 # MAIN  FUNCTION, encompassing all numbered steps below ----
 # for examples of this code being run see run_wine_price_tables.R in the adjacent scripts folder
 
-price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix.threshold = NULL, pix.newValue = NULL, save.root = ".",
-                                   column.header = c("bottle", "case", "quart", "fifth")) {
-  
+price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix.threshold = NULL, pix.newValue = NULL, save.root = ".", column.header = c("bottle", "case", "quart", "fifth"), res1 = 600) {
+  #res1 is default resolution which is 600 for wine images. Only set if img resolution is missing.
   #column.header is convered to lower for comparison
   
   # 0 Setup ####
@@ -115,9 +114,9 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   # Default to method based on ID columns
   if (!is.null(page.cols$ids)) {
     tmp.left.diffs = page.cols$id_cols$col.left - page.cols$price_cols$table.left.cpt
-    cat("Difference in left-edge detected using ID col method vs. changepoint method",
-        tmp.left.diffs, "\n")
-    cat("This is", tmp.left.diffs/page.cols$charheight,  "times estimated character height\n")
+    cat("\nDifference in left-edge detected using ID col method vs. changepoint method",
+        tmp.left.diffs)
+    cat("\nThis is", tmp.left.diffs/page.cols$charheight,  "times estimated character height\n")
     if(max(100*(tmp.left.diffs)/page.cols$charheight) > 100) {cat("Mistake? Greater than character's difference\n")}
   }
   

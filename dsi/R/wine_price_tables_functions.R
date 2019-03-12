@@ -11,24 +11,18 @@ source("wine-price-extraction/dsi/R/helper.R")
 # implements no prices in first 10% of page, no ids in last 10% (as deteremined by range of data1$left)
 
 pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, column.header = c("bottle", "case", "quart", "fifth")) {
-  #need img until image size attribute implemented
   #column.header is convered to lower for comparison
   
-  #2. Create prices from data1 ####
-  if(is.null(img) & is.null(img.height)) {return(break("Need image or image height"))}
+  #need img until image size attribute implemented
+  if (is.null(img) & is.null(img.height)) {stop("Need image or image height")}
   if (is.null(img.height)) height1 = dim(readJPEG(img))[1] #we'll use the image attribute here later
   
-  data1$price = isPrice(data1$text)
-  data1$type = isPrice(data1$text, maybe = TRUE)
-  data1$center = (data1$left + data1$right)/2
-  charheight = median((filter(data1, price | type == "*price") %>% mutate(diff = top - bottom))$diff)
-  data1 = filter(data1, !(left <  2*charheight)) #margin: don't catch prices from previous page
-  # Might move this to an external argument later, but since we don't know which pages have legit dollar prices it's here, dynamic for now
-  if ( sum(isPrice(data1$text, dollar = T)) / (1 + sum(isPrice(data1$text, dollar = F))) > 2) {dollar = TRUE} else {dollar = FALSE}
-  
-  prices =  data1[isPrice(extractPrice(data1$text), dollar = dollar),] 
-  prices = filter(prices, type != "FALSE") #if not dollar sign prices, dollar sign prices get removed here
-  prices = filter(prices, left > max(data1$left)*.1) #cant have IDs too far right on page
+  # 2. Add columns to data1 and create "prices" data frame
+  page.Cols.initial = pageCols.initialize(data1, img = NULL, img.height = NULL, show.plot = TRUE) 
+  data1 = page.Cols.initial[["data1"]]
+  prices = page.Cols.initial[["prices"]]
+  charheight = page.Cols.initial[["charheight"]]
+  dollar = page.Cols.initial[["dollar"]]
   
   #cut down (just left for now) if glued to other stuff
   pricewidth = median(charWidth(data1[isPrice(data1$text)|data1$type == "*price",]))
@@ -39,30 +33,20 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
     prices[prices$type == "*price", ] = trimleft
   }
   
-
   #2a. initial column info ####
   
-  # prices
   cols1 = priceCols(prices, minGap = charheight)
   k = cols1[["k"]] #suspected number of price columns
   just = cols1[["just"]]
   clust1 = cols1[["column_info"]]
   prices$cluster = clust1$clustering
-  
-  # split columns vertically - possible randomness here?
-  for(i in 1:k) { # for loop due to cluster numbering 
-    nclust = max(prices$cluster) + 1
-    if (filter(prices, cluster == i) %>% select(just) %>% var() > charheight/4) {
-      prices = rbind(filter(prices, cluster != i), splitCol(filter(prices, cluster == i), type = "v", new.index = nclust))
-    }
-  }
-  
+
   # remove clusters of size 1 -- won't work for lm 
   prices$cluster_size = table(prices$cluster)[prices$cluster]
   prices = filter(prices, cluster_size > 1)
   prices$cluster = as.numeric(droplevels(factor(prices$cluster))) #shift cluster labels down if necessary
-  sort(table(prices$cluster))
   
+  # initial column data frame
   colData = prices %>% group_by(cluster) %>%
     summarize(col.left = min(left), col.right = max(right),
               col.bottom = min(prices$bottom), col.top = max(prices$top))
@@ -70,44 +54,10 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
  
   #2b. Find more prices. Chose to do this to get most complete possible table. ####
   
-  slope = img.height #default to vertical slope
-  for (i in 1:max.clust) {
-    
-      #if at least two entries, consider non-vertical slope update
-      if (sum(clust1$clustering == i) >= 2) {
-        #incorporate column alignment
-        prices.lm.tmp = subset(prices, clust1$clustering == i)
-        try({lm.left = lm(img.height - top ~ left, data = prices.lm.tmp)})
-        try({lm.right = lm(img.height - top ~ right, data = prices.lm.tmp)})
-        try({lm.center = lm(img.height - top ~ center, data = prices.lm.tmp)})
-        try({lm.slopes = sapply(list(lm.left, lm.right, lm.center), function(x) {(x$coefficients)[[2]]})})
-        slope = max(lm.slopes)
-      }
-      if ( !is.finite(slope) | slope == img.height) {
-         slope = img.height #probably don't need
-         near = abs(data1[[just]] - median(prices.lm.tmp[[just]])) < charheight
-         if(show.plot) {plot(prices.lm.tmp[[just]], prices.lm.tmp$top, xlim = c(0,4000), ylim = c(0,img.height)); abline(v = median(prices.lm.tmp[[just]]), col = "red")}
-      } else {
-        lm.best = list(lm.left, lm.right, lm.center)[[which.max(lm.slopes)]]
-        yintercept = lm.best$coefficients[[1]]
-        near = abs((data1$top - data1[[just]]*slope - yintercept)/slope) < charheight #slope puts it on the right scale if slope is very large (near vertical)
-        if(show.plot) {plot(prices.lm.tmp[[just]], prices.lm.tmp$top, xlim = c(0,4000), ylim = c(0,img.height)); abline(lm.best, col = "red")}
-      }
-      
-      #look for more prices
-      look2 = (near == TRUE & data1$price == FALSE)
-      data1$text.new = "FALSE"
-      if (sum (look2 & !data1$type %in% c("FALSE","TRUE")) > 0) {
-         data1$text.new[look2 & !data1$type %in% c("FALSE","TRUE")] =  
-            sapply(data1[look2 & !data1$type %in% c("FALSE","TRUE"),"text"], numToPrice)
-         cat("grabbed", sum(data1$text.new!="FALSE"), "new prices\n") 
-         data1$price[data1$text.new!="FALSE"] = TRUE
-         data1$text[data1$text.new!="FALSE"] = data1$text.new[data1$text.new!="FALSE"]
-      }
-  }
-    
+  data1 <- pageCols.search.column(prices, data1, img.height, just, charheight, show.plot = TRUE)
+
   #2c. What do we have now? -- create prices2 ####
-  prices2 = filter(data1, isPrice(extractPrice(data1$text))) %>% select(-matches("center"))
+  prices2 = filter(data1, isPrice(extractPrice(data1$text)))[, -which(names(data1)=="center")]
   prices2 = filter(prices2, left > max(data1$left)*.1) #again create a left margin where prices can't be
   
   #trim again
@@ -122,6 +72,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   prices2$type = isPrice(prices2$text, maybe = TRUE, dollar = dollar) 
   prices2 = filter(prices2, type != "FALSE")
   cat("progress: ", c(nrow(prices), "prices, then", nrow(prices2)), "\n")
+  print(ggplot(prices2, aes(x = left, y = bottom, color = type)) + geom_point())
   
   #2d. final price column info ####
   
@@ -262,6 +213,94 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
               idtype = idtype,
               justify = just))
 }  
+pageCols.initialize <- function(data1, img = NULL, img.height = NULL, show.plot = TRUE) {
+  
+  data1$price = isPrice(data1$text)
+  data1$type = isPrice(data1$text, maybe = TRUE)
+  print(filter(data1, type != "FALSE") %>% ggplot(aes(x = left, y = bottom, color = type)) + geom_point())
+  data1$center = (data1$left + data1$right)/2
+  charheight = median((filter(data1, price | type == "*price") %>% mutate(diff = top - bottom))$diff)
+  data1 = filter(data1, !(left <  2*charheight)) #margin: don't catch prices from previous page
+  # Might move this to an external argument later, but since we don't know which pages have legit dollar prices it's here, dynamic for now
+  if ( sum(isPrice(data1$text, dollar = T)) / (1 + sum(isPrice(data1$text, dollar = F))) > 2) {dollar = TRUE} else {dollar = FALSE}
+  
+  prices =  data1[isPrice(extractPrice(data1$text), dollar = dollar),] 
+  prices = filter(prices, type != "FALSE") #if not dollar sign prices, dollar sign prices get removed here
+  prices = filter(prices, left > max(data1$left)*.1) #cant have IDs too far right on page
+  print(ggplot(prices, aes(x = left, y = bottom, color = type)) + geom_point())
+  
+  return(list(data1 = data1, prices = prices, charheight = charheight, dollar = dollar))
+}
+
+pageCols.search.column <- function(prices, data1, img.height, just, charheight, show.plot) {
+  
+  for (i in unique(prices$cluster)) {
+    
+    prices.lm.tmp = subset(prices, cluster == i & price == TRUE) # only use actual prices, others likely to add noise
+    
+    #if at least two entries, consider non-vertical slope update
+    if (nrow(prices.lm.tmp) >= 2) {
+      
+      # Is the column perfectly vertical? If so look vertically, otherwise find best slope
+      
+      verticality.check = var(prices.lm.tmp[,just])
+      
+      if (verticality.check == 0) {
+        xintercept1 = mean(prices.lm.tmp[,just])
+        if (show.plot) {
+          print(ggplot(data=prices) + 
+                  geom_point(aes(x = left, y = bottom, color = type), size = .5) + 
+                  geom_point(aes(x = right, y = bottom, color = type)) + 
+            geom_vline(xintercept = xintercept1))
+        }
+        # identify nearby words
+        near = abs(data1[[just]] - median(prices.lm.tmp[[just]])) < 2*charheight
+      } else {
+        
+        # try all column alignments
+        # fit an lm for each
+        lm.coefficients = list(
+          lm.left = try({rlm(img.height - top ~ left, data = prices.lm.tmp, method = "MM")$coefficients}),
+          lm.right = try({rlm(img.height - top ~ right, data = prices.lm.tmp, method = "MM")$coefficients}),
+          lm.center = try({rlm(img.height - top ~ center, data = prices.lm.tmp, method = "MM")$coefficients})
+        )
+        lm.coefficients = sapply(lm.coefficients, function(x) {
+          if (class(x)=="try-error") {
+            return(c(0,0)) 
+          } else {return(x)}
+        })
+        
+        # pick the steepest one, regardless of previously estimated justification
+        tmp.just = c("left","right","center")[which.max(lm.coefficients[2,])] #find justification best for this purpose
+        slope1 = lm.coefficients[2, which.max(lm.coefficients[2,])]
+        yintercept1 = lm.coefficients[1, which.max(lm.coefficients[2,])]
+        
+        # identify nearby words
+        near = abs((data1$top - data1[[tmp.just]]*slope1 - yintercept1)/slope1) < 2*charheight
+        
+        if (show.plot) {
+          print(ggplot(data=prices) +
+                  geom_point(aes(x = left, y = bottom, color = type), size = .5) +
+                  geom_point(aes(x = right, y = bottom, color = type)) +
+            geom_abline(slope = slope1, intercept = yintercept1))
+        }
+      }
+      
+      #look for more prices -- exlude already detected ones
+      look2 = (near == TRUE & data1$price == FALSE)
+      data1$text.new = "FALSE"
+      if (sum (look2 & !data1$type %in% c("FALSE","TRUE")) > 0) {
+        # look for new prices among things not definitely price or not price
+        data1$text.new[look2 & !data1$type %in% c("FALSE","TRUE")] =  
+          sapply(data1[look2 & !data1$type %in% c("FALSE","TRUE"),"text"], numToPrice)
+        cat("grabbed", sum(data1$text.new!="FALSE"), "new prices\n") 
+        data1$price[data1$text.new!="FALSE"] = TRUE
+        data1$text[data1$text.new!="FALSE"] = data1$text.new[data1$text.new!="FALSE"]
+      }
+    }
+  }
+  return(data1)
+}
 
 #Use after updating prices
 updatePageCols <- function(page.cols, type = "price") {
@@ -343,6 +382,8 @@ updatePageCols <- function(page.cols, type = "price") {
 #    priceCols  Called by pageCols -- Find price columns, position and justification of text ####
 priceCols <- function(prices, minGap) {
   prices$center = (prices$left + prices$right)/2
+  # Compares objective function value for different numbers of columns and different text justifications
+  # 3 rows returns are the objective function value, minimum cluster size (must be >1), and 
   clust = list(
     L = sapply(1:max(1, min(10, (nrow(prices)-2))), function(x) { # range of possible columns in the table
       pam1 = pam(prices$left, k = x)
@@ -370,11 +411,14 @@ priceCols <- function(prices, minGap) {
     })
   )
   
-  #left or right align?
-  just = with(clust, apply(rbind(clust[["L"]][1,],
+  # left, right or center align?
+  # decision based on which has the best objective function the most often
+  clust.table = with(clust, apply(rbind(clust[["L"]][1,],
                                      clust[["R"]][1,],
                                      clust[["Ce"]][1,]),
-                               2, which.min) %>% table %>% which.max %>% as.vector)
+                               2, which.min) %>% table)
+  just = as.numeric(names(clust.table)[which.max(clust.table)])
+  
   k = which.min(clust[[just]][1, clust[[just]][2,]>1 & clust[[just]][3,] > minGap])
   just = switch(just, "left", "right", "center")
   
@@ -433,7 +477,7 @@ addPrices <- function(page.cols, px) {
     }
     else {return(page.cols$prices[[x]])}
   }) 
-  cat("Did addPrices process add or take away PRICES? (all >= 0 good):", sapply(page.cols$prices, nrow) - page.cols$price_cols$entries)
+  cat("\nDid addPrices process add or take away PRICES? (all >= 0 good):", sapply(page.cols$prices, nrow) - page.cols$price_cols$entries)
   
   # update other stuff
   page.cols = updatePageCols(page.cols)
@@ -483,7 +527,7 @@ addIds <- function(page.cols, px) {
     } else {return(old.ids)}
   }))
   
-  cat("Did addIds process add or take away IDs (>= 0 good)?",   new.ids  %>% group_by(table) %>% group_size() - page.cols$id_cols$entries, "\n")
+  cat("\nDid addIds process add or take away IDs (>= 0 good)?",   new.ids  %>% group_by(table) %>% group_size() - page.cols$id_cols$entries, "\n")
   
   # update  stuff
   # ids
@@ -821,6 +865,7 @@ checkBoxes <- function(df, px, buffer = 10, level = "textline", height, checker 
   
   tmp.list = apply(df, 1, function(x) {
     SetRectangle(tpx, dims = c(max(x[1] - buffer,0), max(x[2] - buffer,0), min(height,x[3] + 2*buffer), min(height, x[4] + 2*buffer)))
+    if (GetSourceYResolution(tpx)==0) {SetSourceResolution(tpx, 600)}
     gb = GetBoxes(tpx, level = level)
     if (length(gb$left) > 0 && gb$left[1] > 0) { #otherwise means an error or nothing found
       gb$text = gsub("\n", "", gb$text)
@@ -911,6 +956,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       table.boxes.words.reocr[[i]] = lapply(1:nrow(table.boxes[[i]]), function(x) {
         tpx = tesseract(px, pageSegMode = psm)
         SetRectangle(tpx, l[x], b[x], r[x]-l[x], t[x]-b[x]) #buffers already in
+        if (GetSourceYResolution(tpx)==0) {SetSourceResolution(tpx, 600)}
         gb = GetBoxes(tpx, level = text.level)
         if(text.level  == "textline") {gb$text = gsub("\n", "", gb$text)}
         gb
@@ -991,6 +1037,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       table.boxes.words.reocr[[i]] = lapply(seq_along(b), function(x) {
         tpx = tesseract(px, pageSegMode = psm)
         SetRectangle(tpx, l[x], b[x], r[x]-l[x], t[x]-b[x] + buffer) 
+        if (GetSourceYResolution(tpx)==0) {SetSourceResolution(tpx, 600)}
         gb = GetBoxes(tpx, level = text.level)
         if (text.level == "textline") {gb$text = gsub("\n", "", gb$text)}
         gb
