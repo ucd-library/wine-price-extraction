@@ -10,15 +10,16 @@ source("wine-price-extraction/dsi/R/helper.R")
 # image attribute only used for height
 # implements no prices in first 10% of page, no ids in last 10% (as deteremined by range of data1$left)
 
-pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, column.header = c("bottle", "case", "quart", "fifth")) {
-  #column.header is convered to lower for comparison
+pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, column.header = column.header) {
+  # column.header is convered to lower for comparison
+  # set dollar to something 
   
   #need img until image size attribute implemented
   if (is.null(img) & is.null(img.height)) {stop("Need image or image height")}
   if (is.null(img.height)) height1 = dim(readJPEG(img))[1] #we'll use the image attribute here later
   
   # 2. Add columns to data1 and create "prices" data frame
-  page.Cols.initial = pageCols.initialize(data1, img = NULL, img.height = NULL, show.plot = TRUE) 
+  page.Cols.initial = pageCols.initialize(data1, img = NULL, img.height = img.height, show.plot = TRUE) 
   data1 = page.Cols.initial[["data1"]]
   prices = page.Cols.initial[["prices"]]
   charheight = page.Cols.initial[["charheight"]]
@@ -35,16 +36,38 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   
   #2a. initial column info ####
   
-  cols1 = priceCols(prices, minGap = charheight)
+  cols1 = findCols(prices, minGap = charheight)
   k = cols1[["k"]] #suspected number of price columns
   just = cols1[["just"]]
   clust1 = cols1[["column_info"]]
   prices$cluster = clust1$clustering
-
+  try({print(ggplot(prices, aes(x = left, y = bottom, color = as.factor(cluster))) + 
+               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 1: Prices by cluster")) })
+  
   # remove clusters of size 1 -- won't work for lm 
   prices$cluster_size = table(prices$cluster)[prices$cluster]
   prices = filter(prices, cluster_size > 1)
-  prices$cluster = as.numeric(droplevels(factor(prices$cluster))) #shift cluster labels down if necessary
+  
+  # remove column outliers
+  prices = data.frame((prices %>% group_by(cluster) %>% filter(!tableOutlier(.data, charheight)) %>%
+    ungroup() %>% arrange(left)))
+  
+  # remove clusters of size 1 -- won't work for lm 
+  prices$cluster_size = table(prices$cluster)[prices$cluster]
+  prices = filter(prices, cluster_size > 1)
+  
+  # remove clusters with no column structure, i.e. min horizontal distance between any two items is large
+  max_diff = median(prices$right - prices$left) # must have at least two entries as close as this, 
+  # use right (even if left-justified) because stuff gets glued to left side sometimes:
+  remove1 = (prices %>% group_by(cluster) %>%
+               mutate(diffs = apply(abs(outer(right, right, "-")), 1, function(x) {min(x[x>0])})) %>% 
+               mutate(min_diffs = min(diffs), remove = min_diffs > max_diff))$remove
+  prices = filter(prices, !remove1)
+  
+  #shift cluster labels down if necessary
+  prices$cluster = as.numeric(droplevels(factor(prices$cluster))) 
+  try({print(ggplot(prices, aes(x = left, y = bottom, color = as.factor(cluster))) + 
+               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 2: Prices by cluster"))})
   
   # initial column data frame
   colData = prices %>% group_by(cluster) %>%
@@ -72,30 +95,60 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   prices2$type = isPrice(prices2$text, maybe = TRUE, dollar = dollar) 
   prices2 = filter(prices2, type != "FALSE")
   cat("progress: ", c(nrow(prices), "prices, then", nrow(prices2)), "\n")
-  print(ggplot(prices2, aes(x = left, y = bottom, color = type)) + geom_point())
+  try({print(ggplot(prices2, aes(x = left, y = bottom, color = type)) + 
+               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 3: Prices2 by type"))})
   
   #2d. final price column info ####
   
-  cols2 = priceCols(prices2, minGap = charheight)
+  cols2 = findCols(prices2, minGap = charheight)
   k = cols2[["k"]]
   just = cols2[["just"]]
   clust2 = cols2[["column_info"]]
   prices2$cluster = clust2$clustering
+  try({print(ggplot(prices2, aes(x = left, y = bottom, color = as.factor(cluster))) + 
+               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 4: Prices2 by cluster"))})
+  
+  # remove clusters of size 1 -- won't work for lm 
+  cluster_size = table(prices2$cluster)[prices2$cluster]
+  prices2 = filter(prices2, cluster_size > 1)
+  
+  # remove column outliers
+  prices2 = data.frame(prices2 %>% group_by(cluster) %>% filter(!tableOutlier(.data, charheight)) %>%
+    ungroup() %>% arrange(left))
+  
+  # remove clusters of size 1 -- won't work for lm 
+  cluster_size = table(prices2$cluster)[prices2$cluster]
+  prices2 = filter(prices2, cluster_size > 1)
+  
+  # remove clusters with no column structure, i.e. min horizontal distance between any two items is large
+  max_diff = median(prices2$right - prices2$left) # must have at least two entries as close as this, 
+  # use right (even if left-justified) because stuff gets glued to left side sometimes:
+  remove1 = (prices2 %>% group_by(cluster) %>% mutate(diffs = apply(abs(outer(right, right, "-")), 1, function(x) {min(x[x>0])})) %>% 
+               mutate(min_diffs = min(diffs), remove = min_diffs > max_diff))$remove
+  prices2 = filter(prices2, !remove1)
+  try({print(ggplot(prices2, aes(x = left, y = bottom, color = as.factor(cluster))) + geom_point() + ylim(img.height, 0))})
+  
+  try({print(ggplot(prices2, aes(x = left, y = bottom, color = as.factor(cluster))) + 
+               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 5: Prices2 by cluster"))})
   
   # split columns vertically
   for(i in 1:k) { # for loop due to cluster numbering 
     nclust = max(prices2$cluster) + 1
     # only try a split if the left and right ranges are wide enough
     if (with(filter(prices2, cluster == i), (max(left) - min(left)) >= charheight/2 | (max(right) - min(right)) >= charheight/2)) {
-          prices2 = rbind(filter(prices2, cluster != i), splitCol(filter(prices2, cluster == i), type = "v", new.index = nclust))
+          prices2 = rbind(filter(prices2, cluster != i),
+                    splitCol(filter(prices2, cluster == i), type = "v", new.index = nclust, buffer = charheight/2, min.chardiff = charheight/10))
         }
   }
   
   # reformat and detect outliers by left and right edge and minimum gap from median
-  prices2 = data.frame(prices2 %>% group_by(cluster) %>% 
-                         filter(! ((abs(scale(left) > 2.5) & abs(left - median(left)) > charheight/2) &
-                                 (abs(scale(right) > 2.5) & abs(right - median(right)) > charheight/2))) %>%
-                                                         ungroup() %>% arrange(left))
+  # need at least charheight absolute buffer, e.g. UCD_Lehmann_3392
+  prices2 = data.frame(prices2 %>% group_by(cluster) %>% filter(!tableOutlier(.data, charheight)) %>%
+                ungroup() %>% arrange(left))
+  
+  try({print(ggplot(prices2, aes(x = left, y = bottom, color = as.factor(cluster))) + 
+               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 6: Prices2 by cluster after vSplit and outlier removal"))})
+  
   # relevel cluster if necessary
   prices2$cluster = as.numeric(as.factor(prices2$cluster))
   max.clust = which.max(table(prices2$cluster)) #largest cluster
@@ -108,7 +161,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
               entries = n())
   
   #Try adding column headers:
-  header = findHeader(colData2, column.header, buffer = charheight)
+  header = findHeader(colData2, data1, column.header, buffer = charheight)
   colData2[, c("col.header","col.header.bottom","col.header.top")] = header
   colData2 = colData2  %>% arrange(cluster)
   
@@ -116,10 +169,12 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   
   # numbers
   if (sum(data1$type=="ID") <= max(2, round(max.clust/3))) {
-    tmp.numbers = filter(data1, type == "number", grepl(text, pattern="^[0-9]*.{0,1}$")) %>% arrange(left) %>% select(-matches("center"))
+    tmp.numbers = filter(data1, type == "number", grepl(text, pattern="^[0-9]*.{0,1}$")) %>% arrange(left)
+    tmp.numbers = tmp.numbers[,-which(names(tmp.numbers)=="center")]
     idtype = "number"
   } else {
-    tmp.numbers = filter(data1, type == "ID") %>% arrange(left) %>% select(-matches("center"))
+    tmp.numbers = filter(data1, type == "ID") %>% arrange(left)
+    tmp.numbers = tmp.numbers[,-which(names(tmp.numbers)=="center")]
     idtype = "ID"
   }
   
@@ -144,8 +199,8 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
     }
   
     #are there at least _ numbers near each cpt?
-    id_cols = tmp.cpt[(rowSums(abs(outer(tmp.cpt, tmp.numbers$left,  "-")) < charheight/3)) >
-                      max(table(prices2$cluster))/2]
+    id_cols = tmp.cpt[(rowSums(abs(outer(tmp.cpt, tmp.numbers$left,  "-")) < charheight)) >
+                      max(2, min(table(prices2$cluster))/2)]
   
     if(length(id_cols) > 0) {
     
@@ -195,6 +250,8 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
         
     
         cat(nrow(ids), "ids found")    
+        try({print(ggplot(ids, aes(x = left, y = bottom, color = as.factor(table))) + 
+                     geom_point() + ylim(img.height, 0) + ggtitle("pageCols y: IDs by table")) })
     } else {id_cols = NULL; ids = NULL}
   } else {id_cols = NULL; ids = NULL}
   
@@ -213,27 +270,31 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
               idtype = idtype,
               justify = just))
 }  
+
 pageCols.initialize <- function(data1, img = NULL, img.height = NULL, show.plot = TRUE) {
   
   data1$price = isPrice(data1$text)
   data1$type = isPrice(data1$text, maybe = TRUE)
-  print(filter(data1, type != "FALSE") %>% ggplot(aes(x = left, y = bottom, color = type)) + geom_point())
+  print(filter(data1, type != "FALSE") %>% ggplot(aes(x = left, y = bottom, color = type)) + geom_point() + ylim(img.height,0))
   data1$center = (data1$left + data1$right)/2
   charheight = median((filter(data1, price | type == "*price") %>% mutate(diff = top - bottom))$diff)
   data1 = filter(data1, !(left <  2*charheight)) #margin: don't catch prices from previous page
   # Might move this to an external argument later, but since we don't know which pages have legit dollar prices it's here, dynamic for now
-  if ( sum(isPrice(data1$text, dollar = T)) / (1 + sum(isPrice(data1$text, dollar = F))) > 2) {dollar = TRUE} else {dollar = FALSE}
+  if ( sum(isPrice(data1$text, dollar = T)) / (1 + sum(isPrice(data1$text, dollar = F))) > 3) {dollar = TRUE} else {dollar = FALSE}
   
   prices =  data1[isPrice(extractPrice(data1$text), dollar = dollar),] 
   prices = filter(prices, type != "FALSE") #if not dollar sign prices, dollar sign prices get removed here
   prices = filter(prices, left > max(data1$left)*.1) #cant have IDs too far right on page
-  print(ggplot(prices, aes(x = left, y = bottom, color = type)) + geom_point())
+  try({print(ggplot(prices, aes(x = left, y = bottom, color = type)) + geom_point() + ylim(img.height, 0))})
   
   return(list(data1 = data1, prices = prices, charheight = charheight, dollar = dollar))
 }
 
 pageCols.search.column <- function(prices, data1, img.height, just, charheight, show.plot) {
   
+  data1$text.new = "FALSE"
+  
+  cat("Look along detected price columns\n") 
   for (i in unique(prices$cluster)) {
     
     prices.lm.tmp = subset(prices, cluster == i & price == TRUE) # only use actual prices, others likely to add noise
@@ -248,10 +309,11 @@ pageCols.search.column <- function(prices, data1, img.height, just, charheight, 
       if (verticality.check == 0) {
         xintercept1 = mean(prices.lm.tmp[,just])
         if (show.plot) {
-          print(ggplot(data=prices) + 
+          try({print(ggplot(data=prices) + 
                   geom_point(aes(x = left, y = bottom, color = type), size = .5) + 
                   geom_point(aes(x = right, y = bottom, color = type)) + 
-            geom_vline(xintercept = xintercept1))
+                  ylim(img.height, 0) +
+            geom_vline(xintercept = xintercept1))})
         }
         # identify nearby words
         near = abs(data1[[just]] - median(prices.lm.tmp[[just]])) < 2*charheight
@@ -260,9 +322,9 @@ pageCols.search.column <- function(prices, data1, img.height, just, charheight, 
         # try all column alignments
         # fit an lm for each
         lm.coefficients = list(
-          lm.left = try({rlm(img.height - top ~ left, data = prices.lm.tmp, method = "MM")$coefficients}),
-          lm.right = try({rlm(img.height - top ~ right, data = prices.lm.tmp, method = "MM")$coefficients}),
-          lm.center = try({rlm(img.height - top ~ center, data = prices.lm.tmp, method = "MM")$coefficients})
+          lm.left = try({MASS::rlm(img.height - top ~ left, data = prices.lm.tmp, method = "M")$coefficients}),
+          lm.right = try({MASS::rlm(img.height - top ~ right, data = prices.lm.tmp, method = "M")$coefficients}),
+          lm.center = try({MASS::rlm(img.height - top ~ center, data = prices.lm.tmp, method = "M")$coefficients})
         )
         lm.coefficients = sapply(lm.coefficients, function(x) {
           if (class(x)=="try-error") {
@@ -279,23 +341,22 @@ pageCols.search.column <- function(prices, data1, img.height, just, charheight, 
         near = abs((data1$top - data1[[tmp.just]]*slope1 - yintercept1)/slope1) < 2*charheight
         
         if (show.plot) {
-          print(ggplot(data=prices) +
+          try({print(ggplot(data=prices) +
                   geom_point(aes(x = left, y = bottom, color = type), size = .5) +
                   geom_point(aes(x = right, y = bottom, color = type)) +
-            geom_abline(slope = slope1, intercept = yintercept1))
+                  ylim(img.height, 0) +
+            geom_abline(slope = slope1, intercept = yintercept1))})
         }
       }
       
       #look for more prices -- exlude already detected ones
       look2 = (near == TRUE & data1$price == FALSE)
-      data1$text.new = "FALSE"
       if (sum (look2 & !data1$type %in% c("FALSE","TRUE")) > 0) {
         # look for new prices among things not definitely price or not price
         data1$text.new[look2 & !data1$type %in% c("FALSE","TRUE")] =  
           sapply(data1[look2 & !data1$type %in% c("FALSE","TRUE"),"text"], numToPrice)
-        cat("grabbed", sum(data1$text.new!="FALSE"), "new prices\n") 
+        cat("found", sum(data1$text.new!="FALSE"), "new prices\n") 
         data1$price[data1$text.new!="FALSE"] = TRUE
-        data1$text[data1$text.new!="FALSE"] = data1$text.new[data1$text.new!="FALSE"]
       }
     }
   }
@@ -379,8 +440,8 @@ updatePageCols <- function(page.cols, type = "price") {
   return(page.cols)
 }
 
-#    priceCols  Called by pageCols -- Find price columns, position and justification of text ####
-priceCols <- function(prices, minGap) {
+#    findCols  Called by pageCols -- Find price columns, position and justification of text ####
+findCols <- function(prices, minGap) {
   prices$center = (prices$left + prices$right)/2
   # Compares objective function value for different numbers of columns and different text justifications
   # 3 rows returns are the objective function value, minimum cluster size (must be >1), and 
@@ -440,45 +501,52 @@ addPrices <- function(page.cols, px) {
                                      page.cols$price_cols, px, buffer = page.cols$charheight/3)
   
   # only add new ones, only replace ones that got better
-  page.cols$prices = lapply(1:page.cols$n_price_cols, function(x) {
-    
-    #evaluate possible new prices
-    tmp.boxes.from.cols_price[[x]]$price = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = F, dollar = F)
-    tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = T, dollar = F)
-    tmp.boxes.from.cols_price[[x]]$text.new = extractPrice(tmp.boxes.from.cols_price[[x]]$text)
-    tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text.new, maybe = T, dollar = F)
-    tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], type !="FALSE", !str_detect(tmp.boxes.from.cols_price[[x]]$text, "\\$"))
+  page.cols$prices = lapply(1:page.cols$n_price_cols, function(x) { try({
     
     if (nrow(tmp.boxes.from.cols_price[[x]])>0) {
-      #new prices? -- add later
-      compare.col = abs(outer(tmp.boxes.from.cols_price[[x]]$bottom, page.cols$prices[[x]]$bottom, "-"))
-      tmp.new = apply(compare.col, 1, min) > page.cols$charheight
-      tmp.lost = apply(compare.col, 2, min) > page.cols$charheight # prices not found in new data
-      new.prices = filter(tmp.boxes.from.cols_price[[x]], tmp.new)
+      
+      #evaluate possible new prices
+      tmp.boxes.from.cols_price[[x]]$price = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = F, dollar = F)
+      tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = T, dollar = F)
+      tmp.boxes.from.cols_price[[x]]$text.new = extractPrice(tmp.boxes.from.cols_price[[x]]$text)
+      tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text.new, maybe = T, dollar = F)
+      tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], type !="FALSE", 
+                                              !str_detect(tmp.boxes.from.cols_price[[x]]$text, "\\$"))
+      
+      if (nrow(tmp.boxes.from.cols_price[[x]])>0) {
+      
+        #new prices? -- add later
+        compare.col = abs(outer(tmp.boxes.from.cols_price[[x]]$bottom, page.cols$prices[[x]]$bottom, "-"))
+        tmp.new = apply(compare.col, 1, min) > page.cols$charheight
+        tmp.lost = apply(compare.col, 2, min) > page.cols$charheight # prices not found in new data
+        new.prices = filter(tmp.boxes.from.cols_price[[x]], tmp.new)
     
-      #better prices? - should have same number of rows as old
-      tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], !tmp.new)
+        #better prices? - should have same number of rows as old
+        tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], !tmp.new)
     
-      #what is the closest old price for each?
-      tmp.compare = apply(cbind(page.cols$prices[[x]]$type[!tmp.lost], tmp.boxes.from.cols_price[[x]]$type), 1, compareTypes)
-      page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==1] = page.cols$prices[[x]]$text[!tmp.lost][tmp.compare==1]
-      page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==2] = tmp.boxes.from.cols_price[[x]]$text[tmp.compare==2]
-      page.cols$prices[[x]]$text.new[tmp.lost] = page.cols$prices[[x]]$text[tmp.lost]
+        #what is the closest old price for each?
+        tmp.compare = apply(cbind(page.cols$prices[[x]]$type[!tmp.lost], tmp.boxes.from.cols_price[[x]]$type), 1, compareTypes)
+        page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==1] = page.cols$prices[[x]]$text[!tmp.lost][tmp.compare==1]
+        page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==2] = tmp.boxes.from.cols_price[[x]]$text[tmp.compare==2]
+        page.cols$prices[[x]]$text.new[tmp.lost] = page.cols$prices[[x]]$text[tmp.lost]
     
-      #add new prices
-      if (nrow(new.prices) > 0) {
-        new.prices$cluster = median(page.cols$prices[[x]]$cluster)
-        page.cols$prices[[x]] = rbind(page.cols$prices[[x]], new.prices[,names(page.cols$prices[[x]])]) %>% arrange(top)
+        #add new prices
+        if (nrow(new.prices) > 0) {
+          new.prices$cluster = median(page.cols$prices[[x]]$cluster)
+          page.cols$prices[[x]] = rbind(page.cols$prices[[x]], new.prices[,names(page.cols$prices[[x]])]) %>% arrange(top)
+        }
+    
+        #strip leading periods from new text
+        page.cols$prices[[x]]$text.new = str_remove(page.cols$prices[[x]]$text.new, "^\\.+")
       }
-    
-      #strip leading periods from new text
-      page.cols$prices[[x]]$text.new = str_remove(page.cols$prices[[x]]$text.new, "^\\.+")
       return(page.cols$prices[[x]])
     }
     else {return(page.cols$prices[[x]])}
-  }) 
-  cat("\nDid addPrices process add or take away PRICES? (all >= 0 good):", sapply(page.cols$prices, nrow) - page.cols$price_cols$entries)
+  })}) 
   
+  if(sum(sapply(page.cols$prices, class)=="try-error")>0) stop("addPrices failed updating page.cols$prices")
+  cat("\n addPrices added prices by column:", 
+      sapply(page.cols$prices, nrow) - page.cols$price_cols$entries)
   # update other stuff
   page.cols = updatePageCols(page.cols)
 }
@@ -527,7 +595,7 @@ addIds <- function(page.cols, px) {
     } else {return(old.ids)}
   }))
   
-  cat("\nDid addIds process add or take away IDs (>= 0 good)?",   new.ids  %>% group_by(table) %>% group_size() - page.cols$id_cols$entries, "\n")
+  cat("\n addIds added prices by column:",   new.ids  %>% group_by(table) %>% group_size() - page.cols$id_cols$entries, "\n")
   
   # update  stuff
   # ids
@@ -790,7 +858,7 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
   return(page.cols)  
 }
 
-# Remove false positive prices by checking if they're numbers (not prices) and have weird left or right places
+# Remove false positive prices by checking if they're numbers (not prices) and have weird left or right places 
 # Remove false positive ids by checking if their character width is way off --- don't remove so many that there are less ids than prices
 
 removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "prices", charwidth.cutoff = 2) {
@@ -824,10 +892,10 @@ removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "
       
       if (page.cols$justify == "center") {
         x = filter(x, ! (abs(scale( x[["center"]] )) > 2.5 & type == "number") )
-        x %>% select(-matches("center"))
+        x = x[,-which(names(x)=="center")]
       } else { #check both to be conservative. Otherwise may just be white space
         x = filter(x, ! ((abs(scale(x[["left"]])) > 2.5 & type == "number") & (abs(scale(x[["right"]])) > 2.5 & type == "number")) )
-        x %>% select(-matches("center"))
+        x = x[,-which(names(x)=="center")]
       }
 
     }) 
@@ -976,7 +1044,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       tmp.boxes = filter(tmp.boxes, abs(scale(charwidth)) < 10)
       
       #only uses somewhat high-conf examples for finding char types:
-      char.types = charTypes(tmp.boxes, types = 2, conf.min = quantile(tmp.boxes$confidence, .5)) 
+      char.types = charTypes(tmp.boxes, types = 2, conf.min = min(90, quantile(tmp.boxes$confidence, .5))) 
       char.sizes = char.types$means
       
       tmp.boxes$char.sizes = char.types$means[char.types$membership]

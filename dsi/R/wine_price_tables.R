@@ -45,7 +45,7 @@ source("wine-price-extraction/dsi/R/helper.R")
 # MAIN  FUNCTION, encompassing all numbered steps below ----
 # for examples of this code being run see run_wine_price_tables.R in the adjacent scripts folder
 
-price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix.threshold = NULL, pix.newValue = NULL, save.root = ".", column.header = c("bottle", "case", "quart", "fifth"), res1 = 600) {
+price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix.threshold = NULL, pix.newValue = NULL, save.root = ".", column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"), res1 = 600) {
   #res1 is default resolution which is 600 for wine images. Only set if img resolution is missing.
   #column.header is convered to lower for comparison
   
@@ -95,7 +95,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   
   ############# table check 1 ####
   if (!is.null(page.cols$ids)) {
-    cat("We guess there's", page.cols$n_id_cols, "table(s)\n")
+    cat("We think there's", page.cols$n_id_cols, "table(s)\n")
     tmp.maybe_missing = rep(page.cols$id_cols$entries, each = page.cols$n_price_cols/page.cols$n_id_cols) - sapply(page.cols$prices, nrow)
     if (max(tmp.maybe_missing) > 0) {
       cat("Column(s)", which(tmp.maybe_missing>0), "may be missing", tmp.maybe_missing[tmp.maybe_missing>0], "# of entry")
@@ -164,7 +164,7 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
     final.data = list(prices = final.prices, name.locations = name.boxes[["locations"]],
                       name.words = name.boxes[["words"]], name.words.old = name.boxes[["words_old"]], page.cols = page.cols)
     
-    ################## image check 4a / save name box image ####
+    #### save name box image ####
     tmp.boxes = do.call("rbind", name.boxes[[1]])
     png(paste("wine-price-extraction/dsi/Data/", file1, "_name_boxes.png", sep=""), width = 1000, height = 1500)
     plot(tesseract(px1), cropToBoxes = F, bbox = tmp.boxes, img = px1, confidence = FALSE)
@@ -176,8 +176,9 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   
   saveRDS(final.data, paste(save.root,"/wine-price-extraction/dsi/Data/", file1, ".RDS", sep = ""))
   
-  ################## image check 4b / save price image ####
+  #### save price image ####
   png(paste("wine-price-extraction/dsi/Data/", file1, "_price_boxes.png", sep=""), width = 1000, height = 1500)
+  #page.cols$prices entries should only have class data.frame, not also tbl_df or other
   plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
   dev.off()
   

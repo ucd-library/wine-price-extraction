@@ -234,8 +234,9 @@ find_brackets = function(result_object) {
   # if found trim from text and look for confidence
   if (!is.na(brackets)) {
     result_object$brackets_text = substr(brackets, 2, nchar(brackets) - 1);
-    result_object$brackets_conf = subset(result_object$text_conf,
-                                         grepl(pattern = paste(strsplit(brackets, " ")[[1]], collapse="|"), text, fixed = TRUE), select = c(1:2));
+    #followed stan's advice to comment this out
+    #result_object$brackets_conf = subset(result_object$text_conf,
+    #                                     grepl(pattern = paste(strsplit(brackets, " ")[[1]], collapse="|"), text, fixed = TRUE), select = c(1:2));
     text = gsub(brackets, "", result_object$text, fixed = TRUE);
     text = remove_spaces(text);
     result_object$text = text;
@@ -925,6 +926,7 @@ pick_better_result = function(result1, result2) {
 # As an input requires Jane's RDS file.
 parse_page = function(RDS_path) {
   
+  print(paste("Parsing output", RDS_path))
   # read items
   items = readRDS(RDS_path);
   
