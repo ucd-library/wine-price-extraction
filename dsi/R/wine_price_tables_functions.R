@@ -19,7 +19,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   if (is.null(img.height)) height1 = dim(readJPEG(img))[1] #we'll use the image attribute here later
   
   # 2. Add columns to data1 and create "prices" data frame
-  page.Cols.initial = pageCols.initialize(data1, img = NULL, img.height = img.height, show.plot = TRUE) 
+  page.Cols.initial = pageCols.initialize(data1, img = NULL, img.height = img.height, show.initial.plot = show.plot) 
   data1 = page.Cols.initial[["data1"]]
   prices = page.Cols.initial[["prices"]]
   charheight = page.Cols.initial[["charheight"]]
@@ -35,19 +35,21 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   }
   
   #2a. initial column info ####
+  # We'll use this to find columns to search in for more prices
   
   cols1 = findCols(prices, minGap = charheight)
   k = cols1[["k"]] #suspected number of price columns
   just = cols1[["just"]]
   clust1 = cols1[["column_info"]]
   prices$cluster = clust1$clustering
-  try({print(ggplot(prices, aes(x = left, y = bottom, color = as.factor(cluster))) + 
-               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 1: Prices by cluster")) })
+  if (show.plot) {try({print(ggplot(prices, aes(x = right, y = bottom, color = as.factor(cluster))) + 
+               geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) +
+               ggtitle("pageCols 1: Prices by cluster")) })}
   
   # remove clusters of size 1 -- won't work for lm 
   prices$cluster_size = table(prices$cluster)[prices$cluster]
   prices = filter(prices, cluster_size > 1)
-  
+
   # remove column outliers
   prices = data.frame((prices %>% group_by(cluster) %>% filter(!tableOutlier(.data, charheight)) %>%
     ungroup() %>% arrange(left)))
@@ -66,21 +68,18 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   
   #shift cluster labels down if necessary
   prices$cluster = as.numeric(droplevels(factor(prices$cluster))) 
-  try({print(ggplot(prices, aes(x = left, y = bottom, color = as.factor(cluster))) + 
-               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 2: Prices by cluster"))})
-  
-  # initial column data frame
-  colData = prices %>% group_by(cluster) %>%
-    summarize(col.left = min(left), col.right = max(right),
-              col.bottom = min(prices$bottom), col.top = max(prices$top))
+  if (show.plot) {try({print(ggplot(prices, aes(x = right, y = bottom, color = as.factor(cluster))) + 
+               geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
+               ggtitle("pageCols 2: Prices by cluster after outlier removal"))})}
   max.clust = which.max(table(prices$cluster)) #largest cluster
  
   #2b. Find more prices. Chose to do this to get most complete possible table. ####
   
-  data1 <- pageCols.search.column(prices, data1, img.height, just, charheight, show.plot = TRUE)
+  data1 <- pageCols.search.column(prices, data1, img.height, just, charheight, show.search.plot = show.plot)
 
   #2c. What do we have now? -- create prices2 ####
-  prices2 = filter(data1, isPrice(extractPrice(data1$text)))[, -which(names(data1)=="center")]
+  prices2 = filter(data1, isPrice(extractPrice(data1$text)) | 
+                     isPrice(extractPrice(data1$text.new)))[, -which(names(data1)=="center")]
   prices2 = filter(prices2, left > max(data1$left)*.1) #again create a left margin where prices can't be
   
   #trim again
@@ -95,8 +94,9 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   prices2$type = isPrice(prices2$text, maybe = TRUE, dollar = dollar) 
   prices2 = filter(prices2, type != "FALSE")
   cat("progress: ", c(nrow(prices), "prices, then", nrow(prices2)), "\n")
-  try({print(ggplot(prices2, aes(x = left, y = bottom, color = type)) + 
-               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 3: Prices2 by type"))})
+  if (show.plot) {try({print(ggplot(prices2, aes(x = right, y = bottom, color = type)) + 
+               geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
+               ggtitle("pageCols 3: Prices2 by type"))})}
   
   #2d. final price column info ####
   
@@ -105,8 +105,9 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   just = cols2[["just"]]
   clust2 = cols2[["column_info"]]
   prices2$cluster = clust2$clustering
-  try({print(ggplot(prices2, aes(x = left, y = bottom, color = as.factor(cluster))) + 
-               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 4: Prices2 by cluster"))})
+  if (show.plot) {try({print(ggplot(prices2, aes(x = right, y = bottom, color = as.factor(cluster))) + 
+               geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
+               ggtitle("pageCols 4: Prices2 by cluster"))})}
   
   # remove clusters of size 1 -- won't work for lm 
   cluster_size = table(prices2$cluster)[prices2$cluster]
@@ -120,16 +121,19 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   cluster_size = table(prices2$cluster)[prices2$cluster]
   prices2 = filter(prices2, cluster_size > 1)
   
+  # If no prices left to analyze, stop.
+  if (nrow(prices2)==0) {return(NULL)}
+  
   # remove clusters with no column structure, i.e. min horizontal distance between any two items is large
   max_diff = median(prices2$right - prices2$left) # must have at least two entries as close as this, 
   # use right (even if left-justified) because stuff gets glued to left side sometimes:
   remove1 = (prices2 %>% group_by(cluster) %>% mutate(diffs = apply(abs(outer(right, right, "-")), 1, function(x) {min(x[x>0])})) %>% 
                mutate(min_diffs = min(diffs), remove = min_diffs > max_diff))$remove
   prices2 = filter(prices2, !remove1)
-  try({print(ggplot(prices2, aes(x = left, y = bottom, color = as.factor(cluster))) + geom_point() + ylim(img.height, 0))})
-  
-  try({print(ggplot(prices2, aes(x = left, y = bottom, color = as.factor(cluster))) + 
-               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 5: Prices2 by cluster"))})
+
+  if (show.plot) {try({print(ggplot(prices2, aes(x = right, y = bottom, color = as.factor(cluster))) + 
+               geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
+               ggtitle("pageCols 5: Prices2 by cluster after outlier removal"))})}
   
   # split columns vertically
   for(i in 1:k) { # for loop due to cluster numbering 
@@ -146,14 +150,13 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   prices2 = data.frame(prices2 %>% group_by(cluster) %>% filter(!tableOutlier(.data, charheight)) %>%
                 ungroup() %>% arrange(left))
   
-  try({print(ggplot(prices2, aes(x = left, y = bottom, color = as.factor(cluster))) + 
-               geom_point() + ylim(img.height, 0) + ggtitle("pageCols 6: Prices2 by cluster after vSplit and outlier removal"))})
+  if (show.plot) {try({print(ggplot(prices2, aes(x = right, y = bottom, color = as.factor(cluster))) + 
+               geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
+               ggtitle("pageCols 6: Prices2 by cluster after vSplit and outlier removal"))})}
   
   # relevel cluster if necessary
   prices2$cluster = as.numeric(as.factor(prices2$cluster))
   max.clust = which.max(table(prices2$cluster)) #largest cluster
-    
-  if(show.plot) {plot(tesseract(px1), cropToBoxes = F, bbox = prices2, img = px1)}
 
   colData2 = prices2 %>% group_by(cluster) %>%
     summarize(col.left = min(left), col.right = max(right),
@@ -250,8 +253,9 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
         
     
         cat(nrow(ids), "ids found")    
-        try({print(ggplot(ids, aes(x = left, y = bottom, color = as.factor(table))) + 
-                     geom_point() + ylim(img.height, 0) + ggtitle("pageCols y: IDs by table")) })
+        if (show.plot) {try({print(ggplot(ids, aes(x = left, y = bottom, color = as.factor(table))) + 
+                     geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
+                     ggtitle("pageCols 7: IDs by table")) })}
     } else {id_cols = NULL; ids = NULL}
   } else {id_cols = NULL; ids = NULL}
   
@@ -271,11 +275,13 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
               justify = just))
 }  
 
-pageCols.initialize <- function(data1, img = NULL, img.height = NULL, show.plot = TRUE) {
+pageCols.initialize <- function(data1, img = NULL, img.height = NULL, show.initial.plot = FALSE) {
   
   data1$price = isPrice(data1$text)
   data1$type = isPrice(data1$text, maybe = TRUE)
-  print(filter(data1, type != "FALSE") %>% ggplot(aes(x = left, y = bottom, color = type)) + geom_point() + ylim(img.height,0))
+  print(filter(data1, type != "FALSE") %>% 
+          ggplot(aes(x = left, y = bottom, color = type)) + geom_point() + ylim(img.height,0) +
+          ggtitle("pageCols.inititalize 1: Numeric data by type") )
   data1$center = (data1$left + data1$right)/2
   charheight = median((filter(data1, price | type == "*price") %>% mutate(diff = top - bottom))$diff)
   data1 = filter(data1, !(left <  2*charheight)) #margin: don't catch prices from previous page
@@ -285,12 +291,13 @@ pageCols.initialize <- function(data1, img = NULL, img.height = NULL, show.plot 
   prices =  data1[isPrice(extractPrice(data1$text), dollar = dollar),] 
   prices = filter(prices, type != "FALSE") #if not dollar sign prices, dollar sign prices get removed here
   prices = filter(prices, left > max(data1$left)*.1) #cant have IDs too far right on page
-  try({print(ggplot(prices, aes(x = left, y = bottom, color = type)) + geom_point() + ylim(img.height, 0))})
+  if (show.initial.plot) {try({print(ggplot(prices, aes(x = left, y = bottom)) + geom_point() + 
+               ylim(img.height, 0) + ggtitle("pageCols.inititalize 2: Prices only"))})}
   
   return(list(data1 = data1, prices = prices, charheight = charheight, dollar = dollar))
 }
 
-pageCols.search.column <- function(prices, data1, img.height, just, charheight, show.plot) {
+pageCols.search.column <- function(prices, data1, img.height, just, charheight, show.search.plot = FALSE) {
   
   data1$text.new = "FALSE"
   
@@ -308,12 +315,14 @@ pageCols.search.column <- function(prices, data1, img.height, just, charheight, 
       
       if (verticality.check == 0) {
         xintercept1 = mean(prices.lm.tmp[,just])
-        if (show.plot) {
+        if (show.search.plot) {
           try({print(ggplot(data=prices) + 
-                  geom_point(aes(x = left, y = bottom, color = type), size = .5) + 
+                  geom_point(aes(x = left, y = bottom), color = "black", size = .5) + 
                   geom_point(aes(x = right, y = bottom, color = type)) + 
                   ylim(img.height, 0) +
-            geom_vline(xintercept = xintercept1))})
+                  geom_vline(xintercept = xintercept1) +
+                  ggtitle("pageCols.search.column: Prices by cluster")
+              )})
         }
         # identify nearby words
         near = abs(data1[[just]] - median(prices.lm.tmp[[just]])) < 2*charheight
@@ -333,19 +342,21 @@ pageCols.search.column <- function(prices, data1, img.height, just, charheight, 
         })
         
         # pick the steepest one, regardless of previously estimated justification
-        tmp.just = c("left","right","center")[which.max(lm.coefficients[2,])] #find justification best for this purpose
-        slope1 = lm.coefficients[2, which.max(lm.coefficients[2,])]
-        yintercept1 = lm.coefficients[1, which.max(lm.coefficients[2,])]
+        tmp.just = c("left","right","center")[which.max(abs(lm.coefficients[2,]))] #find justification best for this purpose
+        slope1 = lm.coefficients[2, which.max(abs(lm.coefficients[2,]))]
+        yintercept1 = lm.coefficients[1, which.max(abs(lm.coefficients[2,]))]
         
         # identify nearby words
         near = abs((data1$top - data1[[tmp.just]]*slope1 - yintercept1)/slope1) < 2*charheight
         
-        if (show.plot) {
+        if (show.search.plot) {
           try({print(ggplot(data=prices) +
-                  geom_point(aes(x = left, y = bottom, color = type), size = .5) +
-                  geom_point(aes(x = right, y = bottom, color = type)) +
-                  ylim(img.height, 0) +
-            geom_abline(slope = slope1, intercept = yintercept1))})
+                       geom_point(aes(x = left, y = bottom), color = "black", size = .5) +
+                       geom_point(aes(x = right, y = bottom, color = type)) +
+                       geom_abline(slope = -slope1, intercept = -yintercept1) +
+                       ylim(img.height, 0) +
+                       ggtitle("pageCols.search.column: Prices by cluster"))
+            })
         }
       }
       
@@ -355,7 +366,7 @@ pageCols.search.column <- function(prices, data1, img.height, just, charheight, 
         # look for new prices among things not definitely price or not price
         data1$text.new[look2 & !data1$type %in% c("FALSE","TRUE")] =  
           sapply(data1[look2 & !data1$type %in% c("FALSE","TRUE"),"text"], numToPrice)
-        cat("found", sum(data1$text.new!="FALSE"), "new prices\n") 
+        cat("found", sum(data1$text.new[look2 & !data1$type %in% c("FALSE","TRUE")]!="FALSE"), "new prices\n") 
         data1$price[data1$text.new!="FALSE"] = TRUE
       }
     }
@@ -679,7 +690,7 @@ pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
   })
   
   # left and right table bounds
-  tmp.table.right = page.cols$price_cols %>% arrange(table) %>% group_by(table) %>% filter(col.right == max(col.right)) %>% .$col.right
+  tmp.table.right = (page.cols$price_cols %>% arrange(table) %>% group_by(table) %>% summarize(m = max(col.right)))$m
   page.cols$price_cols = page.cols$price_cols  %>% ungroup () %>%
     mutate(table.left.cpt = rep(table.left, times = table(page.cols$price_cols$table)),
            table.right = rep(tmp.table.right, times = table(page.cols$price_cols$table)))
