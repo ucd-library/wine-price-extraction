@@ -45,7 +45,11 @@ source("wine-price-extraction/dsi/R/helper.R")
 # MAIN  FUNCTION, encompassing all numbered steps below ----
 # for examples of this code being run see run_wine_price_tables.R in the adjacent scripts folder
 
-price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix.threshold = NULL, pix.newValue = NULL, save.root = ".", column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"), res1 = 600) {
+price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
+                                   image.check = FALSE, show.ggplot = TRUE,
+                                   pix.threshold = NULL, pix.newValue = NULL, 
+                                   column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
+                                   res1 = 600) {
   #res1 is default resolution which is 600 for wine images. Only set if img resolution is missing.
   #column.header is convered to lower for comparison
   
@@ -74,8 +78,14 @@ price_table_extraction <- function(file1, image.check = FALSE, data1 = NULL, pix
   if(! file.exists(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))) {saveRDS(data1, paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))}
   
   # 2 ####
-  if (sum(isPrice(data1$text)) + sum(isPrice(data1$text, maybe = T)=="*price") == 0) {return("No prices detected. If prices suspected try a new pix.threshold.")}
-  page.cols = pageCols(data1, img.height = height1, column.header = column.header)
+  if (sum(isPrice(data1$text)) + sum(isPrice(data1$text, maybe = T)=="*price") == 0) {
+    return("No prices detected. If prices suspected try a new pix.threshold.")
+  }
+  page.cols = pageCols(data1, img.height = height1, column.header = column.header, show.plot = show.ggplot)
+  
+  if (is.null(page.cols)) {
+    return("Prices are scattered. No price *tables* detected")
+  }
   
   ############# img check 2 ####
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1)
