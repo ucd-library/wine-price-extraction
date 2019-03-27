@@ -79,47 +79,44 @@ isPrice = #Jane's version - different than Duncan's isPrice
 
 numToPrice = function(numAsChar, dollar = FALSE) {
   #dollar False to not allow numbers will dollar sign in front 
+  #order of options is important (don't reorder)
   
   #option 1, just have to remove extra stuff at end, e.g. a period -- at most two
   if( grepl("^([0-9]+)\\.[0-9]{2}.{0,2}$", numAsChar)) return(str_extract(numAsChar, "^([0-9]+)\\.[0-9]{2}"))
   
-  #option 2, number with wrong puncuation
+  #option 2, 4+ digit price with comma -- remove comma, allow at most 9,999.99
+  if (grepl("^[0-9]{1},[0-9]{3}\\.[0-9]{2}", numAsChar)) { return(gsub(",","",numAsChar))}
+  
+  #option 3, number with wrong puncuation
   if( grepl("^([0-9]+)[\\ |,][0-9]{2}", numAsChar)) {
     return(gsub("[\\ |,]", "\\.", str_extract(numAsChar, "^([0-9]+)[\\ |,][0-9]{2}")))
   }
-  
-  #option 3, number with stuff before -- allow at most lots
-  if (dollar) {
-    if( grepl("^.([0-9]+)\\.[0-9]{2}", numAsChar)) return(str_extract(numAsChar, "([0-9]+)\\.[0-9]{2}"))
-  } else {
-    if( grepl("\\$[0-9]+", numAsChar)) return(FALSE)
-    else {
-      if( grepl("([0-9]+)\\.[0-9]{2}", numAsChar)) return(str_extract(numAsChar, "([0-9]+)\\.[0-9]{2}"))
-    }  
+
+  #option 4, number with stuff before -- allow at most lots
+  if (dollar & grepl("^.([0-9]+)\\.[0-9]{2}", numAsChar)) return(str_extract(numAsChar, "([0-9]+)\\.[0-9]{2}"))
+
+  if (!dollar) {
+    if ( grepl("\\$[0-9]+", numAsChar)) return(FALSE)
+    if ( grepl("([0-9]+)\\.[0-9]{2}", numAsChar)) return(str_extract(numAsChar, "([0-9]+)\\.[0-9]{2}"))
   }
   
-  #option 4, number with no leading 0 -- add the 0
+  #option 5, number with no leading 0 -- add the 0
+  if (grepl("^\\.[0-9]{2}", numAsChar)) { return(paste0("0",numAsChar))}
   
-  if (!grepl("^\\.[0-9]{2}", numAsChar)) { return(FALSE) }
-  else {
-    return(paste0("0",numAsChar))
-  }
-  
-  #option 4, number without punctuation (remove any puncuation at end -- allow at most 3 after)
-  
-  if (!grepl("[0-9]{3,10}.{0,2}$", numAsChar)) { return(FALSE) }
-    else {
+  #option 6 number without punctuation (remove any puncuation at end -- allow at most 2 after)
+  if (grepl("[0-9]{3,10}.{0,2}$", numAsChar)) {
     numAsChar = str_extract(numAsChar, "[0-9]{3,10}")     
     num = strsplit(numAsChar, split="")[[1]]
-    if(!tail(num,1) %in% c("0","5","9") & paste0(head(num,2), collapse = "") %in% c("18","19")) {
-      warning(paste0(numAsChar, " is probably a year"))
+    if (!tail(num,1) %in% c("0","5","9") & paste0(head(num,2), collapse = "") %in% c("18","19")) {
+      warning(paste0(numAsChar, " is probably a year, excluded"))
       return(FALSE)
     }
     price = paste(paste0(num[1:(length(num)-2)], collapse = ""), ".",
                 paste0(tail(num,2), collapse = ""), sep="")
     return(price)
-    }
+  }
   
+  return(FALSE)
 }
   
 # Sort a catalog of images by instances of prices, numbers and other text
@@ -307,7 +304,7 @@ removeDuplicates <- function(table, buffer = 10, justify = "right") { #price or 
 extractPrice <- function(x, dollar = FALSE) 
   {
     if (dollar == FALSE) {
-      extraction = str_extract(x, "[0-9]+\\.{0,1}[0-9]+.{0,1}$") #(?![0-9])
+      extraction = str_extract(x, "[0-9|,]+\\.{0,1}[0-9]+.{0,1}$") #(?![0-9])
       if (length(extraction)==0) {return(FALSE)} else {return(extraction)}
     } else {
       extraction = str_extract(x, "\\$[0-9]+[.,][0-9]{2}")
