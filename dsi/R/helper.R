@@ -336,12 +336,18 @@ addRows <- function(page.cols, buffer = page.cols$charheight/2, type = "price") 
   if (type == "ids") {
     all.prices = do.call("rbind", page.cols$prices)
     list.table.ids = lapply(unique(page.cols$ids$table), function(i) {
-      table.ids = filter(page.cols$ids, table == i)
+      
+      if (is.na(i)) {
+        table.ids = filter(page.cols$ids, is.na(table))
+      } else {
+        table.ids = filter(page.cols$ids, table == i)
+      }
       tmp.prices = filter(all.prices, table == as.numeric(i)) %>% arrange(top, left)
       row.mins = tmp.prices %>% group_by(row) %>% summarize(top = min(top))
       row.try = sapply(table.ids$top, function(x) {
           as.numeric(row.mins[min(which(x < row.mins$top + buffer)),1])
         })
+      
       if (sum(!is.na(row.try))==0) {
         warning("Something is wrong? All table ids are below table prices. ids rows not updated")
         table.ids = table.ids %>% arrange(top, left) %>% mutate(row = 1:nrow(.))

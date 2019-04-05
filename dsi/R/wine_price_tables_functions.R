@@ -429,7 +429,7 @@ updatePageCols <- function(page.cols, type = "price") {
     if (hasName(page.cols$price_cols, "table.size")) {
       page.cols$price_cols  = left_join(page.cols$price_cols, do.call("rbind", page.cols$prices) %>% 
                                           group_by(table) %>% 
-                                          summarize(table.size = max(row)), by = "table", suffix = c(".x","")) %>% select(-contains("table.size.x"))
+                                          summarize(table.size = max(row)), by = "table", suffix = c(".x","")) %>% dplyr::select(-contains("table.size.x"))
     }
   }
   
@@ -767,11 +767,11 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
             missing.boxes = data.frame(
               left = rep(quantile(cols.missing[[x]]$left, .2), length(missing.spots[[x]])),
               bottom = table.prices %>% filter(row %in% missing.spots[[x]]) %>% group_by(row) %>% 
-                          summarize(bottom = median(bottom)) %>% ungroup() %>% select(bottom),
+                          summarize(bottom = median(bottom)) %>% ungroup() %>% dplyr::select(bottom),
               width = rep(quantile(cols.missing[[x]]$right, .8), length(missing.spots[[x]])) -
                         rep(quantile(cols.missing[[x]]$left,.2), length(missing.spots[[x]])),
               height =  table.prices %>% filter(row %in% missing.spots[[x]]) %>% group_by(row) %>% 
-                summarize(bottom = median(bottom), top = median(top), height = top - bottom) %>% ungroup() %>% select(height)
+                summarize(bottom = median(bottom), top = median(top), height = top - bottom) %>% ungroup() %>% dplyr::select(height)
             )
             boxes = checkBoxes(missing.boxes, px, height = img.height, buffer = buffer, rbind = FALSE)
             if (is.null(boxes)) {boxes = vector(mode = "list", length = nrow(missing.boxes))}
@@ -984,7 +984,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
     structure.bad = min(apply( 
       table.prices %>% group_by(cluster) %>% 
       summarize(diffs_left = min(diff(sort(left))), diffs_right = min(diff(sort(right)))) %>%
-      ungroup() %>% select(contains("diffs")), 1, min) > page.cols$charheight * 4
+      ungroup() %>% dplyr::select(contains("diffs")), 1, min) > page.cols$charheight * 4
     )
     
     if (structure.bad) {table.boxes[[i]] = table.boxes.words[[i]] = table.boxes.words.reocr[[i]] = NULL}

@@ -102,7 +102,7 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
   ############# img check 3 ####
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
   if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
-  
+
   ############# table check 1 ####
   if (!is.null(page.cols$ids)) {
     cat("We think there's", page.cols$n_id_cols, "table(s)\n")
@@ -159,9 +159,9 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
     
     final.prices[[x]] = list(
       ids = ifelse(!is.null(page.cols$ids) && sum(page.cols$ids$table == x) > 0,
-                   list(page.cols$ids %>% filter(table == x) %>% select(row, text)),
+                   list(page.cols$ids %>% filter(table == x) %>% dplyr::select(row, text)),
                    list(NULL)) ,
-      prices = lapply(table.prices, select, row, text.new))
+      prices = lapply(table.prices, dplyr::select, row, text.new))
     
     names(final.prices[[x]]$prices) = (filter(page.cols$price_cols, table == x) %>% 
                                          arrange(col.left))[["col.header"]]
