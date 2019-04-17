@@ -11,6 +11,7 @@ library(stringr)
 library(dplyr)
 library(RecordLinkage)
 
+source("~/Documents/DSI/wine-price-extraction/dsi/R/wine_evaluate.R")
 output.directory = "~/Documents/DSI/wine-price-extraction/dsi/Data"
 truth.directory = "~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth"
 file.number = "0069"
@@ -29,7 +30,7 @@ truth.prices = readRDS(file.path(truth.directory, paste0("UCD_Lehmann_", file.nu
 
 # A. Basic stats for all files ####
 
-fileset1 = str_extract(list.files("~/Documents/DSI/wine-price-extraction/dsi/Data/"), pattern = "UCD.*RDS")
+fileset1 = str_extract(list.files(output.directory), pattern = "UCD.*RDS")
 fileset1 = fileset1[!is.na(fileset1)]
 evaluate.output = vector("list", length(fileset1))
 for (i in 1:length(fileset1)) {
@@ -61,22 +62,47 @@ ggsave(output_summary_singlestat, filename = "~/Documents/DSI/wine-price-extract
 
 # B. For files we have truth for ####
 
-fileset2 = str_extract(list.files("~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/"), "[0-9]{4}")
-summary.output = vector("list", length = length(fileset2))
-names(summary.output) = paste0("UCD_Lehmann_",fileset2,".jpg")
-i=1
-for(file.number in fileset2) {
-  print(file.number)
-  test.prices = readRDS(file.path(output.directory, paste0("UCD_Lehmann_", file.number,".RDS")))$prices
-  truth.prices = readRDS(file.path(truth.directory, paste0("UCD_Lehmann_", file.number,"_price_truth.RDS")))$prices
-  compare.list = wine.compare(test.prices, truth.prices)
+truth.directory2 = "~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth"
+truth.subdirectory2 = list.dirs(truth.directory2, recursive = F)
+
+summary.output = lapply( truth.subdirectory2, function(elem) {
+
+  fileset.truth = str_extract(list.files(elem), "[0-9]{4}")
+  summary.output = vector("list", length = length(fileset.truth))
+  names(summary.output) = paste0("UCD_Lehmann_",fileset.truth,".jpg")
+
+  for (i in 1:length(fileset.truth)) {
+    print(fileset.truth[i])
+    test.prices = readRDS(file.path(output.directory, paste0("UCD_Lehmann_", fileset.truth[i],".RDS")))$prices
+    truth.prices = readRDS(file.path(elem, paste0("UCD_Lehmann_", fileset.truth[i],"_price_truth.RDS")))$prices
+    compare.list = NULL
+    try({compare.list = wine.compare(test.prices, truth.prices)})
   
-  summary.output[[i]] = wine.summarize(compare.list)
-  i = i+1
-}
+    if (!is.null(compare.list)) {summary.output[[i]] = wine.summarize(compare.list)} 
+  }
+  summary.output = do.call("rbind", summary.output)
+  summary.output$name = last(unlist(strsplit(elem, split = "/")))
+  summary.output
+})
+
 summary.output = do.call("rbind", summary.output)
 
 write.csv(summary.output, "~/Documents/DSI/wine-price-extraction/dsi/Data/summary_vs_truth.csv")
+
+# C. For files we have marks ####
+
+# See wine_truth.R
+marks_top_files_base = sapply(strsplit(marks_top_files$file.jpg, "\\."), first)
+
+file_base = marks_top_files_base[1]
+# Get the marks for the file
+tmp.marks = filter(marks_image, file == file_base)
+
+# Get prices detected
+tmp.prices = readRDS(paste0("~/Documents/DSI/wine-price-extraction/dsi/Data/marks_top_files/",file_base,".RDS"))
+
+head(tmp.marks)
+do.call("rbind", tmp.prices$page.cols$prices) %>% arrange(left) %>% head()
 
 ##################################################################################################################
 # 3. Code from modifying output to create truth (if necessary, would be run before comparison making)

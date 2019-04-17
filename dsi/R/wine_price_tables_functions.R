@@ -189,7 +189,8 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
     
     # 2. too shallow slope magnitude
     
-    remove2 = (prices2 %>% mutate(center = (left +  right)/2, tmp.just = .[[just]])  %>% group_by(cluster) %>%
+    remove2 = (prices2 %>% mutate(center = (left +  right)/2) %>% 
+                 mutate(tmp.just = .[[just]]) %>% group_by(cluster) %>%
                  mutate(cluster_size = n(),  
                         remove = (cluster_size <= few.entries) &
                           # count words of at least three letters in a row
@@ -641,7 +642,8 @@ addIds <- function(page.cols, px) {
     tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], type == page.cols$idtype)
     
     #another heuristic to weed out non-IDs
-    tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], !grepl("[a-zA-Z-]{3}", tmp.boxes.from.cols_id[[x]]$text))
+    tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]],
+                                         !grepl("[a-zA-Z-]{3}", tmp.boxes.from.cols_id[[x]]$text))
     
     old.ids = filter(page.cols$ids, table == x)
     compare.ids = abs(outer(tmp.boxes.from.cols_id[[x]]$bottom, old.ids$bottom, "-"))
@@ -650,25 +652,27 @@ addIds <- function(page.cols, px) {
       #remove column if it's not a new or a best match for an old
       #shouldn't really do anything since we removed ID duplicates in pageCols
       keep.cols = unique(apply(compare.ids, 1, which.min)[!tmp.new])
-      compare.ids = as.matrix(compare.ids[,keep.cols],  ncol = length(keep.cols))
-      tmp.lost = apply(compare.ids, 2, min) > page.cols$charheight
-      new.ids = filter(tmp.boxes.from.cols_id[[x]], (apply(compare.ids, 1, min) > page.cols$charheight))
+      if (length(keep.cols) > 0) {
+        compare.ids = as.matrix(compare.ids[,keep.cols],  ncol = length(keep.cols))
+        tmp.lost = apply(compare.ids, 2, min) > page.cols$charheight
+        new.ids = filter(tmp.boxes.from.cols_id[[x]], (apply(compare.ids, 1, min) > page.cols$charheight))
     
-      #better ids? - should have same number of rows as oldx
-      tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], !tmp.new)
+        #better ids? - should have same number of rows as oldx
+        tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], !tmp.new)
     
-      # replace if original worse thn 90 and new at least 10 better
-      tmp.replace = (old.ids$confidence[!tmp.lost])[keep.cols] < 90 &
-        (old.ids$confidence[!tmp.lost][keep.cols] - tmp.boxes.from.cols_id[[x]]$confidence) < -10 #old - new
+        # replace if original worse thn 90 and new at least 10 better
+        tmp.replace = (old.ids$confidence[!tmp.lost])[keep.cols] < 90 &
+          (old.ids$confidence[!tmp.lost][keep.cols] - tmp.boxes.from.cols_id[[x]]$confidence) < -10 #old - new
       
-      if (sum(tmp.replace) > 0 | nrow(new.ids) > 0) {
-        old.ids$text[!tmp.lost][tmp.replace] =  tmp.boxes.from.cols_id[[x]]$text[tmp.replace]
-        new.ids$text.new = new.ids$text
-        new.ids$table = x
-        new.ids$row = 1
-        new.ids = rbind(old.ids, new.ids[,names(page.cols$ids)]) %>% arrange(table, top)
-        return(new.ids)
-      }
+        if (sum(tmp.replace) > 0 | nrow(new.ids) > 0) {
+          old.ids$text[!tmp.lost][tmp.replace] =  tmp.boxes.from.cols_id[[x]]$text[tmp.replace]
+          new.ids$text.new = new.ids$text
+          new.ids$table = x
+          new.ids$row = 1
+          new.ids = rbind(old.ids, new.ids[,names(page.cols$ids)]) %>% arrange(table, top)
+          return(new.ids)
+        }
+      } else {return(old.ids)}
     } else {return(old.ids)}
   }))
   
