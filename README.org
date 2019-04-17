@@ -405,6 +405,17 @@ on (l.size='L' and x.size='X' and l.page_ark=x.page_ark);
 | COPY 7628    |
 | SELECT 3723  |
 
+In addition, I will make a new CSV file that includes the image sizes, for a
+verification with Jane.
+
+#+BEGIN_SRC sql
+\COPY (select file,page_ark,x,y from ark_xref left join image_size on (ark=page_ark) where size='X' order by file) to image_size.csv with csv header
+#+END_SRC
+
+#+RESULTS:
+| COPY 3886 |
+|-----------|
+
 #+BEGIN_SRC
 with a as (select page_id,count(*) from marks group by 1 order by 1) select
 format('%s-%s',regexp_replace(ark,'ark:/','ark_'),lpad(page::text,3,'0')) as
