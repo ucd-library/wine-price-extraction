@@ -49,10 +49,10 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
                                    image.check = FALSE, show.ggplot = TRUE,
                                    pix.threshold = NULL, pix.newValue = NULL, 
                                    column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
-                                   res1 = 600) {
+                                   res1 = 600, save.deskewed = FALSE) {
   #res1 is default resolution which is 600 for wine images. Only set if img resolution is missing.
   #column.header is convered to lower for comparison
-  
+  cat("************** setup (0-1) **************\n")
   # 0 Setup ####
   img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = "")
   if (!file.exists(img1)) {
@@ -74,13 +74,24 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
   # 1 ####
   px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50)
   if (!is.null(pix.threshold) & !is.null(pix.newValue)) {px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)}
+  
+  # may want to save deskewed image for post-processing
+  if (save.deskewed) {
+    png(paste("wine-price-extraction/dsi/Data/", file1, "_deskew.png", sep=""), width = 4000, height = 6000)
+    plot(px1)
+    dev.off()
+    #return()
+  } 
+  
   if (is.null(data1)) {data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)}
   if(! file.exists(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))) {saveRDS(data1, paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))}
   
-  # 2 ####
   if (sum(isPrice(data1$text)) + sum(isPrice(data1$text, maybe = T)=="*price") == 0) {
     return("No prices detected. If prices suspected try a new pix.threshold.")
   }
+  
+  # 2 ####
+  cat("****** get price and id columns (2) *****\n")
   page.cols = pageCols(data1, img.height = height1, column.header = column.header, show.plot = show.ggplot)
   
   if (is.null(page.cols)) {
@@ -92,7 +103,7 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
   if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1)
   
   # 3 ####
-  
+  cat("******* add prices and ids (3) **********\n")
   # check for new prices ####
   page.cols = addPrices(page.cols, px1)
   
@@ -110,12 +121,12 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
     if (max(tmp.maybe_missing) > 0) {
       cat("Column(s)", which(tmp.maybe_missing>0), "may be missing", tmp.maybe_missing[tmp.maybe_missing>0], "# of entry")
     } else if (min(tmp.maybe_missing) < 0) {
-      cat("ID column(s) may be missing up to", -1*min(tmp.maybe_missing), "entrie(s)")
+      cat("ID column(s) may be missing up to", -1*min(tmp.maybe_missing), "entry(s)")
     } else {cat("Columns don't seem to be missing entries\n")}
   }
   
   # 4 ####
-  
+  cat("****** get page table structure (4) ******\n")
   # Find table locations using changepoint method, return tables item with table, border and column locations
   page.cols = pageTables(data1, page.cols, buffer = page.cols$charheight/3)
   
@@ -131,7 +142,7 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
   }
   
   # 5 ####
-  
+  cat("*** fill in missing/remove extra (5) *****\n")
   page.cols = removeExtra(page.cols, removeType = "all", charwidth.cutoff = 2) #default remove type is prices
   
   page.cols = addMissing(page.cols, buffer = page.cols$charheight, img.height = height1, px1)
@@ -143,11 +154,15 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
   if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
   
   # 6 (this will fail if no words in the name) #### 
+  cat("************** get names (6) *************\n")
+  
   try({name.boxes = nameBoxes(data1, page.cols = page.cols, prices = page.cols$prices, px = px1, 
                               buffer = page.cols$charheight/2, text.level = "word", psm = 3)}) #will want to experimetn with textline vs. word here - textline good when words split by spaces when they shouldn't be
   
   
   # 7 ####
+  
+  cat("*********** save final data (7) **********\n")
   
   # ids (if there) and prices
   final.prices = vector("list", max(page.cols$price_cols$table))
@@ -189,13 +204,8 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
   #### save price image ####
   png(paste("wine-price-extraction/dsi/Data/", file1, "_price_boxes.png", sep=""), width = 1000, height = 1500)
   #page.cols$prices entries should only have class data.frame, not also tbl_df or other
-  plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
+  plot(tesseract(px1), cropToBoxes = FALSE, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
   dev.off()
-  
-  #may want to save deskewed image for post-processing
-  #png(paste("wine-price-extraction/dsi/Data/", file1, "_deskew.png", sep=""), width = 4000, height = 6000)
-  #plot(tesseract(px1), img = px1)
-  #dev.off()
   
   return(list(final.data = final.data, page.cols = page.cols))
 }

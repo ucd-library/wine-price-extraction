@@ -49,30 +49,42 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   # remove clusters of size 1 -- won't work for lm 
   prices$cluster_size = table(prices$cluster)[prices$cluster]
   prices = filter(prices, cluster_size > 1)
-
-  # remove column outliers
-  prices = data.frame((prices %>% group_by(cluster) %>% filter(!tableOutlier(.data, charheight)) %>%
-    ungroup() %>% arrange(left)))
   
-  # remove clusters of size 1 -- won't work for lm 
-  prices$cluster_size = table(prices$cluster)[prices$cluster]
-  prices = filter(prices, cluster_size > 1)
+  # split columns vertically
+  for(i in 1:k) { # for loop due to cluster numbering 
+    nclust = max(prices$cluster) + 1
+    # only try a split if the left and right ranges are wide enough
+    if (with(filter(prices, cluster == i), 
+             (max(left) - min(left)) >= charheight/2 | (max(right) - min(right)) >= charheight/2)) {
+      prices = rbind(filter(prices, cluster != i),
+                     splitCol(filter(prices, cluster == i), type = "v", new.index = nclust, 
+                              buffer = charheight/2, min.chardiff = charheight/10))
+    }
+  }
   
   # remove clusters with no column structure, i.e. min horizontal distance between any two items is large
   max_diff = median(prices$right - prices$left) # must have at least two entries as close as this, 
   # use right (even if left-justified) because stuff gets glued to left side sometimes:
   remove1 = (prices %>% group_by(cluster) %>%
-               mutate(diffs = apply(abs(outer(right, right, "-")), 1, function(x) {min(x[x>0])})) %>% 
+               mutate(diffs = minDiffs(right)) %>% 
                mutate(min_diffs = min(diffs), remove = min_diffs > max_diff))$remove
   prices = filter(prices, !remove1)
+  
+  # remove column outliers
+  prices = data.frame((prices %>% group_by(cluster) %>% filter(!tableOutlier(.data, charheight)) %>%
+                         ungroup() %>% arrange(left)))
+  
+  # remove clusters of size 1 -- won't work for lm 
+  prices$cluster_size = table(prices$cluster)[prices$cluster]
+  prices = filter(prices, cluster_size > 1)
   
   #shift cluster labels down if necessary
   prices$cluster = as.numeric(droplevels(factor(prices$cluster))) 
   if (show.plot) {try({print(ggplot(prices, aes(x = right, y = bottom, color = as.factor(cluster))) + 
-               geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
-               ggtitle("pageCols 2: Prices by cluster after outlier removal"))})}
+                               geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
+                               ggtitle("pageCols 2: Prices by cluster after outlier removal"))})}
   max.clust = which.max(table(prices$cluster)) #largest cluster
- 
+  
   #2b. Find more prices. Chose to do this to get most complete possible table. ####
   
   data1 <- pageCols.search.column(prices, data1, img.height, just, charheight, show.search.plot = show.plot)
@@ -81,7 +93,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   prices2 = filter(data1, isPrice(extractPrice(data1$text)) | 
                      isPrice(extractPrice(data1$text.new)))[, -which(names(data1)=="center")]
   prices2 = filter(prices2, left > max(data1$left)*.1) #again create a left margin where prices can't be
-  
+
   #trim again
   trimleft = prices2[prices2$type == "*price",]
   if (nrow(trimleft) > 0) {
@@ -90,13 +102,16 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
     prices2[prices2$type == "*price", ] = trimleft
   }
   
-  #recheck type
+  # recheck type
   prices2$type = isPrice(prices2$text, maybe = TRUE, dollar = dollar) 
   prices2 = filter(prices2, type != "FALSE")
   cat("progress: ", c(nrow(prices), "prices, then", nrow(prices2)), "\n")
   if (show.plot) {try({print(ggplot(prices2, aes(x = right, y = bottom, color = type)) + 
                geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
                ggtitle("pageCols 3: Prices2 by type"))})}
+  
+  # remove anything not within a column's distance of another price
+  prices2 = filter(prices2, minDiffs(prices2[[just]]) < max_diff)
   
   #2d. final price column info ####
   
@@ -108,6 +123,27 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   if (show.plot) {try({print(ggplot(prices2, aes(x = right, y = bottom, color = as.factor(cluster))) + 
                geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
                ggtitle("pageCols 4: Prices2 by cluster"))})}
+  
+  # Remove unlikely columns ----
+  
+  # remove clusters of size 1 -- won't work for lm 
+  cluster_size = table(prices2$cluster)[prices2$cluster]
+  prices2 = filter(prices2, cluster_size > 1)
+  
+  # renumber clusters if necessary
+  prices2$cluster = as.numeric(droplevels(factor(prices2$cluster))) 
+  
+  # split columns vertically
+  for(i in 1:k) { # for loop due to cluster numbering 
+    nclust = max(prices2$cluster) + 1
+    # only try a split if the left and right ranges are wide enough
+    if (with(filter(prices2, cluster == i), 
+             (max(left) - min(left)) >= charheight/2 | (max(right) - min(right)) >= charheight/2)) {
+      prices2 = rbind(filter(prices2, cluster != i),
+                      splitCol(filter(prices2, cluster == i), type = "v", new.index = nclust, 
+                               buffer = charheight/2, min.chardiff = charheight/10))
+    }
+  }
   
   # remove clusters of size 1 -- won't work for lm 
   cluster_size = table(prices2$cluster)[prices2$cluster]
@@ -125,25 +161,54 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   if (nrow(prices2)==0) {return(NULL)}
   
   # remove clusters with no column structure, i.e. min horizontal distance between any two items is large
-  max_diff = median(prices2$right - prices2$left) # must have at least two entries as close as this, 
-  # use right (even if left-justified) because stuff gets glued to left side sometimes:
-  remove1 = (prices2 %>% group_by(cluster) %>% mutate(diffs = apply(abs(outer(right, right, "-")), 1, function(x) {min(x[x>0])})) %>% 
-               mutate(min_diffs = min(diffs), remove = min_diffs > max_diff))$remove
-  prices2 = filter(prices2, !remove1)
+  max_diff = median(prices2$right - prices2$left) # must have an entry as close as this, 
+  tmp.prices2 = prices2 %>% group_by(cluster) %>% # use right (even if left-just) bc stuff can get glued to left side:
+      mutate(diffs = minDiffs(right)) %>% 
+      mutate(min_diffs = min(diffs), remove = min_diffs > max_diff) %>% ungroup()
+  
+  prices2 = filter(prices2, !tmp.prices2$remove)
+  tmp.prices2 = filter(tmp.prices2, !tmp.prices2$remove)
 
+  # remove clusters with few entries AND 
+    # 1. too much (letter) text between prices:
+    # for clusters of size three (more?) or less, check for too much A-z text between prices
+    few.entries = 3
+    toomany.words = 10
+    remove1 = (prices2 %>% group_by(cluster) %>% 
+               mutate(cluster_size = n()) %>%
+               mutate(remove = (cluster_size <= few.entries) &
+                              # count words of at least three letters in a row
+                              nrow(filter(data1[ (data1$left > min(left) - charheight &
+                              data1$left < max(right)) &
+                              (data1$top < max(top) & data1$bottom > min(bottom)),],
+               nchar(sapply(text, str_extract, pattern = "[a-zA-z]+")) > few.entries)) > toomany.words
+               ))$remove
+    
+    prices2 = filter(prices2, !remove1)
+    
+    # 2. too shallow slope magnitude
+    
+    remove2 = (prices2 %>% mutate(center = (left +  right)/2, tmp.just = .[[just]])  %>% group_by(cluster) %>%
+                 mutate(cluster_size = n(),  
+                        remove = (cluster_size <= few.entries) &
+                          # count words of at least three letters in a row
+                          abs((max(top) - min(top))/(1 + max(tmp.just) - min(tmp.just))) < .5))$remove
+  
+    prices2 = filter(prices2, !remove2)
+    
+  # If no prices left to analyze, stop.
+  if (nrow(prices2)==0) {return(NULL)}
+  
+  # renumber clusters ----
+  prices2$cluster = as.numeric(as.factor(prices2$cluster))
+  
   if (show.plot) {try({print(ggplot(prices2, aes(x = right, y = bottom, color = as.factor(cluster))) + 
-               geom_point() + ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
+               geom_point() + #geom_point(aes(x = left, y = bottom, color = as.factor(cluster))) +
+               ylim(img.height, 0) + xlim(0, max(data1$right, na.rm =T)) + 
                ggtitle("pageCols 5: Prices2 by cluster after outlier removal"))})}
   
-  # split columns vertically
-  for(i in 1:k) { # for loop due to cluster numbering 
-    nclust = max(prices2$cluster) + 1
-    # only try a split if the left and right ranges are wide enough
-    if (with(filter(prices2, cluster == i), (max(left) - min(left)) >= charheight/2 | (max(right) - min(right)) >= charheight/2)) {
-          prices2 = rbind(filter(prices2, cluster != i),
-                    splitCol(filter(prices2, cluster == i), type = "v", new.index = nclust, buffer = charheight/2, min.chardiff = charheight/10))
-        }
-  }
+  
+
   
   # reformat and detect outliers by left and right edge and minimum gap from median
   # need at least charheight absolute buffer, e.g. UCD_Lehmann_3392
@@ -324,8 +389,8 @@ pageCols.search.column <- function(prices, data1, img.height, just, charheight, 
                   ggtitle("pageCols.search.column: Prices by cluster")
               )})
         }
-        # identify nearby words
-        near = abs(data1[[just]] - median(prices.lm.tmp[[just]])) < 2*charheight
+        # identify nearby words by vertical search
+        near = abs(data1[[just]] - median(prices.lm.tmp[[just]])) < 2*charheight 
       } else {
         
         # try all column alignments
@@ -457,7 +522,7 @@ findCols <- function(prices, minGap) {
   # Compares objective function value for different numbers of columns and different text justifications
   # 3 rows returns are the objective function value, minimum cluster size (must be >1), and 
   clust = list(
-    L = sapply(1:max(1, min(10, (nrow(prices)-2))), function(x) { # range of possible columns in the table
+    L = sapply(1:max(1, min(16, (nrow(prices)-2))), function(x) { # range of possible columns in the table
       pam1 = pam(prices$left, k = x)
       obj1 = pam1$objective[[2]] #evaluation of cluster objective
       min.size = min(pam1$clusinfo[,1]) #minimum cluster size
@@ -465,7 +530,7 @@ findCols <- function(prices, minGap) {
       suppressWarnings({min.dist = min(clust.dist[clust.dist > 0])})
       return(c(obj1, min.size, min.dist))
     }),
-    R = sapply(1:max(1, min(10, (nrow(prices)-2))), function(x) {
+    R = sapply(1:max(1, min(16, (nrow(prices)-2))), function(x) {
       pam1 = pam(prices$right, k = x)
       obj1 = pam1$objective[[2]] #evaluation of cluster objective
       min.size = min(pam1$clusinfo[,1]) #minimum cluster size
@@ -473,7 +538,7 @@ findCols <- function(prices, minGap) {
       suppressWarnings({min.dist = min(clust.dist[clust.dist > 0])})
       c(obj1, min.size, min.dist)
     }),
-    Ce = sapply(1:max(1, min(10, (nrow(prices)-2))), function(x) {
+    Ce = sapply(1:max(1, min(16, (nrow(prices)-2))), function(x) {
       pam1 = pam(prices$center, k = x)
       obj1 = pam1$objective[[2]] #evaluation of cluster objective
       min.size = min(pam1$clusinfo[,1]) #minimum cluster size
@@ -584,7 +649,7 @@ addIds <- function(page.cols, px) {
       #remove column if it's not a new or a best match for an old
       #shouldn't really do anything since we removed ID duplicates in pageCols
       keep.cols = unique(apply(compare.ids, 1, which.min)[!tmp.new])
-      compare.ids = compare.ids[,keep.cols]
+      compare.ids = as.matrix(compare.ids[,keep.cols],  ncol = length(keep.cols))
       tmp.lost = apply(compare.ids, 2, min) > page.cols$charheight
       new.ids = filter(tmp.boxes.from.cols_id[[x]], (apply(compare.ids, 1, min) > page.cols$charheight))
     
@@ -622,9 +687,17 @@ pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
   
   # a) organize page into row ####
   
-  page.cols$price_cols$table.row = c(1, #check column height over gap with next - max 30%
-    cumsum((page.cols$price_cols$col.top - page.cols$price_cols$col.bottom)/ 
-           (page.cols$price_cols$col.top - lead(page.cols$price_cols$col.bottom))  < .3) + 1)[1:length(page.cols$prices)] 
+  page.cols$price_cols$table.row = c(1,  1 + cumsum(
+            #check column height over gap with next - max 30%
+              ((page.cols$price_cols$col.top - page.cols$price_cols$col.bottom)/ 
+              (page.cols$price_cols$col.top - lead(page.cols$price_cols$col.bottom))  < .3 |
+                #if slight overlap
+            (page.cols$price_cols$col.top - page.cols$price_cols$col.bottom)/ 
+              (page.cols$price_cols$col.top - lead(page.cols$price_cols$col.bottom)) > 5))
+            )[1:length(page.cols$prices)] 
+            # or just see if colump tops are ?
+            #abs((page.cols$price_cols$col.bottom - lead(page.cols$price_cols$col.bottom))) > 
+             # 5*page.cols$charheight))
   
   page.cols$price_cols = page.cols$price_cols %>% arrange(table.row, col.left)
   

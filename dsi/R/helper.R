@@ -205,13 +205,20 @@ splitCol <- function(prices, type = "h", px = px1, buffer = 13, height = height1
     prices = prices %>% arrange(top)
     pricewidths = charWidth(prices) 
     if ((max(pricewidths) - min(pricewidths)) < min.chardiff) {return(prices)}
+    
     # first row of compare.clusterings is within ss, second is min cluster size for that number of gropus
     compare.clusterings = sapply(1:min(floor(length(pricewidths)/3), length(unique(pricewidths))), function(x) {
       possible.cluster = kmeans(pricewidths, centers = x, nstart = 100)
-      c(possible.cluster$tot.withinss, min(possible.cluster$size))
+      pcc = possible.cluster$cluster
+      pure = identical(pcc, rep(pcc[!duplicated(pcc)], times = table(pcc)[order(pcc[!duplicated(pcc)])]))
+      # use minimum gap created:
+      #min_gap = min((prices %>% group_by(possible.cluster$cluster) %>% arrange(top) %>% summarize(tmp.min = min(bottom), tmp.max = max(top)) %>% mutate(x = lead(tmp.min, default = Inf) - tmp.max))$x)
+      c(possible.cluster$tot.withinss, min(possible.cluster$size), pure)
     })
     # stop looking if clustering returns all clusters <=  minimum allowed size
-    max.possible.vclusters = min(floor(length(pricewidths)/3),  min(which(compare.clusterings[2,] <= min.postsplit))-1)
+    if (any(compare.clusterings[2,] > min.postsplit & compare.clusterings[3,] == 1)) {
+      max.possible.vclusters = max(which(compare.clusterings[2,] > min.postsplit & compare.clusterings[3,] == 1))
+    } else {max.possible.vclusters = 1}
     
     #see if character size clusters match location clusters
     if (max.possible.vclusters > 1) {
@@ -405,6 +412,12 @@ tableOutlier <- function(price_subset, maxGap) {
     ( abs( scale(price_subset$right)) >= 2.5 | abs(price_subset$right - median(price_subset$right)) > maxGap)
 }
 
+# find minimum differences between any two elements in a vector
+minDiffs <- function(vector) {
+  x = abs(outer(vector, vector, "-"))
+  diag(x) = NA
+  apply(x, 1, min, na.rm = T)
+}
 #from duncan?
 fixPrice =
   #
