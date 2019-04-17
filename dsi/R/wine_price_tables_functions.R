@@ -111,7 +111,8 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
                ggtitle("pageCols 3: Prices2 by type"))})}
   
   # remove anything not within a column's distance of another price
-  prices2 = filter(prices2, minDiffs(prices2[[just]]) < max_diff)
+  tmp.prices2 = prices2 %>% mutate(center = (left+right)/2)
+  prices2 = filter(prices2, minDiffs(tmp.prices2[[just]]) < max_diff)
   
   #2d. final price column info ####
   
