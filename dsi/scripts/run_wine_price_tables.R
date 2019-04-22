@@ -5,7 +5,7 @@
 # Setup ####
 ####################################################################################################
 
-# Should have MASS installed for rlm, but if load do it first so select not masked
+
 library(dplyr)
 library(Rtesseract)
 library(tidyverse)
@@ -14,7 +14,7 @@ library(jpeg)
 library(cluster)
 library(changepoint)
 library(RecordLinkage)
-library(MASS)
+#library(MASS) #<- Should have MASS installed for rlm, but load creates conflict with select
 
 
 wd = "~/Documents/DSI" #path to wine-price-extraction repo
@@ -30,19 +30,27 @@ source("wine-price-extraction/dsi/R/wine_price_tables.R")
 
 # 1. Example ----
 
-file1 = "UCD_Lehmann_3001" #0551, 3392 #0260 & 3001 (hard, lots of un-aligned tables), 0208 & 0194 (hard, year columns)
+file1 = "UCD_Lehmann_0190" #0551, 3392 #0260 & 3001 (hard, lots of un-aligned tables), 0208 & 0194 (hard, year columns)
  #checked 0069, 3943, 0066, 0011, 0237, 0190, 1452 (hard), 1802, 0644 (mixed ID types), 1176, 0015, 0939 (needs new color threshold?)
-# 1591 (dollar sign used), 1544 (repeat col), 2535 (needs new pix.threshold 100)
+# 1591 (dollar sign used), 1544 (repeat col), 
+# 2535 (needs new pix.threshold 100) -> if prices but not price tables, try with  pix.treshold 100 and 2000
+# 2504 (many rotated)
+# too few words in name 1835!, 0008, 1470
+
 data1 = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))
+
 
 #img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = ""); px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50);  height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
 #plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1)
 
-price_table_extraction(file1, image.check = FALSE, save.root = wd, res1 = 600, show.ggplot = TRUE, data = data1, save.deskewed = TRUE) #pix.threshold = 200, pix.newValue = 0
+price_table_extraction(file1, image.check = FALSE, save.root = wd, res1 = 600, show.ggplot = TRUE, data = data1, 
+                       save.deskewed = FALSE) #pix.threshold = 200, pix.newValue = 0
 
 
 # 2. Run on a fileset ----
 fileset = str_extract(list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"), ".*[^\\.jpg]")
+# files in truth not in sample folder: 0008, 0027, 0267, 1470, 1994, 1544, 1835
+
 fileset = subset(fileset, str_detect(fileset, "UCD_Lehmann_[0-9]{4}"))
 output = vector("list", length(fileset))
 names(output) = fileset
@@ -70,7 +78,7 @@ for (file1 in fileset) {
     # this seems to return the same results as applying GetBoxes to px1, but not warning message
     data1 = GetBoxes(api1, pageSegMode = 6, engineMode = 3)}
   if (median(data1$confidence) > 30 & sum(isPrice(data1$text, dollar = FALSE)) >= 3) {
-    try({output[[i]] = price_table_extraction(file1, image.check = FALSE, data1, show.ggplot = FALSE)})
+    try({output[[i]] = price_table_extraction(file1, image.check = FALSE, data = data1, show.ggplot = FALSE, save.deskewed = FALSE)})
   }
   if (is.null(output[[i]])) {
     output[[i]]= c("median_conf" = median(data1$confidence), "n_price" = sum(isPrice(data1$text, dollar = FALSE)))
