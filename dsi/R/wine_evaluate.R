@@ -96,18 +96,24 @@ wine.compare <- function(test.prices, truth.prices) {
         diff.in.entries = lapply(1:truth.stat$n.columns.per.table[x], function(y) {
             
           inner_join(test.prices[[x]]$prices[[y]], truth.prices[[x]]$prices[[y]], by = "row", suffix = c(".test",".truth")) %>% 
-                     
-              #diffs in dollar amounts
-              mutate(dollar.diff = as.numeric(text.new.truth)-as.numeric(text.new.test),
-                          
-              #levenshtein distances       
-              lev.diff = levenshteinDist(text.new.truth, text.new.test),
               
-              missing.digit = nchar(text.new.truth) > nchar( text.new.test ),
+              mutate(   
+                #ensure character types 
+                text.new.truth = as.character(text.new.truth),
+                text.new.test = as.character(text.new.test),
+            
+                #diffs in dollar amounts
+                dollar.diff = as.numeric(text.new.truth)-as.numeric(text.new.test),
               
-              extra.digit = nchar(text.new.truth) < nchar( text.new.test ),
+                #levenshtein distances       
+                lev.diff = levenshteinDist(text.new.truth, text.new.test),
               
-              index = paste(x,y,sep="."))
+                missing.digit = nchar(text.new.truth) > nchar(text.new.test),
+              
+                extra.digit = nchar(text.new.truth) < nchar(text.new.test),
+              
+                index = paste(x,y,sep=".")
+              )
             
         })
         

@@ -30,15 +30,16 @@ truth.prices = readRDS(file.path(truth.directory, paste0("UCD_Lehmann_", file.nu
 
 # A. Basic stats for all files ####
 
+    # internal check ----
 fileset1 = str_extract(list.files(output.directory), pattern = "UCD.*RDS")
 fileset1 = fileset1[!is.na(fileset1)]
-evaluate.output = vector("list", length(fileset1))
+evaluate.output = vector("list", length(fileset1)) #returns list
 for (i in 1:length(fileset1)) {
   file1 = file.path(output.directory,fileset1[i])
   rds1 = readRDS(file1)$prices
   eval1 = wine.evaluate(rds1)
   evaluate.output[[i]] = eval1
-}
+} 
 
 output_summary_internal = data.frame(t(sapply(evaluate.output, function(eval) {
   c("n.tables" = eval$n.tables,
@@ -54,13 +55,14 @@ rownames(output_summary_internal) = fileset1
 
 write.csv(output_summary_internal, "~/Documents/DSI/wine-price-extraction/dsi/Data/output_summary_internal.csv")
 
-#plot that
-output_summary_internal_singlestat = ggplot(melt(output_summary_internal %>% select("n.tables", "n.columns.total", "n.entries.total"), id.vars = NULL) %>%
+    # plot that ----
+output_summary_internal_singlestat = ggplot(
+  melt(output_summary_internal %>% dplyr::select(c("n.tables", "n.columns.total", "n.entries.total")), id.vars = NULL) %>%
                                               mutate(value = as.numeric(value))) + 
   geom_histogram(aes(x = value, group = variable)) + facet_grid(~variable, scales = "free_x")
-ggsave(output_summary_singlestat, filename = "~/Documents/DSI/wine-price-extraction/dsi/Data/output_summary_internal_singlestat.png")
+ggsave(output_summary_internal_singlestat, filename = "~/Documents/DSI/wine-price-extraction/dsi/Data/output_summary_internal_singlestat.png")
 
-# B. For files we have truth for ####
+# B. Compare to truth For files we have truth for ####
 
 truth.directory2 = "~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth"
 truth.subdirectory2 = list.dirs(truth.directory2, recursive = F)

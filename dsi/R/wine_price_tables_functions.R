@@ -232,7 +232,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   
   #Try adding column headers:
   header = findHeader(colData2, data1, column.header, buffer = charheight)
-  colData2[, c("col.header","col.header.bottom","col.header.top")] = header
+  colData2[, c("col.header","col.header.bottom","col.header.top")] = header[,c(3,2,1)]
   colData2 = colData2  %>% arrange(cluster)
   
   #2e. id column info ####

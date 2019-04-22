@@ -923,7 +923,7 @@ pageResults = function(RDS_path, pattern_threshold = 0.5, similarity_threshold =
         result_reocr = parse_item(items$name.words[[i]][[item_no]]$text, "")
       } else {
         result_reocr = parse_item(items$name.words[[i]][[item_no]]$text,
-               items$name.words.old[[i]][[item_no]][,c("text", "confidence")]);
+               items$name.words[[i]][[item_no]][,c("text", "confidence")]);
       }
       
       # and using first ocr result
@@ -1115,7 +1115,7 @@ compute_global_stats = function(page_stats_list) {
 # Parse all pages in a given folder.
 parseFolder = function(folder_path, pattern_threshold = 0.5, similarity_threshold = 0.8) {
   
-  files = list.files(path=folder_path, pattern="*.RDS", full.names=TRUE, recursive=FALSE)[1:10];
+  files = list.files(path=folder_path, pattern="*.RDS", full.names=TRUE, recursive=FALSE);
   
   page_results_list = lapply(files, function(x) {
     try({pageResults(x, pattern_threshold, similarity_threshold)})
