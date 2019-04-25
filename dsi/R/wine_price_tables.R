@@ -77,14 +77,6 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
   px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50)
   if (!is.null(pix.threshold) & !is.null(pix.newValue)) {px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)}
   
-  # may want to save deskewed image for post-processing
-  if (save.deskewed) {
-    png(paste("wine-price-extraction/dsi/Data/", file1, "_deskew.png", sep=""), width = 4000, height = 6000)
-    plot(px1)
-    dev.off()
-    #return()
-  } 
-  
   if (is.null(data1)) {data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)}
   if(! file.exists(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))) {saveRDS(data1, paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))}
   
@@ -99,6 +91,12 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
   if (is.null(page.cols)) {
     return("Prices are scattered. No price *tables* detected")
   }
+  
+  # may want to save deskewed image for post-processing
+  if (save.deskewed) {
+    pixWrite(px1, paste("wine-price-extraction/dsi/Data/", file1, "_deskew.png", sep=""))
+    #return()
+  } 
   
   ############# img check 2 ####
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1)
