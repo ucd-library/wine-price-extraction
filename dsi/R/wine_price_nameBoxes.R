@@ -3,6 +3,8 @@
 # Used by price_table_extraction function
 # Jane Carlen, April 2019
 
+source("wine-price-extraction/dsi/R/helper.R")
+
 nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer = page.cols$charheight/2, charsize.cutoff = .4, psm = 3, text.level = "textline", min.words = 2, max.words = 12) { 
   # buffer on order of 1/2 small char size, 1/4 large; 
   # charsize.cutoff determines by percentage same type size whether a line-above should be included in a name box
