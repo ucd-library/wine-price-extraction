@@ -84,6 +84,12 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
     return("No prices detected. If prices suspected try a new pix.threshold.")
   }
   
+  # may want to save deskewed image for post-processing
+  if (save.deskewed) {
+    pixWrite(px1, paste("wine-price-extraction/dsi/Data/", file1, "_deskew.png", sep=""))
+    #return()
+  } 
+  
   # 2 ####
   cat("****** get price and id columns (2) *****\n")
   page.cols = pageCols(data1, img.height = height1, column.header = column.header, show.plot = show.ggplot)
@@ -91,12 +97,6 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
   if (is.null(page.cols)) {
     return("Prices are scattered. No price *tables* detected")
   }
-  
-  # may want to save deskewed image for post-processing
-  if (save.deskewed) {
-    pixWrite(px1, paste("wine-price-extraction/dsi/Data/", file1, "_deskew.png", sep=""))
-    #return()
-  } 
   
   ############# img check 2 ####
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1)
