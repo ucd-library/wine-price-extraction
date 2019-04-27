@@ -72,7 +72,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       table.boxes[[i]] = data.frame(l, b, r, t)
       table.boxes.words[[i]] =  lapply(1:nrow(table.boxes[[i]]), function(x) {
         dplyr::filter(data1, left >= l[x] & left <= r[x], 
-                      right < ( min(filter(page.cols$price_cols, table == i)$col.right) - 2*buffer ),
+                      right < ( min(filter(page.cols$price_cols, table == i)$col.right)), #no buffer to allow things glued to prices, e.g. 0551.jpg
                       bottom >= b[x], top <= t[x] + buffer/2)
       })
       
@@ -88,14 +88,14 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
                top > (tt + buffer),
                top > (bottom + buffer), 
                left > min(l), 
-               right < median(r) )
+               right < median(r),
+               nchar(text) > 2)
       })
       update_t = which(sapply(overlap_below, nrow) > 2)
       
       cat("Found", length(update_t), "overlap(s) with row below when checking name boxes\n")
       if (length(update_t) > 0) {
         t_new = sapply(overlap_below[update_t], function(x) min(x$bottom))
-        update_t = update_t[t_new > tmp.ids$top[update_t]] # new t should be below old on the page]
         t[update_t] = t_new
         overlap_below = lapply(t, function(tt) {
           filter(data1, 

@@ -316,7 +316,7 @@ pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
     t = (page.cols$ids %>% group_by(table) %>% summarize(t = max(top)))[["t"]]
     b = (page.cols$ids %>% group_by(table) %>% summarize(b = min(bottom)))[["b"]]
     new.table = sapply(1:length(m), function(i) {
-      (filter(page.cols$price_cols, col.right > m[i], col.bottom < t[i], col.bottom > b) %>% 
+      (filter(page.cols$price_cols, col.right > m[i], col.bottom < t[i], col.top > b[i]) %>% 
          arrange(col.left))[["table"]][1]
     })
     page.cols$ids$table = rep(new.table, table(page.cols$ids$table))
