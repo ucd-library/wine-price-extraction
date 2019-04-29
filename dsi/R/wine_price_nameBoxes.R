@@ -56,6 +56,15 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
           }
         }
       }
+      
+      # For missing ids, use the top and bottom the price in the row that's missing the ID
+      rows.missing.ids = unique(tmp.prices$row [! tmp.prices$row %in% tmp.ids$row ])
+      tmp.prices2 = filter(tmp.prices, row %in% rows.missing.ids) %>% arrange(row, !price, top) %>% 
+        group_by(row) %>% summarize_all(first) %>% 
+        ungroup() %>% 
+        mutate(left = quantile(tmp.ids$left, .2), right = quantile(tmp.ids$right, .8))
+      tmp.ids = rbind(tmp.ids, tmp.prices2 %>% select(names(tmp.ids))) %>% arrange(row, !price, top)
+      
       l = pmax(0, tmp.ids$left - buffer) # in case buffer drags off page
       r = rep(min(filter(page.cols$price_cols, table == i)$col.left), length(l)) + buffer
       b = tmp.ids$bottom - buffer
