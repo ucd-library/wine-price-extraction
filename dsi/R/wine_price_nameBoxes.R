@@ -5,6 +5,8 @@
 
 # TO DO:
 # Add an option for text justification in row (bottom, top, centered)
+# Make sure number of boxes matches number of prices, even if nothing in them
+
 
 source("wine-price-extraction/dsi/R/helper.R")
 
@@ -27,7 +29,9 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
     tmp.cols = filter(page.cols$price_cols, table ==i)
     table.prices = do.call("rbind", prices) %>% filter(table == i)
     if (!is.null(page.cols$ids)) {
-      tmp.ids = filter(page.cols$ids, table == i)
+      tmp.ids = filter(page.cols$ids, table == i) %>% 
+        #if multiple ids assigned to a row only use the lowest one
+        group_by(row) %>% arrange(bottom) %>% summarise_all(first) %>% select(names(page.cols$ids))
     }
     # Select one price for each row, preferring actual prices and left-most
     tmp.prices = do.call("rbind", prices[as.character(tmp.cols$cluster)]) %>%
@@ -104,7 +108,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
         # detect nameBox 
         for (j in rows.missing.something) {
           table.boxes.words[[i]][[j]] = nameBox(j, tmp.boxes, l, r, b, t, buffer = buffer, char.sizes, 
-                                                look.left = FALSE, look.above = TRUE)
+                                                look.left = FALSE, look.above = TRUE, min.words = 3) #note 3 words cutoff for looking
         }
       }
 
@@ -306,8 +310,9 @@ nameBox <- function(j, tmp.boxes, l, r, b, t, buffer, char.sizes, look.left = TR
     # remove prices from tmp.name
     tmp.name = filter( tmp.name, !isPrice(text))
     
-    # if not enough words (of at least 3 char) found:
-    if ( nrow(tmp.name)  < min.words || ( sum(nchar(tmp.name$text) > 2) < min.words ) ) {
+    # if not enough words (with at least one alpha-numeric, of at least 3 char) found:
+    if ( sum(grepl(tmp.name$text, pattern = "[A-Za-z0-9]")) < min.words || 
+         ( sum(nchar(tmp.name$text) > 2) < min.words ) ) {
     
       if (look.left) {
         

@@ -330,10 +330,8 @@ addRows <- function(page.cols, buffer = page.cols$charheight/2, type = "price") 
   
     all.prices = lapply(1:n.tables, function(i) {
       table.prices = filter(all.prices, table == i) %>% arrange(top, bottom)
-      buffer2 = mean((table.prices %>% group_by(cluster) %>% mutate(diff = c(diff(top),NA)) %>% 
-            summarize(med.diff = median(diff, na.rm = T)))[["med.diff"]])
-      buffer = max(page.cols$charheight/2, buffer2/2)
-      table.prices$row = c(1, cumsum(diff(sort(table.prices$top))>buffer)+1)
+      buffer = page.cols$charheight/2
+      table.prices$row = c(1, cumsum(diff(sort(table.prices$bottom))>buffer | diff(sort(table.prices$bottom))>buffer)+1)
       table.prices
     })
     all.prices = do.call("rbind", all.prices)
@@ -350,9 +348,11 @@ addRows <- function(page.cols, buffer = page.cols$charheight/2, type = "price") 
         table.ids = filter(page.cols$ids, table == i)
       }
       tmp.prices = filter(all.prices, table == as.numeric(i)) %>% arrange(top, left)
-      row.mins = tmp.prices %>% group_by(row) %>% summarize(top = min(top))
-      row.try = sapply(table.ids$top, function(x) {
-          as.numeric(row.mins[min(which(x < row.mins$top + buffer)),1])
+      # price with midpoint (top + bottom)/2 that's closest to and below id bottom
+      row.mids = tmp.prices %>% group_by(row) %>% summarize(mid = mean(top + bottom)/2)
+      # find the closest lower-than row.mid for any id bottom and assign id row accordingly
+      row.try = sapply(table.ids$bottom, function(x) {
+          as.numeric(row.mids[min(which(x < row.mids$mid)),1])
         })
       
       if (sum(!is.na(row.try))==0) {
