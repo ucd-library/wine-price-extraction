@@ -3,6 +3,9 @@
 # Used by price_table_extraction function
 # Jane Carlen, April 2019
 
+# TO DO:
+# Add an option for text justification in row (bottom, top, centered)
+
 source("wine-price-extraction/dsi/R/helper.R")
 
 nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer = page.cols$charheight/2, charsize.cutoff = .4, psm = 3, text.level = "textline", min.words = 2, max.words = 12) { 
@@ -23,7 +26,15 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
     
     tmp.cols = filter(page.cols$price_cols, table ==i)
     table.prices = do.call("rbind", prices) %>% filter(table == i)
-    if (!is.null(page.cols$ids)) {tmp.ids = filter(page.cols$ids, table == i)}
+    if (!is.null(page.cols$ids)) {
+      tmp.ids = filter(page.cols$ids, table == i)
+    }
+    # Select one price for each row, preferring actual prices and left-most
+    tmp.prices = do.call("rbind", prices[as.character(tmp.cols$cluster)]) %>%
+      arrange(row, !(price), -top) %>% group_by(row) %>% 
+      summarize_all(first) %>%
+      select(names(page.cols$prices[[1]])) # preserve original order
+    
     
     # ignore tables with no structure, too much column variance
     structure.bad = min(apply( 
@@ -32,92 +43,93 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
         ungroup() %>% dplyr::select(contains("diffs")), 1, min) > page.cols$charheight * 4
     )
     
-    if (structure.bad) {table.boxes[[i]] = table.boxes.words[[i]] = table.boxes.words.reocr[[i]] = NULL}
-    
-    # Use ids  
-    else if (exists("tmp.ids", inherits = FALSE) && nrow(tmp.ids) > 0) {
+    if (structure.bad) 
+      # nullify
+      {
+      table.boxes[[i]] = table.boxes.words[[i]] = table.boxes.words.reocr[[i]] = NULL
+      } 
+      # else, try to use ids:
+      else if (exists("tmp.ids", inherits = FALSE) && nrow(tmp.ids) > 0) {
       
-      tmp.prices = prices[[as.character((tmp.cols %>% arrange(col.left))[1,"cluster"])]]
-      #fill in missing rows
-      if (nrow(tmp.cols) > 1) {
-        # has to be for loop to continually update
-        for (j in 2:nrow(tmp.cols)) {
-          
-          # get info for other column in table, from left to right
-          tmp.prices2 = prices[[as.character((tmp.cols %>% arrange(col.left))[j,"cluster"])]]
-          fill.in.rows = tmp.prices2$row[! tmp.prices2$row %in% tmp.prices$row]
-          # see if it has info for the missing row, if so pick the price first, then top-most
-          if ( length( fill.in.rows ) > 0 ) {
-            
-            tmp.prices2 = tmp.prices2 %>% arrange(row, !price, top) %>% group_by(row) %>% summarize_all(first) %>%
-              filter(row %in% fill.in.rows) 
-            tmp.prices = rbind(tmp.prices, tmp.prices2) %>% arrange(row)
-            
-          }
-        }
-      }
-      
+      #1. Initial try at name box coordinates
+        
       # For missing ids, use the top and bottom the price in the row that's missing the ID
+      # Start by assuming the name is two lines tall
       rows.missing.ids = unique(tmp.prices$row [! tmp.prices$row %in% tmp.ids$row ])
-      tmp.prices2 = filter(tmp.prices, row %in% rows.missing.ids) %>% arrange(row, !price, top) %>% 
-        group_by(row) %>% summarize_all(first) %>% 
-        ungroup() %>% 
+      rows.add.to.ids = tmp.prices %>%
+        mutate(bottom = pmax(top - 2.5*page.cols$charheight, lag(top, default = min(top) - 2.5*page.cols$charheight))) %>%
+        filter(row %in% rows.missing.ids) %>% 
+        arrange(row, !price, top) %>% 
+        group_by(row) %>%summarize_all(first) %>% 
+        ungroup() %>%
+        # make left and right in line with the other ids (top and bottom will be adjusted later -currently price-height)
         mutate(left = quantile(tmp.ids$left, .2), right = quantile(tmp.ids$right, .8))
-      tmp.ids = rbind(tmp.ids, tmp.prices2 %>% select(names(tmp.ids))) %>% arrange(row, !price, top)
+      tmp.ids = rbind(tmp.ids, rows.add.to.ids %>%select(names(tmp.ids))) %>% arrange(row, !price, top)
       
       l = pmax(0, tmp.ids$left - buffer) # in case buffer drags off page
       r = rep(min(filter(page.cols$price_cols, table == i)$col.left), length(l)) + buffer
       b = tmp.ids$bottom - buffer
-      # we use the bottom (top) of the prices as the lower bound for the name box, 
-      # but have to be careful if more prices than names
-      t = tmp.prices$top[apply(outer(tmp.ids$top, tmp.prices$top + buffer, "-"), 1, function(x) {
-        which.max( (x+max(data1$right)) * (x < 0)  )
-      })] + buffer
-      print(t[t - tmp.ids$top > 3 * page.cols$charheight]) 
-      #t = tmp.ids$top #better match without buffer
-      #t = tmp.ids$top[apply(abs(outer(tmp.ids$top, t, "-")), 1, which.min)] + buffer
-      #t[tmp.ids$top > t] = tmp.ids$top[tmp.ids$top > t] #if id bottom (top) is lower use that one
-      
-      table.boxes[[i]] = data.frame(l, b, r, t)
-      table.boxes.words[[i]] =  lapply(1:nrow(table.boxes[[i]]), function(x) {
-        dplyr::filter(data1, left >= l[x] & left <= r[x], 
-                      right < ( min(filter(page.cols$price_cols, table == i)$col.right)), #no buffer to allow things glued to prices, e.g. 0551.jpg
-                      bottom >= b[x], top <= t[x] + buffer/2)
+      t = tmp.ids$top + buffer
+      # try getting a better top if the rows in ids and prices match -- then take further down of both
+      # shouldn't need this after fixing row naming bug for ids, e.g. 0011
+      if ( sum(duplicated(tmp.ids$row)) == 0 ) {
+        t = (rbind(tmp.ids, tmp.prices %>% select(names(tmp.ids))) %>% group_by(row) %>% summarize(t = max(top)))$t + buffer
+      }
+      #2. Initial try at name box words -- used to get character types
+
+      table.boxes.words[[i]] =  lapply(1:length(l), function(x) {
+        dplyr::filter(data1, #buffers added earlier; also no buffer to allow things glued to prices, e.g. 0551.jpg
+                      left >= l[x] & left <= r[x], 
+                      right < ( min(filter(page.cols$price_cols, table == i)$col.right)), 
+                      bottom >= b[x], top <= t[x],
+                      !isPrice(text, maybe = FALSE, dollar = FALSE))
       })
       
-      r.tmp =  sapply(table.boxes.words[[i]], function(x) max(x$right)) + buffer #update r
-      r[is.finite(r.tmp)] = r.tmp[is.finite(r.tmp)]
-      t[t<b] = b[t<b] + 2*page.cols$charheight # if stuck to row above, use default name height
+      # only use somewhat high-conf examples with at least 3 chars (minimize diacritics) for finding char types:
+      table.words = do.call("rbind", table.boxes.words[[i]]) %>% filter(nchar(text) > 2)
+      char.types = charTypes(table.words, types = 2, conf.min = min(90, quantile(table.words$confidence, .5)))
+      char.sizes = char.types$means
+      
+      # Adjust name boxes for prices that didn't have IDs
+      rows.missing.names = which(sapply(table.boxes.words[[i]], nrow)==0)
+      rows.missing.something = unique(c(rows.missing.names, rows.missing.ids))
+      if (length(rows.missing.something) > 0) {
+        
+        # in this case tmp.boxes has a minimum for left
+        tmp.boxes = filter(data1,
+                           left > max(min(l) - 2*buffer, 2*page.cols$charheight), #id left with buffer or small page left margin
+                           left <= r - 2*buffer, top < max(t) + buffer*8, bottom > min(b) - buffer*8)
+        tmp.boxes$char.sizes = char.sizes[apply(abs(outer(charWidth(tmp.boxes), char.sizes, "-")), 1,  which.min)]
+        
+        # detect nameBox 
+        for (j in rows.missing.something) {
+          table.boxes.words[[i]][[j]] = nameBox(j, tmp.boxes, l, r, b, t, buffer = buffer, char.sizes, 
+                                                look.left = FALSE, look.above = TRUE)
+        }
+      }
+
+      t = sapply(table.boxes.words[[i]], function(x) {max(x$top)})
+      b = sapply(table.boxes.words[[i]], function(x) {min(x$bottom)})
+      t[t<b] = b[t<b] + 2*page.cols$charheight # something went wrong (top below bottom) use default height
       table.boxes[[i]] = data.frame(l, b, r, t) #update r
       
-      # see if top overlaps with next row -- if so update for re-ocring
-      overlap_below = lapply(t, function(tt) {
-        filter(data1, 
-               bottom < tt,
-               top > (tt + buffer),
-               top > (bottom + buffer), 
-               left > min(l), 
-               right < median(r),
-               nchar(text) > 2)
-      })
-      update_t = which(sapply(overlap_below, nrow) > 2)
-      
-      cat("Found", length(update_t), "overlap(s) with row below when checking name boxes\n")
-      if (length(update_t) > 0) {
-        t_new = sapply(overlap_below[update_t], function(x) min(x$bottom))
-        t[update_t] = t_new
-        overlap_below = lapply(t, function(tt) {
-          filter(data1, 
-                 bottom < tt,
-                 top > (tt + buffer),
-                 top > (bottom + buffer), 
-                 left > min(l), 
-                 right < median(r) )
-        })
-        update_t = sapply(overlap_below, nrow) > 2
-        cat("Now", sum(update_t), "overlaps with row below when checking name boxes\n")
-        table.boxes[[i]] = data.frame(l, b, r, t) #update r
-      }
+      # see if name boxes (top dimension) overlaps with next row -- if so update for re-ocring
+      # overlap_below = lapply(t, function(tt) {
+      #   filter(data1, 
+      #          bottom < tt, top > (tt + buffer), top > (bottom + buffer), 
+      #          left > min(l), right < median(r),
+      #          nchar(text) > 2,
+      #          confidence > 0)
+      # })
+      # update_t = which(sapply(overlap_below, nrow) > 2)
+      # 
+      # if (length(update_t) > 0) {
+      #   t_new = sapply(update_t, function(x) min( (overlap_below[[x]]$bottom)[ overlap_below[[x]]$bottom > b[x] ]))
+      #   t[update_t] = t_new
+      #   table.boxes.words[[i]] = lapply(1:length(t), function(j) {filter(table.boxes.words[[i]][[j]], top <= t[j])})
+      #   table.boxes[[i]] = data.frame(l, b, r, t)
+      # }
+      # 
       
       #reocr
       table.boxes.words.reocr[[i]] = lapply(1:nrow(table.boxes[[i]]), function(x) {
@@ -128,16 +140,17 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
         if(text.level  == "textline") {gb$text = gsub("\n", "", gb$text)}
         gb
       })
-    } else { 
-      #Can't use ids
+    } 
+      # else, can't use ids:
+      else { 
       
       #get table left, right, row bottoms and row tops without using ids
-      l = tmp.cols$table.left.cpt[1]
-      r = min(tmp.cols$col.left) + 2*buffer 
       b = (table.prices %>% group_by(row) %>% summarize(b = median(bottom)))[["b"]] - buffer
       t = (table.prices %>% group_by(row) %>% summarize(t = median(top)))[["t"]] + buffer
+      l = rep(tmp.cols$table.left.cpt[1], length(b))
+      r = rep(min(tmp.cols$col.left) + 2*buffer, length(b))
       
-      # tmp.boxes has no minimum for left (other than left margin) in case we need to expand left edge later
+      # in this case tmp.boxes has no minimum for left (other than left margin) in case we need to expand left edge later
       tmp.boxes = filter(data1,
                          left > 2*page.cols$charheight, # small left margin
                          left <= r - 2*buffer, top < max(t) + buffer*8, bottom > min(b) - buffer*8)
@@ -153,88 +166,23 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       tmp.boxes$char.sizes = char.types$means[char.types$membership]
       if (buffer == "dynamic") {buffer= min(char.sizes)/2}
       
-      #add *row* justification here later to choose bottom or top
-      l = rep(l, length(b))
-      r = rep(r, length(b))
-      
-      #if text above the price is in the bigger character type then include it the name
-      table.boxes.words[[i]] = vector(mode = "list", length = length(t))
-      tmp.price_cols = filter(page.cols$price_cols, table==i)
+      table.boxes.words[[i]] =  lapply(1:length(l), function(x) {
+        dplyr::filter(data1, #buffers added earlier; also no buffer to allow things glued to prices, e.g. 0551.jpg
+                      left >= l[x] & left <= r[x], 
+                      right < ( min(filter(page.cols$price_cols, table == i)$col.right)), 
+                      bottom >= b[x], top <= t[x],
+                      !isPrice(text, maybe = FALSE, dollar = FALSE))
+      })
       
       # update l (FIRST go through J loop)
-      for (j in 1:length(b)) {
-        
-        # sets how high to look, assumes at most two-row names
-        tmp.name = filter( tmp.boxes, 
-                           left > l[j] - 2*buffer, left < r[j],
-                           top <= t[j],
-                           bottom >= b[j] - 2*max(char.sizes))
-        # bottom is max of preset bottom and bottom of previous name
-        if (j > 1) {tmp.name = filter(tmp.name, bottom >= max( b[j] - 2*max(char.sizes), t[j-1] ))}
-        
-        # remove from tmp.name anything glued to a price or is a price
-        tmp.name = filter( tmp.name, 
-                           right < tmp.price_cols$table.right[1] - buffer,
-                           !isPrice(text))
-        
-        # if not enough words (of at least 3 char) found, look further left and on same line
-        if ( nrow(tmp.name)  < min.words || ( sum(nchar(tmp.name$text) > 2) < min.words ) ) {
-          tmp.name = filter(tmp.boxes, right < r[j] & (top <= t[j] & bottom >= b[j] - .5*max(char.sizes)) ) %>%
-            arrange(-left) %>% mutate(char.sizes = 1) # placehodler char.size column
-          if (nrow(tmp.name)== 0) {
-            tmp.name = data.frame(left = 1, bottom = b[j], right = r[j], top = t[j], text = " ",
-                                  confidence = 0, char.sizes = 0) 
-          }
-          
-        }
-        
-        # if the name now has some data (either originally or after expanded search), 
-        if (tmp.name$char.sizes[1] !=0) {
-          
-          # take to the right of detected prices on first line: 
-          tmp.name2 = tmp.name %>% arrange(top) %>% 
-            mutate(line = ceiling(-apply(outer(top, top, "-"), 1, min)/page.cols$charheight + .001)) %>%
-            mutate(isPrice = !isPrice(text, maybe = T) %in% c("FALSE", "number", "ID", "year"))
-          
-          if ( sum(tmp.name2$isPrice == TRUE & tmp.name2$line == 1) > 0) {
-            tmp.name2 = tmp.name2 %>% mutate(keep = left > max(left[isPrice == TRUE & line == 1])) %>% filter(keep)
-            if (nrow(tmp.name2[nchar(tmp.name2$text) > 2, ]) >= min.words) {
-              tmp.name = tmp.name2 %>% select(-c("line", "isPrice", "keep"))
-            }
-          }
-          
-          # limit to max.words
-          if (nrow(tmp.name) > max.words) {tmp.name = (tmp.name %>% arrange(-top))[1:max.words,]}  
-          
-          # update b to prevent overlap with above
-          #if (mean(tmp.name$char.sizes == max(char.sizes)) >= charsize.cutoff) {
-          #could add another condition here for text width
-          if (j == 1) {b[j] = min(tmp.name$bottom)} 
-          if (j > 1) {b[j] = max(min(tmp.name$bottom - min(char.sizes)), t[j-1] - buffer/2)}
-          #}
-          tmp.name = filter(tmp.name, bottom >= b[j])
-          
-          # remove diacritics posing as words (one or two lower case letters ) on the left)                    
-          tmp.name = tmp.name %>% arrange(left) %>% 
-            filter(! (
-              nchar(text) <=2 & ( grepl(text, pattern = "[a-z]{1}.*") & cumsum(nchar(text) > 2) == 0) 
-            ) )
-          
-          if (nrow(tmp.name) > 0) {
-            # update l 
-            l[j] = min(tmp.name$left)
-            # update r
-            r[j] = max(tmp.name$right)
-          } else {
-            tmp.name = data.frame(left = 1, bottom = b[j], right = r[j], top = t[j], text = " ",
-                                  confidence = 0, char.sizes = 0) 
-          }
-          
-          
-        } #include another row in name, make sure below other price
-        table.boxes.words[[i]][[j]] = tmp.name %>% select(-contains("char.sizes"))
-      }
       
+      for (j in 1:length(l)) {
+        if ( sum( nchar( table.boxes.words[[i]][[j]]$text  ) > 2 ) < min.words ) {
+             table.boxes.words[[i]][[j]]  = nameBox(j, tmp.boxes, l, r, b, t, buffer, char.sizes, 
+                                               look.left =  TRUE, look.above = FALSE, min.words = 2, max.words = 12, charsize.cutoff)
+             l[j] = min(table.boxes.words[[i]][[j]]$left)
+        }
+      }
       
       #If it didn't find a good name, revert to median left edge
       table.boxes.words[[i]] = lapply(table.boxes.words[[i]], function(x) {
@@ -249,7 +197,6 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       })
       
       # get names (SECOND go through J loop)
-      
       l = rep(median(l), length(l))
       r = rep(min(tmp.cols$col.left) + 2*buffer, length(r))
       b = (table.prices %>% group_by(row) %>% summarize(b = median(bottom)))[["b"]] - buffer
@@ -259,77 +206,23 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       # Condider using median of .25 percentile l instead? 
       tmp.boxes = filter(tmp.boxes, left > median(l) - 2*buffer) 
       
-      for (j in 1:length(b)) {
+      for (j in 1:length(l)) {
         
-        # sets how high to look, assumes at most two-row names
-        tmp.name = filter( tmp.boxes, 
-                           left > l[j] - 2*buffer, left < r[j],
-                           top <= t[j],
-                           bottom >= b[j] - 2*max(char.sizes))
-        # bottom is max of preset bottom and bottom of previous name
-        if (j > 1) {tmp.name = filter(tmp.name, bottom >= max( b[j] - 2*max(char.sizes), t[j-1] ))}
+        print(j)
+        #look left
+        tmp.name  = nameBox(j, tmp.boxes, l, r, b, t, buffer, char.sizes, 
+                                                 look.left =  TRUE, look.above = FALSE, min.words = 2, max.words = 12, charsize.cutoff)
+        l[j] = min(tmp.name$left)
         
-        # remove from tmp.name nything glued to a price
-        tmp.name = filter( tmp.name, 
-                           right < tmp.price_cols$table.right[1] - buffer)
+        # look above (conditionally/)
+        tmp.name  = nameBox(j, tmp.boxes, l, r, b, t, buffer, char.sizes, 
+                                                 look.left =  FALSE, look.above = TRUE, min.words = 2, max.words = 12, charsize.cutoff)
+        l[j] = min(tmp.name$left)
         
-        # if not enough words (of at least 3 char) found, look further left and on same line
-        if ( nrow(tmp.name)  < min.words || ( sum(nchar(tmp.name$text) > 2) < min.words ) ) {
-          tmp.name = filter(tmp.boxes, right < r[j] & (top <= t[j] & bottom >= b[j] - .5*max(char.sizes)) ) %>%
-            arrange(-left) %>% mutate(char.sizes = 1) # placehodler char.size column
-          if (nrow(tmp.name)== 0) {
-            tmp.name = data.frame(left = 1, bottom = b[j], right = r[j], top = t[j], text = " ",
-                                  confidence = 0, char.sizes = 0) 
-          }
-          
-        }
-        
-        # if the name now has some data (either originally or after expanded search), 
-        if (tmp.name$char.sizes[1] !=0) {
-          
-          # take to the right of detected prices on first line: 
-          tmp.name2 = tmp.name %>% arrange(top) %>% 
-            mutate(line = ceiling(-apply(outer(top, top, "-"), 1, min)/page.cols$charheight + .001)) %>%
-            mutate(isPrice = !isPrice(text, maybe = T) %in% c("FALSE", "number", "ID", "year"))
-          
-          if ( sum(tmp.name2$isPrice == TRUE & tmp.name2$line == 1) > 0) {
-            tmp.name2 = tmp.name2 %>% mutate(keep = left > max(left[isPrice == TRUE & line == 1])) %>% filter(keep)
-            if (nrow(tmp.name2[nchar(tmp.name2$text) > 2, ]) >= min.words) {
-              tmp.name = tmp.name2 %>% select(-c("line", "isPrice", "keep"))
-            }
-          }
-          
-          # limit to max.words
-          if (nrow(tmp.name) > max.words) {tmp.name = (tmp.name %>% arrange(-top))[1:max.words,]}  
-          
-          # update b to prevent overlap with above
-          #if (mean(tmp.name$char.sizes == max(char.sizes)) >= charsize.cutoff) {
-          #could add another condition here for text width
-          if (j == 1) {b[j] = min(tmp.name$bottom)} 
-          if (j > 1) {b[j] = max(min(tmp.name$bottom - min(char.sizes)), t[j-1] - buffer/2)}
-          #}
-          tmp.name = filter(tmp.name, bottom >= b[j])
-          
-          # remove diacritics posing as words (one or two lower case letters ) on the left)                    
-          tmp.name = tmp.name %>% arrange(left) %>% 
-            filter(! (
-              nchar(text) <=2 & ( grepl(text, pattern = "[a-z]{1}.*") & cumsum(nchar(text) > 2) == 0) 
-            ) )
-          
-          if (nrow(tmp.name) > 0) {
-            # update l 
-            l[j] = min(tmp.name$left) - buffer/2
-            # update r
-            r[j] = max(tmp.name$right) + buffer/2
-          } else {
-            tmp.name = data.frame(left = 1, bottom = b[j], right = r[j], top = t[j], text = " ",
-                                  confidence = 0, char.sizes = 0) 
-          }
-          
-          
-        } #include another row in name, make sure below other price
-        table.boxes.words[[i]][[j]] = tmp.name %>% select(-contains("char.sizes"))
+        table.boxes.words[[i]][[j]] = tmp.name
       }
+      
+        
       #If it didn't find a good name, revert to median left edge
       table.boxes.words[[i]] = lapply(table.boxes.words[[i]], function(x) {
         if (nrow(x) == 1) {
@@ -341,11 +234,15 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
           x
         } else {x}
       })
+      
+      # update l, r, t and b
       l = sapply(table.boxes.words[[i]], function(x) {min(x$left)})
       r = sapply(table.boxes.words[[i]], function(x) {max(x$right)})
+      t = sapply(table.boxes.words[[i]], function(x) {max(x$top)})
+      b = sapply(table.boxes.words[[i]], function(x) {min(x$bottom)})
       
       # see if top overlaps with next row -- if so update for re-ocring
-      # implemented differently than for IDS. Which is better?
+      # implemented differently than it was when IDS are present. Which is better?
       # find words that the current t value strikes through
       overlap_below = lapply(t, function(x) {
         words = filter(data1, bottom < x-2*buffer, x < top, left > min(l), right < median(r), nchar(text) > 2,
@@ -387,4 +284,85 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
   names(table.boxes.words) = paste("table", 1:length(table.boxes.words), sep = "_")
   names(table.boxes.words.reocr) = paste("table", 1:length(table.boxes.words), sep = "_")
   return(list(locations = table.boxes, words_old = table.boxes.words, words = table.boxes.words.reocr))
+}
+
+
+# find a name box without an ID to guide whether the upper & left edge are
+# tmp.boxes is a generous subset of the overall page data where we'll look for name words
+# look.left if we don't have ids and we think we should look further left for more words if necessary
+# look.above if we do have ids and we think we should look above for more words if necessary
+
+nameBox <- function(j, tmp.boxes, l, r, b, t, buffer, char.sizes, look.left = TRUE, look.above = TRUE, 
+                    min.words = 2, max.words = 12, charsize.cutoff = .4) {
+    
+    tmp.name = filter( tmp.boxes, 
+                       left > l[j] - 2*buffer, left < r[j],
+                       top <= t[j],
+                       bottom >= b[j])
+    
+    # bottom is max of bottom and top of previous name
+    if (j > 1 & nrow(tmp.name) > 0) {tmp.name = filter(tmp.name, bottom >= max( b[j] - 2*max(char.sizes), t[j-1] ))}
+    
+    # remove prices from tmp.name
+    tmp.name = filter( tmp.name, !isPrice(text))
+    
+    # if not enough words (of at least 3 char) found:
+    if ( nrow(tmp.name)  < min.words || ( sum(nchar(tmp.name$text) > 2) < min.words ) ) {
+    
+      if (look.left) {
+        
+      #look further left and on same line
+      
+        tmp.name = filter(tmp.boxes, right < r[j] & (top <= t[j] & bottom >= b[j] - .5*max(char.sizes)) ) %>%
+          arrange(-left) %>% mutate(char.sizes = 1) # placehodler char.size column
+        if (nrow(tmp.name)== 0) {
+          tmp.name = data.frame(left = 1, bottom = b[j], right = r[j], top = t[j], text = " ",
+                                confidence = 0, char.sizes = 0) 
+        }
+      }
+      
+    }
+    
+    if (look.above) { 
+        # look at the line above
+        new.bottom = ifelse(j > 1, max(b[j] - max(char.sizes) - buffer, t[j-1]),b[j] - max(char.sizes) - buffer )
+        tmp.add = filter(tmp.boxes, right < r[j], top <= t[j], bottom >= new.bottom, bottom < b[j]) 
+        if (nrow(tmp.add) >= min.words) {
+          if (mean(tmp.add$char.sizes == max(char.sizes)) >= charsize.cutoff) {
+            tmp.name = filter(tmp.boxes, right < r[j], top <= t[j], bottom >= new.bottom) %>%
+            arrange(-left) 
+          }
+        }
+        if (nrow(tmp.name)== 0) {
+          tmp.name = data.frame(left = 1, bottom = b[j], right = r[j], top = t[j], text = " ",
+                                confidence = 0, char.sizes = 0) 
+        }
+    }  
+    
+    # if the name now has some data (either originally or after expanded search), 
+    if (tmp.name$char.sizes[1] !=0) {
+      
+      # take to the right of detected prices (not the line's price) on first line: 
+      tmp.name2 = tmp.name %>% arrange(top) %>% 
+        mutate(line = ceiling(-apply(outer(top, top, "-"), 1, min)/max(char.sizes) + .001)) %>%
+        mutate(isPrice = !isPrice(text, maybe = T) %in% c("FALSE", "number", "ID", "year"))
+      
+      if ( sum(tmp.name2$isPrice == TRUE & tmp.name2$line == 1) > 0) {
+        tmp.name2 = tmp.name2 %>% mutate(keep = left > max(left[isPrice == TRUE & line == 1])) %>% filter(keep)
+        if (nrow(tmp.name2[nchar(tmp.name2$text) > 2, ]) >= min.words) {
+          tmp.name = tmp.name2 %>% select(-c("line", "isPrice", "keep"))
+        }
+      }
+      
+      # remove diacritics posing as words (one or two lower case letters ) on the left)                    
+      tmp.name = tmp.name %>% arrange(left) %>% 
+        filter(! (
+          nchar(text) <=2 & ( grepl(text, pattern = "[a-z]{1}.*") & cumsum(nchar(text) > 2) == 0) 
+        ) )
+      
+      # limit to max.words
+      if ( sum(nchar(tmp.name$text) > 2) > max.words) {tmp.name = (tmp.name %>% arrange(-nchar(text), -top))[1:max.words,]}  
+    }
+
+    return(tmp.name %>% select(-contains("char.sizes")))
 }
