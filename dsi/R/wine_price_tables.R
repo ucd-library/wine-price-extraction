@@ -36,33 +36,41 @@ library(cluster)
 library(changepoint)
 library(RecordLinkage)
 
-wd = "~/Documents/DSI" #path to wine-price-extraction repo
-setwd(wd)
-
 source("wine-price-extraction/dsi/R/wine_price_pageCols.R")
 source("wine-price-extraction/dsi/R/wine_price_tables_functions.R")
 source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R")
 source("wine-price-extraction/dsi/R/helper.R") 
 
-# MAIN  FUNCTION, encompassing all numbered steps below ----
+# MAIN FUNCTION, encompassing all numbered steps below ----
 # for examples of this code being run see run_wine_price_tables.R in the adjacent scripts folder
 
-price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
-                                   image.check = FALSE, show.ggplot = TRUE,
-                                   pix.threshold = NULL, pix.newValue = NULL, 
+price_table_extraction <- function(file1,
+                                   data1 = NULL,
+                                   output.folder = ".",
+                                   data.output.folder = NULL,
+                                   save.data = FALSE,
+                                   save.deskewed = FALSE,
+                                   pix.threshold = NULL, pix.newValue = NULL, #pix.threshold = 200, pix.newValue = 0
                                    column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
-                                   res1 = 600, save.deskewed = FALSE) {
-  #res1 is default resolution which is 600 for wine images. Only set if img resolution is missing.
-  #column.header is convered to lower for comparison
+                                   res1 = 600,
+                                   image.check = FALSE, 
+                                   show.ggplot = TRUE) {
+  # res1 is default resolution which is 600 for wine images. Only set if img resolution is missing.
+  # column.header is convered to lower for comparison
+  # save.data will save the output of GetBoxes to the data.output.folder
+  # save.desketed will save the clean deskewed image to the output.folder
   
   cat("************** setup (0-1) **************\n")
   
+
   # 0 Setup ####
-  img1 = paste("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/", file1, ".jpg", sep = "")
-  if (!file.exists(img1)) {
-    if (!exists("sample_files")) {sample_files = readRDS("~/Documents/DSI/wine-price-extraction/dsi/Data/sample_files.RDS")}
-    folder = sample_files[which(sample_files$file == file1),"Sample"]
-    img1 = paste("~/Documents/DSI/OCR_SherryLehmann/Sample/", folder, "/", file1, ".jpg", sep = "")
+  
+  # Check image name input
+  if (file.exists(file1)) {
+    img1 = file1
+    file1 = first(str_split(last(strsplit(file1, "/")[[1]]), "\\.")[[1]])  #file1 now is stub name
+  } else {
+    stop("Image does not exist. Must supply valid path to image as as file1 argument.")
   }
   api = tesseract(img1, pageSegMode = 6, engineMode = 3)
   height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
@@ -77,20 +85,26 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
   
   # 1 ####
   px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50)
-  if (!is.null(pix.threshold) & !is.null(pix.newValue)) {px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)}
+  if (!is.null(pix.threshold) & !is.null(pix.newValue)) {
+    px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)
+  }
   
-  if (is.null(data1)) {data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)}
-  if(! file.exists(paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))) {saveRDS(data1, paste0("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/",file1,"_data1.RDS"))}
-  
-  if (sum(isPrice(data1$text)) + sum(isPrice(data1$text, maybe = T)=="*price") == 0) {
-    return("No prices detected. If prices suspected try a new pix.threshold.")
+  if (is.null(data1)) {
+    data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)
+  }
+  if (save.data) {
+    saveRDS(data1, file.path(data.output.folder, paste0(file1,"_data1.RDS")))
   }
   
   # may want to save deskewed image for post-processing
   if (save.deskewed) {
-    pixWrite(px1, paste("wine-price-extraction/dsi/Data/", file1, "_deskew.png", sep=""))
+    pixWrite(px1, file.path(output.folder, paste0(file1, "_deskew.png")))
     #return()
-  } 
+  }
+  
+  if (sum(isPrice(data1$text)) + sum(isPrice(data1$text, maybe = T)=="*price") == 0) {
+    return("No prices detected. If prices suspected try a new pix.threshold.")
+  }
   
   # 2 ####
   cat("****** get price and id columns (2) *****\n")
@@ -193,7 +207,7 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
     
     #### save name box image ####
     tmp.boxes = do.call("rbind", name.boxes[[1]])
-    png(paste("wine-price-extraction/dsi/Data/", file1, "_name_boxes.png", sep=""), width = 1000, height = 1500)
+    png(file.path(output.folder, paste0(file1, "_name_boxes.png")), width = 1000, height = 1500)
     plot(tesseract(px1), cropToBoxes = F, bbox = tmp.boxes, img = px1, confidence = FALSE)
     dev.off()
     
@@ -201,10 +215,10 @@ price_table_extraction <- function(file1, data1 = NULL, save.root = ".",
     final.data = list(prices = final.prices)
   }
   
-  saveRDS(final.data, paste(save.root,"/wine-price-extraction/dsi/Data/", file1, ".RDS", sep = ""))
+  saveRDS(final.data, file.path(output.folder, paste0(file1, ".RDS")))
   
   #### save price image ####
-  png(paste("wine-price-extraction/dsi/Data/", file1, "_price_boxes.png", sep=""), width = 1000, height = 1500)
+  png(file.path(output.folder, paste0(file1, "_price_boxes.png")), width = 1000, height = 1500)
   #page.cols$prices entries should only have class data.frame, not also tbl_df or other
   plot(tesseract(px1), cropToBoxes = FALSE, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
   dev.off()
