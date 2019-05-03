@@ -23,7 +23,7 @@ library(ggplot2)
 library(stringr)
 library(dplyr)
 library(RecordLinkage)
-
+mean.u
 ##################################################################################################################
 # 1. Evaluation and comparison functions
 ##################################################################################################################
@@ -41,8 +41,30 @@ wine.evaluate <- function(test.prices) {
          prices.ratios = matrix(apply(joined.prices, 1, function(x) {as.numeric(x[-c(1,2)])/as.numeric(x[2])}), nrow = length(prices)-1) #row for each comparison
          rownames(prices.ratios) = paste(names(prices)[-1], names(prices[1]), sep = "/")
          apply(prices.ratios, 1, summary)
-       }))
+       }),
+       # look at columns and see if prices are greater than one after (most are ascencing)
+       # summarize number of times, and mean of how much they're greater by
+       table.ordering = lapply(test.prices, function(x) {
+        lapply(x[[2]], function(y) {
+          column.of.prices = (as.numeric(y$text.new))
+          column.of.diffs = (column.of.prices - lag(column.of.prices, default = 0) )[-1] 
+            c(n.unsorted = sum(column.of.diffs < 0, na.rm = T), 
+              mean.unsorted = ifelse(sum(column.of.diffs < 0, na.rm = T) == 0, 0, 
+                                  abs(round(mean(column.of.diffs[column.of.diffs < 0], na.rm = T), 2))))
+        }) 
+       })
+  )
 }
+
+lapply(test.prices, function(x) {lapply(x[[2]], function(x) {is.unsorted(as.numeric(x$text.new))})})
+lapply(test.prices, function(x) {
+  lapply(x[[2]], function(y) {
+    column.of.prices = (as.numeric(y$text.new))
+    column.of.diffs = (column.of.prices - lag(column.of.prices, default = 0) )[-1] 
+    c(sum(column.of.diffs < 0, na.rm = T), abs(mean(column.of.diffs[column.of.diffs < 0], na.rm = T)))
+    }) 
+  } )
+
 
 # Compare output to truth for a single image with output to list, e.g. wine.compare(test = test.prices, truth = truth.prices)
 # All differences are test minus truth

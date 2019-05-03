@@ -12,12 +12,13 @@ library(dplyr)
 library(RecordLinkage)
 
 source("~/Documents/DSI/wine-price-extraction/dsi/R/wine_evaluate.R")
-output.directory = "~/Documents/DSI/wine-price-extraction/dsi/Data"
-truth.directory = "~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth"
-file.number = "0069"
 
-test.prices = readRDS(file.path(output.directory, paste0("UCD_Lehmann_", file.number,".RDS")))$prices
-truth.prices = readRDS(file.path(truth.directory, paste0("UCD_Lehmann_", file.number,"_price_truth.RDS")))$prices
+output.directory = "~/Documents/DSI/wine-price-extraction/dsi/Data/sample_output"
+truth.directory = "~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth"
+
+# file.number = "0069"
+# test.prices = readRDS(file.path(output.directory, paste0("UCD_Lehmann_", file.number,".RDS")))$prices
+# truth.prices = readRDS(file.path(truth.directory, paste0("UCD_Lehmann_", file.number,"_price_truth.RDS")))$prices
 
 #if correction necessary to truth, something like:
 #tmp = readRDS(file.path(truth.directory, paste0("UCD_Lehmann_", file.number,"_price_truth.RDS")))
@@ -45,10 +46,12 @@ output_summary_internal = data.frame(t(sapply(evaluate.output, function(eval) {
   c("n.tables" = eval$n.tables,
     "n.columns.total" = eval$n.columns.total,
     "n.entries.total" = eval$n.entries.total,
-    "n.columns.per.table" = paste(eval$n.columns.per.table, collapse = ","),
-    "n.entries.per.column" = paste(unlist(eval$n.entries.per.column), collapse = ","),
-    "column.names" = paste(names(unlist(eval$n.entries.per.column)), collapse = ","),
-    "column.ratios" = paste(round(as.numeric(unlist(eval$table.ratios.summary), 2)), collapse = ",")
+    "n.columns.per.table" = paste(eval$n.columns.per.table, collapse = ", "),
+    "n.entries.per.column" = paste(unlist(eval$n.entries.per.column), collapse = ", "),
+    "column.names" = paste(names(unlist(eval$n.entries.per.column)), collapse = ", "),
+    "column.ratios" = paste(round(as.numeric(unlist(eval$table.ratios.summary), 2)), collapse = ", "),
+    "n.unsorted" = paste(unlist(sapply(eval$table.ordering, sapply, first)), collapse = ", "), #number of prices than next one in column
+    "mean.unsorted" =  paste(unlist(sapply(eval$table.ordering, sapply, nth, 2)), collapse = ", ")#mean of how much they're greater by
   )
 })))
 rownames(output_summary_internal) = fileset1
