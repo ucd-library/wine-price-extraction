@@ -73,6 +73,10 @@ price_table_extraction <- function(file1,
     stop("Image does not exist. Must supply valid path to image as as file1 argument.")
   }
   api = tesseract(img1, pageSegMode = 6, engineMode = 3)
+  
+  # Set resolution to avoid warnings
+  if(GetSourceYResolution(api1)==0) {SetSourceResolution(api1, res1)}
+  
   height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
   
   ############ img check 1 ####
@@ -119,7 +123,7 @@ price_table_extraction <- function(file1,
   if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1)
   
   # 3 ####
-  cat("******* add prices and ids (3) **********\n")
+  cat("\n******* add prices and ids (3) **********\n")
   # check for new prices ####
   page.cols = addPrices(page.cols, px1)
   
@@ -135,7 +139,7 @@ price_table_extraction <- function(file1,
     cat("We think there's", page.cols$n_id_cols, "table(s)\n")
     tmp.maybe_missing = rep(page.cols$id_cols$entries, each = page.cols$n_price_cols/page.cols$n_id_cols) - sapply(page.cols$prices, nrow)
     if (max(tmp.maybe_missing) > 0) {
-      cat("Column(s)", which(tmp.maybe_missing>0), "may be missing", tmp.maybe_missing[tmp.maybe_missing>0], "# of entry")
+      cat("Column(s)", which(tmp.maybe_missing>0), "may be missing", tmp.maybe_missing[tmp.maybe_missing>0], "# of entry\n")
     } else if (min(tmp.maybe_missing) < 0) {
       cat("ID column(s) may be missing up to", -1*min(tmp.maybe_missing), "entry(s)")
     } else {cat("Columns don't seem to be missing entries\n")}
@@ -164,6 +168,16 @@ price_table_extraction <- function(file1,
   page.cols = addMissing(page.cols, buffer = page.cols$charheight, img.height = height1, px1)
   
   page.cols = removeExtra(page.cols, removeType = "all") 
+  
+  # final attempt to fix price formatting before saving
+  page.cols$prices = lapply(page.cols$prices, function(table.col) {
+    can.convert.to.price = which(isPrice(extractPrice(table.col$text.new), maybe = FALSE) & 
+                                   !isPrice(table.col$text.new, maybe = FALSE))
+    if (length(can.convert.to.price) > 0) {
+      table.col$text.new[can.convert.to.price] = extractPrice(table.col$text.new)[can.convert.to.price]
+    }
+    return(table.col)
+  })
   
   ############# img check 4 ####
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
