@@ -38,7 +38,6 @@ catalog_crosswalk = read_xlsx("Sherry Lehmann Crosswalk Page to Catalog.xlsx", s
 marks = left_join(marks, pages, by = "page_id")
 marks = left_join(marks, catalogs, by = "catalog_id")
 
-
 ########################################################################################################################
 ##   Downloand images to re-organize by catalog: ####
 # sample_files = paste("http://dsi.ucdavis.edu/WineCatalogs/Sample", 1:41, ".tar.bz2", sep = "")
@@ -440,3 +439,79 @@ cat.textDF.retrained2 = data.frame(bind_rows(cat.text.retrained2),
 ggplot(cat.textDF.retrained2, aes(x = confidence)) + geom_histogram() +
   facet_wrap(~title) + 
   ggtitle("Distribution of confidences by image (Retrained2)", subtitle =  "Title = image number _ Nprice _ Median confidence")
+
+
+
+##################################################################################################################
+# 7. Sample code for modifying RDS price_table_extraction output to create truth (if necessary; do before comparison making)
+##################################################################################################################
+
+# saveRDS(UCD_Lehmann_0011_price_truth, "~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/UCD_Lehmann_0011_price_truth.RDS")
+
+truth1 = "1544"
+truthdata = readRDS(paste0("~/Documents/DSI/OCR_SherryLehmann/Truth2/",truth1,"_column2.RDS"))
+try({truthdata = data.frame(truthdata)})
+truthdata = data.frame(apply(truthdata, 2, as.character), stringsAsFactors = F)
+
+#modify truth?
+truthdata$Bottle = sub(pattern = "(\\.[0-9]{1}$)",  "\\10", x = truthdata$Bottle)
+truthdata$Bottle = sub(pattern = "^0\\.",  "\\.", x = truthdata$Bottle)
+truthdata$Bottle = sub(pattern = "(^[0-9]+$)",  "\\1.00", x = truthdata$Bottle)
+truthdata$Case = sub(pattern = "(^[0-9]+$)",  "\\1.00", x = truthdata$Case)
+truthdata$Case = sub(pattern = "(\\.[0-9]{1}$)",  "\\10", x = truthdata$Case)
+truthdata$CaseArrival = sub(pattern = "(\\.[0-9]{1}$)",  "\\10", x = truthdata$CaseArrival)
+truthdata$CaseArrival = sub(pattern = "(^[0-9]+$)",  "\\1.00", x = truthdata$CaseArrival)
+
+truthdata
+
+# insert
+
+truthoutput = readRDS(paste0("~/Documents/DSI/wine-price-extraction/dsi/Data/UCD_Lehmann_",truth1,".RDS"))
+# From truthfile
+i = 2
+truthoutput$prices[[i]]$ids[[1]] = data.frame(row = 1:length(truthdata$Description),
+                                              name = as.character(truthdata$Description), stringsAsFactors = F)
+
+truthoutput$prices[[i]]$prices[[4]] = data.frame(row = 1:length(truthdata$QuartCase),
+                                                 text.new = as.character(truthdata$QuartCase),
+                                                 stringsAsFactors = F)
+
+truthoutput$prices[[i]]$prices[[2]] = data.frame(row = 1:length(truthdata$CaseArrival),
+                                                 text.new = as.character(truthdata$CaseArrival),
+                                                 stringsAsFactors = F)
+
+truthoutput$prices
+
+# Custom changes
+#1,1
+truthoutput$prices[[1]]$ids[[1]] = rbind(truthoutput$prices[[1]]$ids[[1]], c(6, "234")) %>% arrange(row)
+truthoutput$prices[[1]]$prices[[1]] = rbind(truthoutput$prices[[1]]$prices[[1]], c(8, "2.19")) %>% arrange(row)
+truthoutput$prices[[1]]$prices[[1]][1,2] = "1.49"
+#1,2
+truthoutput$prices[[1]]$prices[[2]] = rbind(truthoutput$prices[[1]]$prices[[2]], c(6, "21.50")) %>% arrange(row)
+truthoutput$prices[[1]]$prices[[2]][7,2] = "23.65"
+
+#2,1
+truthoutput$prices[[2]]$ids[[1]] = rbind(truthoutput$prices[[2]]$ids[[1]], c(0, "614")) %>% arrange(row)
+truthoutput$prices[[2]]$ids[[1]]$row = 1:8
+truthoutput$prices[[2]]$prices[[1]] = rbind(truthoutput$prices[[2]]$prices[[1]], c(0, "2.29"))
+truthoutput$prices[[2]]$prices[[1]] = truthoutput$prices[[2]]$prices[[1]] %>% arrange(row)
+truthoutput$prices[[2]]$prices[[1]]$row = 1:8
+truthoutput$prices[[2]]$prices[[1]][6,2] = "2.99"
+
+#2,2
+truthoutput$prices[[2]]$prices[[2]] = rbind(truthoutput$prices[[2]]$prices[[2]], c(0, "24.75")) %>% arrange(row)
+truthoutput$prices[[2]]$prices[[2]]$row = 1:8
+
+#names
+names(truthoutput$prices[[1]]$prices) = c("bottle", "2 bottles")
+names(truthoutput$prices[[1]]$prices) = c("Bottle","Case")
+names(truthoutput$prices[[2]]$prices) = c("Bottle","Case")
+names(truthoutput$prices[[3]]$prices) = c("Bottle")
+names(truthoutput$prices[[4]]$prices) = c("Bottle")
+names(truthoutput$prices[[1]]$prices) = c("Case NOW","Case Price Upon Arrival","You Save")
+names(truthoutput$prices[[2]]$prices) = c("Fifth Bottle","Fifth Case","Quart Bottle","Quart Case")
+
+# save
+#saveRDS(truthoutput, paste0("~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth/UCD_Lehmann_",truth1,"_price_truth.RDS"))
+
