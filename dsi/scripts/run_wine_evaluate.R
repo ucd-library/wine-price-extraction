@@ -56,7 +56,7 @@ fileset1 = list.files(EVAL.INPUT.DIR, pattern = ".RDS", full.names = TRUE, recur
 
 evaluate.output = vector("list", length(fileset1)) #returns list
 for (i in 1:length(fileset1)) {
-  rds1 = readRDS(file1)$prices
+  rds1 = readRDS(fileset1[i])$prices
   eval1 = wine.evaluate(rds1)
   evaluate.output[[i]] = eval1
 } 
