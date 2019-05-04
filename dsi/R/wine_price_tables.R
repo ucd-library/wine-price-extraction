@@ -62,8 +62,10 @@ price_table_extraction <- function(file1,
   
   cat("************** setup (0-1) **************\n")
   
-
+  
   # 0 Setup ####
+  
+  print(file1)
   
   # Check image name input
   if (file.exists(file1)) {
@@ -72,18 +74,15 @@ price_table_extraction <- function(file1,
   } else {
     stop("Image does not exist. Must supply valid path to image as as file1 argument.")
   }
-  api = tesseract(img1, pageSegMode = 6, engineMode = 3)
-  
-  # Set resolution to avoid warnings
-  if(GetSourceYResolution(api1)==0) {SetSourceResolution(api1, res1)}
+  api1 = tesseract(img1, pageSegMode = 6, engineMode = 3)
   
   height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
   
   ############ img check 1 ####
   if(image.check) {
-    gb1 = GetBoxes(api)
+    gb1 = GetBoxes(api1)
     prices1 = gb1[isPrice(gb1$text),] 
-    plot(api, cropToBoxes = F, bbox = prices1)
+    plot(api1, cropToBoxes = F, bbox = prices1)
   }
   # tried removing low-confidence prices -- removed real prices, so don't do that
   
@@ -93,8 +92,12 @@ price_table_extraction <- function(file1,
     px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)
   }
   
+  # Set resolution to avoid warnings
+  api1 = tesseract(px1)
+  if(GetSourceYResolution(api1)==0) {SetSourceResolution(api1, res1)}
+  
   if (is.null(data1)) {
-    data1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)
+    data1 = GetBoxes(api1, pageSegMode = 6, engineMode = 3)
   }
   if (save.data) {
     saveRDS(data1, file.path(data.output.folder, paste0(file1,"_data1.RDS")))

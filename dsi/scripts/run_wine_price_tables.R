@@ -16,51 +16,64 @@ library(changepoint)
 library(RecordLinkage)
 #library(MASS) #<- Should have MASS installed for rlm, but load creates conflict with select
 
-source("wine-price-extraction/dsi/R/wine_price_pageCols.R") #redundant
-source("wine-price-extraction/dsi/R/wine_price_tables_functions.R") #redundant
-source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R") #redundant
-source("wine-price-extraction/dsi/R/helper.R") #redundant
-source("wine-price-extraction/dsi/R/wine_price_tables.R")
-
-FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"
-OUTPUT.FOLDER = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data"
-DATA.INPUT.FOLDER = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
-DATA.OUTPUT.FOLDER = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
-SAVE.DATA = FALSE
+# IF running from this script: 
+#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"
+#OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
+#DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
+#DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
+#SAVE.DATA = FALSE
 
 args = commandArgs(trailingOnly = TRUE)
+
 if (length(args) > 0) {
   FILESET = args[1]
-  RUN.FILE = ifelse (grepl(FILESET, pattern = "\\.[a-zA-Z]+$"), TRUE, FALSE) #otherwise run folder
   if (length(args) > 1) {
-    OUTPUT.FOLDER = args[2] 
+    OUTPUT.DIR = args[2] 
     if (length(args) > 2) {
-      DATA.INPUT.FOLDER = args[3] #path to folder where pre-ocr'd data is stored
+      DATA.INPUT.DIR = args[3] #path to folder where pre-ocr'd data is stored
       if (length(args) > 3)
-        DATA.OUTPUT.FOLDER = args[4] #path to folder where ocr'd data will be saved if save.data is TRUE
+        DATA.OUTPUT.DIR = args[4] #path to folder where ocr'd data will be saved if save.data is TRUE
     }
   }
 }
 
 if (!file.exists (FILESET) ) {
   stop("Path to image file or folder containing images not valid. Stopping.")
+} else {
+  RUN.FILE = ifelse (grepl(FILESET, pattern = "\\.[a-zA-Z]+$"), TRUE, FALSE) #otherwise run folder
 }
 
-if (!file.exists (OUTPUT.FOLDER) ) {
-  stop("Path to store output not valid. Using current directory instead")
+if (!file.exists (OUTPUT.DIR) ) {
+  stop("Stopping: Path to store output not valid")
 }
 
-if (!file.exists (DATA.INPUT.FOLDER) ) {
-  DATA.INPUT.FOLDER = NULL
+if (exists ("DATA.INPUT.DIR")) {
+  if (! file.exists(DATA.INPUT.DIR) ) {
+    DATA.INPUT.DIR = NULL
+    DATA1 = NULL
+    warning("path to existing data not valid, re-OCRing instead")
+  }
+} else {
+  DATA.INPUT.DIR = NULL
   DATA1 = NULL
-  warning("path to existing data not valid, re-OCRing instead")
 }
 
-if (!file.exists (DATA.OUTPUT.FOLDER) ) {
-  DATA.OUTPUT.FOLDER = NULL
+if (exists ("DATA.OUTPUT.DIR")) {
+  if (!is.null(DATA.OUTPUT.DIR) && ! file.exists(DATA.OUTPUT.DIR) ) {
+    DATA.OUTPUT.DIR = NULL
+    SAVE.DATA = FALSE
+    warning("path to store data not valid. will not store")
+  } else {
+    # If path to save data output is valid and SAVE.DATA not already set, then save
+    if (! exists("SAVE.DATA")) {
+      SAVE.DATA = TRUE
+    }
+  }
+} else {
+  DATA.OUTPUT.DIR = NULL
   SAVE.DATA = FALSE
-  warning("path to store data not valid, will not store")
 }
+
 
 ####################################################################################################
 # RUN ####
@@ -91,14 +104,14 @@ if (!file.exists (DATA.OUTPUT.FOLDER) ) {
 # truth_files = truth_files[-grep(truth_files, pattern = "2759")] #remove bad one
 #-- files in truth not in sample folder: fileset = c("UCD_Lehmann_0008", "UCD_Lehmann_0027", "UCD_Lehmann_0267", "UCD_Lehmann_1470  ", "UCD_Lehmann_1994", "UCD_Lehmann_1544", "UCD_Lehmann_1835")
 
-# 1. Example ----
+# 1. Run on example ----
 
 if (RUN.FILE) {
 
 file1 = FILESET
   
 ### will remove later ###
-file1 = "UCD_Lehmann_0011"# 1106
+file1 = "UCD_Lehmann_0237"# 1106
 
 if (paste0(file1, ".jpg") %in% list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages")) {
   file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages", paste0(file1, ".jpg"))
@@ -109,14 +122,14 @@ if (paste0(file1, ".jpg") %in% list.files("~/Documents/DSI/OCR_SherryLehmann/Sam
 }
 ###
 
-if (!is.null(DATA.INPUT.FOLDER)) {
-  DATA1 = readRDS(file.path(DATA.INPUT.FOLDER, paste0(nth(strsplit(FILESET, split = c("/|\\."))[[1]], -2), "_data1.RDS")))
+if (!is.null(DATA.INPUT.DIR)) {
+  DATA1 = readRDS(file.path(DATA.INPUT.DIR, paste0(nth(strsplit(file1, split = c("/|\\."))[[1]], -2), "_data1.RDS")))
 }
 
 price_table_extraction(file1,
                        data1 = DATA1,
-                       output.folder = OUTPUT.FOLDER, 
-                       data.output.folder = DATA.OUTPUT.FOLDER,
+                       output.folder = OUTPUT.DIR, 
+                       data.output.folder = DATA.OUTPUT.DIR,
                        save.data = SAVE.DATA,
                        save.deskewed = FALSE,
                        pix.threshold = NULL, pix.newValue = NULL, #pix.threshold = 200, pix.newValue = 0
@@ -127,7 +140,7 @@ price_table_extraction(file1,
 
 }
 
-# 2. Run on a fileset ----
+# 2. Run on fileset ----
 
 if (!RUN.FILE) {
 
@@ -143,11 +156,11 @@ if (!RUN.FILE) {
     if( GetSourceYResolution(api1)==0 ) {SetSourceResolution(api1, 600)}
     
     # Should we use pre-run get boxes?
-    if (!is.null(DATA.INPUT.FOLDER)) {
-      DATA1 = readRDS(file.path(DATA.INPUT.FOLDER, paste0(nth(strsplit(img1, split = c("/|\\."))[[1]], -2), "_data1.RDS")))
+    if (!is.null(DATA.INPUT.DIR)) {
+      DATA1 = readRDS(file.path(DATA.INPUT.DIR, paste0(nth(strsplit(img1, split = c("/|\\."))[[1]], -2), "_data1.RDS")))
     } else {
       # this is done here instead of in price table extraction so that we know whether to continue
-      DATA1 = GetBoxes(px1, pageSegMode = 6, engineMode = 3)
+      DATA1 = GetBoxes(api1, pageSegMode = 6, engineMode = 3)
     }
     
     # Use getBoxes output in data1 to classify if a page (probably) has readable price tables
@@ -157,8 +170,8 @@ if (!RUN.FILE) {
         names( 
           price_table_extraction(img1, 
                                       data1 = DATA1,
-                                      output.folder = OUTPUT.FOLDER, 
-                                      data.output.folder = DATA.OUTPUT.FOLDER,
+                                      output.folder = OUTPUT.DIR, 
+                                      data.output.folder = DATA.OUTPUT.DIR,
                                       save.data = SAVE.DATA,
                                       save.deskewed = FALSE,
                                       pix.threshold = PIX.THRESHOLD, pix.newValue = PIX.NEWVALUE, #pix.threshold = 200, pix.newValue = 0
