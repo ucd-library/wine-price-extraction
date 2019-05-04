@@ -23,7 +23,7 @@ library(ggplot2)
 library(stringr)
 library(dplyr)
 library(RecordLinkage)
-mean.u
+
 ##################################################################################################################
 # 1. Evaluation and comparison functions
 ##################################################################################################################
@@ -55,16 +55,6 @@ wine.evaluate <- function(test.prices) {
        })
   )
 }
-
-lapply(test.prices, function(x) {lapply(x[[2]], function(x) {is.unsorted(as.numeric(x$text.new))})})
-lapply(test.prices, function(x) {
-  lapply(x[[2]], function(y) {
-    column.of.prices = (as.numeric(y$text.new))
-    column.of.diffs = (column.of.prices - lag(column.of.prices, default = 0) )[-1] 
-    c(sum(column.of.diffs < 0, na.rm = T), abs(mean(column.of.diffs[column.of.diffs < 0], na.rm = T)))
-    }) 
-  } )
-
 
 # Compare output to truth for a single image with output to list, e.g. wine.compare(test = test.prices, truth = truth.prices)
 # All differences are test minus truth
