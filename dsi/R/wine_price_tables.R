@@ -51,6 +51,7 @@ price_table_extraction <- function(file1,
                                    save.data = FALSE,
                                    save.deskewed = FALSE,
                                    pix.threshold = NULL, pix.newValue = NULL, #pix.threshold = 200, pix.newValue = 0
+                                   binary.threshold = 50,
                                    column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
                                    res1 = 600,
                                    image.check = FALSE, 
@@ -70,29 +71,30 @@ price_table_extraction <- function(file1,
   # Check image name input
   if (file.exists(file1)) {
     img1 = file1
-    file1 = first(str_split(last(strsplit(file1, "/")[[1]]), "\\.")[[1]])  #file1 now is stub name
+    file1 = first(strsplit(last(strsplit(file1, "/")[[1]]), "\\.")[[1]])  #file1 now is stub name
   } else {
     stop("Image does not exist. Must supply valid path to image as as file1 argument.")
   }
-  api1 = tesseract(img1, pageSegMode = 6, engineMode = 3)
   
   height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
   
   ############ img check 1 ####
+  api0 = tesseract(img1, pageSegMode = 6, engineMode = 3)
+  
   if(image.check) {
-    gb1 = GetBoxes(api1)
+    gb1 = GetBoxes(api0)
     prices1 = gb1[isPrice(gb1$text),] 
-    plot(api1, cropToBoxes = F, bbox = prices1)
+    plot(api0, cropToBoxes = F, bbox = prices1)
   }
   # tried removing low-confidence prices -- removed real prices, so don't do that
   
   # 1 ####
-  px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = 50)
+  px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = binary.threshold)
   if (!is.null(pix.threshold) & !is.null(pix.newValue)) {
     px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)
   }
   
-  # Set resolution to avoid warnings
+    # Set resolution to avoid warnings
   api1 = tesseract(px1)
   if(GetSourceYResolution(api1)==0) {SetSourceResolution(api1, res1)}
   
@@ -103,7 +105,7 @@ price_table_extraction <- function(file1,
     saveRDS(data1, file.path(data.output.folder, paste0(file1,"_data1.RDS")))
   }
   
-  # may want to save deskewed image for post-processing
+    # may want to save deskewed image for post-processing
   if (save.deskewed) {
     pixWrite(px1, file.path(output.folder, paste0(file1, "_deskew.png")))
     #return()
