@@ -25,6 +25,7 @@ library(stringr)
 
 setwd("~/Documents/DSI")
 
+# Source files ----
 # Table extraction
 source("wine-price-extraction/dsi/R/wine_price_pageCols.R") #redundant
 source("wine-price-extraction/dsi/R/wine_price_tables_functions.R") #redundant
@@ -32,11 +33,11 @@ source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R") #redundant
 source("wine-price-extraction/dsi/R/helper.R") #redundant
 source("wine-price-extraction/dsi/R/wine_price_tables.R")
 
-# Name parsing
+# Name parsing 
 source("wine-price-extraction/dsi/R/parse_items_data.R")
 
-# Evaluation
-source("~/Documents/DSI/wine-price-extraction/dsi/R/wine_evaluate.R")
+# Evaluation 
+source("wine-price-extraction/dsi/R/wine_evaluate.R")
 
 # 1. Run image files ----
 
@@ -48,16 +49,19 @@ source("~/Documents/DSI/wine-price-extraction/dsi/R/wine_evaluate.R")
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/test_image"
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/MoreTruthPages/" #<- do both
 FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< do both
+#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_3291.jpg"#<- single file
 OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
 DATA.INPUT.DIR = "NULL" #"/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
-SAVE.DATA = FALSE
+SAVE.DATA = TRUE
 SAVE.DESKEWED = TRUE
 
-source("~/Documents/DSI/wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
+source("wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
 
-#Check that files ran
+#Check that files ran -- ones that didn't shoudl have bad color or no tables
 list.files(FILESET, pattern = ".jpg")[! sapply(str_split(list.files(FILESET, pattern = ".jpg"), "\\."), first) %in% sapply(str_split(list.files(OUTPUT.DIR, pattern = ".RDS"), "\\."), first) ]
+
+# TO DO -- rerun files that didn't run with a dynamically detected value for PIX.THRESHOLD
 
 # 2. Parse names from output of 1----
 
@@ -126,6 +130,7 @@ price_RDS_files = list.files(OUTPUT.DIR, full.names = TRUE, pattern = ".RDS", re
 
 #     ENTRY PRICE ----
 
+#working on back-rotating price
 #points clockwise from bottom left
 #rotated_points = with(prices[35,], matrix(c(left,  left, right, right, top, bottom, bottom, top), ncol = 2)) 
 #rownames(rotated_points)  = c("bottomleft", "topleft", "topright",  "bottomright") #top in conventional sense (near top of page)
@@ -141,7 +146,7 @@ price_output = lapply(price_RDS_files, function(x) {
     file = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}"),
     file_number = str_extract(file, pattern = "[0-9]{4}"),
     entry_id = paste(file_number, table, 1:nrow(prices), sep = "_"),
-    name_id = paste(file_number, table, row, sep = "_"),
+    name_id = paste(file_number, table, row, sep = "_")
     )
 })
 

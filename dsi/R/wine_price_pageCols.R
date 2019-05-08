@@ -359,7 +359,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
     }
     
     # if still IDs, save them
-    if (length(id_cols) > 0 & nrow(ids) > 0) {
+    if (length(id_cols) > 0 && nrow(ids) > 0) {
       ids$table = as.numeric(as.factor(ids$table))
       id_cols = ids %>% group_by(table) %>% summarize(col.left = min(left),
                                                       col.right = max(right),

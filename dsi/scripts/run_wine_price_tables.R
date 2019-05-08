@@ -38,10 +38,15 @@ if (length(args) > 0) {
     OUTPUT.DIR = args[2] 
     if (length(args) > 2) {
       DATA.OUTPUT.DIR = args[3] #path to folder where pre-ocr'd data is stored
-      if (length(args) > 3)
+      if (length(args) > 3) {
         DATA.INPUT.DIR = args[4] #path to folder where ocr'd data will be saved if save.data is TRUE
-        if (length(args) > 4)
+        if (length(args) > 4) {
           SAVE.DESKEWED = as.logical(args[5])
+          if (length(args) > 5) {
+            PIX.THRESHOLD = as.numeric(args[6])
+          }
+        }
+      }
     }
   }
 }
@@ -85,6 +90,13 @@ if (exists ("DATA.INPUT.DIR")) {
 
 if (! exists("SAVE.DESKEWED") ) {
   SAVE.DESKEWED = FALSE
+}
+
+if ( exists("PIX.THRESHOLD") && !is.na(as.numeric(PIX.THRESHOLD))) {
+  if (PIX.THRESHOLD <= 1 | PIX.THRESHOLD > 255) {PIX.THRESHOLD = NULL; PIX.NEWVALUE = NULL}
+} else {
+  PIX.THRESHOLD = NULL
+  PIX.NEWVALUE = NULL
 }
 
 ####################################################################################################
