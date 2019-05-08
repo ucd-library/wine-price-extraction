@@ -15,11 +15,11 @@ library(cluster)
 library(changepoint)
 library(RecordLinkage)
 
-source("../R/wine_price_tables.R")
-source("../R/wine_price_pageCols.R")
-source("../R/wine_price_tables_functions.R")
-source("../R/wine_price_nameBoxes.R")
-source("../R/helper.R") 
+source("wine-price-extraction/dsi/R/wine_price_tables.R")
+source("wine-price-extraction/dsi/R/wine_price_pageCols.R")
+source("wine-price-extraction/dsi/R/wine_price_tables_functions.R")
+source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R")
+source("wine-price-extraction/dsi/R/helper.R") 
 
 #library(MASS) #<- Should have MASS installed for rlm, but load creates conflict with select
 
