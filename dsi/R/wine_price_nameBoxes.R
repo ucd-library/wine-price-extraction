@@ -7,8 +7,7 @@
 # Add an option for text justification in row (bottom, top, centered)
 # Make sure number of boxes matches number of prices, even if nothing in them
 
-
-source("wine-price-extraction/dsi/R/helper.R")
+#source("helper.R")
 
 nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer = page.cols$charheight/2, charsize.cutoff = .4, psm = 3, text.level = "textline", min.words = 2, max.words = 12) { 
   # buffer on order of 1/2 small char size, 1/4 large; 
@@ -212,18 +211,16 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       
       for (j in 1:length(l)) {
         
-        print(j)
-        #look left
-        tmp.name  = nameBox(j, tmp.boxes, l, r, b, t, buffer, char.sizes, 
-                                                 look.left =  TRUE, look.above = FALSE, min.words = 2, max.words = 12, charsize.cutoff)
-        l[j] = min(tmp.name$left)
+        #look left and above
+        table.boxes.words[[i]][[j]]  = nameBox(j, tmp.boxes, l, r, b, t, buffer, char.sizes, 
+                                                 look.left =  TRUE, look.above = TRUE, min.words = 3, max.words = 12, charsize.cutoff)
         
-        # look above (conditionally/)
-        tmp.name  = nameBox(j, tmp.boxes, l, r, b, t, buffer, char.sizes, 
-                                                 look.left =  FALSE, look.above = TRUE, min.words = 2, max.words = 12, charsize.cutoff)
-        l[j] = min(tmp.name$left)
-        
-        table.boxes.words[[i]][[j]] = tmp.name
+        # update l if slightly left of  median, otherwise use median -- better for re-ocr
+        l[j] = ifelse(median(l) - min(table.boxes.words[[i]][[j]]$left) > 4*buffer | 
+                        median(l) < min(table.boxes.words[[i]][[j]]$left),
+                      median(l),
+                      min(table.boxes.words[[i]][[j]]$left))
+
       }
       
         
@@ -239,11 +236,14 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
         } else {x}
       })
       
-      # update l, r, t and b
-      l = sapply(table.boxes.words[[i]], function(x) {min(x$left)})
-      r = sapply(table.boxes.words[[i]], function(x) {max(x$right)})
-      t = sapply(table.boxes.words[[i]], function(x) {max(x$top)})
-      b = sapply(table.boxes.words[[i]], function(x) {min(x$bottom)})
+      # order left to right
+      table.boxes.words[[i]] = lapply(table.boxes.words[[i]], arrange, left)
+      
+      # update t and b - not l and r because don't want to overly restrict off re-ocr
+      #l = sapply(table.boxes.words[[i]], function(x) {min(x$left)})
+      #r = sapply(table.boxes.words[[i]], function(x) {max(x$right)})
+      t = pmax(t, sapply(table.boxes.words[[i]], function(x) {max(x$top)}))
+      b = pmin(b, sapply(table.boxes.words[[i]], function(x) {min(x$bottom)}))
       
       # see if top overlaps with next row -- if so update for re-ocring
       # implemented differently than it was when IDS are present. Which is better?
@@ -305,11 +305,17 @@ nameBox <- function(j, tmp.boxes, l, r, b, t, buffer, char.sizes, look.left = TR
                        bottom >= b[j])
     
     # bottom is max of bottom and top of previous name
-    if (j > 1 & nrow(tmp.name) > 0) {tmp.name = filter(tmp.name, bottom >= max( b[j] - 2*max(char.sizes), t[j-1] ))}
+    if (j > 1 & nrow(tmp.name) > 0) {tmp.name = filter(tmp.name, bottom >= max( b[j] - 2*max(char.sizes), t[j-1] - buffer ))}
     
     # remove prices from tmp.name
     tmp.name = filter( tmp.name, !isPrice(text))
     
+    # remove diacritics of lower-case letters (misread .....) so that we'll look wider if needed                
+    tmp.name = tmp.name %>% arrange(-left) %>% 
+      filter(! 
+        (grepl(text, pattern = "^[a-z]+.*") & cumsum(!grepl(text, pattern = "^[a-z]+.*")) == 0) 
+        )
+
     # if not enough words (with at least one alpha-numeric, of at least 3 char) found:
     if ( sum(grepl(tmp.name$text, pattern = "[A-Za-z0-9]")) < min.words || 
          ( sum(nchar(tmp.name$text) > 2) < min.words ) ) {
@@ -319,7 +325,7 @@ nameBox <- function(j, tmp.boxes, l, r, b, t, buffer, char.sizes, look.left = TR
       #look further left and on same line
       
         tmp.name = filter(tmp.boxes, right < r[j] & (top <= t[j] & bottom >= b[j] - .5*max(char.sizes)) ) %>%
-          arrange(-left) %>% mutate(char.sizes = 1) # placehodler char.size column
+          arrange(-left) %>% mutate(char.sizes = 1) # placeholder char.size column
         if (nrow(tmp.name)== 0) {
           tmp.name = data.frame(left = 1, bottom = b[j], right = r[j], top = t[j], text = " ",
                                 confidence = 0, char.sizes = 0) 
@@ -332,10 +338,14 @@ nameBox <- function(j, tmp.boxes, l, r, b, t, buffer, char.sizes, look.left = TR
         # look at the line above
         new.bottom = ifelse(j > 1, max(b[j] - max(char.sizes) - buffer, t[j-1]),b[j] - max(char.sizes) - buffer )
         tmp.add = filter(tmp.boxes, right < r[j], top <= t[j], bottom >= new.bottom, bottom < b[j]) 
-        if (nrow(tmp.add) >= min.words) {
+        if (nrow(tmp.add) >= 2) {
           if (mean(tmp.add$char.sizes == max(char.sizes)) >= charsize.cutoff) {
-            tmp.name = filter(tmp.boxes, right < r[j], top <= t[j], bottom >= new.bottom) %>%
-            arrange(-left) 
+            if (look.left & tmp.name$char.sizes[1] !=0) { #if tmp.name was already updated in look.left
+              tmp.name = rbind(tmp.name, tmp.add)
+            } else {
+              tmp.name = filter(tmp.boxes, right < r[j], top <= t[j], bottom >= new.bottom) %>%
+              arrange(-left) 
+            }
           }
         }
         if (nrow(tmp.name)== 0) {
@@ -358,12 +368,6 @@ nameBox <- function(j, tmp.boxes, l, r, b, t, buffer, char.sizes, look.left = TR
           tmp.name = tmp.name2 %>% select(-c("line", "isPrice", "keep"))
         }
       }
-      
-      # remove diacritics posing as words (one or two lower case letters ) on the left)                    
-      tmp.name = tmp.name %>% arrange(left) %>% 
-        filter(! (
-          nchar(text) <=2 & ( grepl(text, pattern = "[a-z]{1}.*") & cumsum(nchar(text) > 2) == 0) 
-        ) )
       
       # limit to max.words
       if ( sum(nchar(tmp.name$text) > 2) > max.words) {tmp.name = (tmp.name %>% arrange(-nchar(text), -top))[1:max.words,]}  

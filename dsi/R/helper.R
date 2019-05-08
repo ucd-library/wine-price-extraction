@@ -299,24 +299,21 @@ removeDuplicates <- function(table, buffer = 10, justify = "right") { #price or 
     }
   }  
   
-  
-  
-  
-  
-  
-  
   table
 }
 
 extractPrice <- function(x, dollar = FALSE) 
   {
     if (dollar == FALSE) {
-      extraction = str_extract(x, "[0-9|,]+\\.{0,1}[0-9]+.{0,1}$") #(?![0-9])
+      extraction = str_replace(x, ",", "\\.") #first replace commas with periods
+      extraction = str_extract(extraction, "[0-9|,]+\\.{0,1}[0-9]+.{0,1}$") #(?![0-9])
+      if (length(extraction)==0) {extraction = str_extract(extraction, "[0-9]+\\.[0-9]{2}$")}
       if (length(extraction)==0) {return(FALSE)} else {return(extraction)}
     } else {
       extraction = str_extract(x, "\\$[0-9]+[.,][0-9]{2}")
       if (is.na(extraction)) {return(FALSE)} else {return(extraction)}
     }
+    
 }
 
 addRows <- function(page.cols, buffer = page.cols$charheight/2, type = "price") {
@@ -390,6 +387,10 @@ findHeader <- function(colData, data1, column.header, buffer) {
     if (nrow(text1) > 0) {
       # filter by levenshtein distance one or zero
       text1 = filter(text1, sapply(tolower(text1$text), function(x) {min(levenshteinDist(x, tolower(column.header)))}) <= 1)
+      # if the match is for a number is should be exact
+      if (nrow(text1) > 0) {
+        text1 = filter(text1, ! (grepl(text, pattern = "^[0-9]+") & ! ( text %in% column.header ) ) )
+      }
       # paste together if several (if bottle and case are both words we shoudl be able to figure out which is right using the prices)
       if (nrow(text1) > 0) {
         text2 = text1 %>% 
@@ -418,6 +419,7 @@ minDiffs <- function(vector) {
   diag(x) = NA
   apply(x, 1, min, na.rm = T)
 }
+
 #from duncan?
 fixPrice =
   #

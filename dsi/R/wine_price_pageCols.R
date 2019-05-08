@@ -1,7 +1,7 @@
 # Component function(s) for price_table_extraction####
 # Jane Carlen
 
-source("wine-price-extraction/dsi/R/helper.R")
+#source("helper.R")
 
 # 1. Get iterative column info  ####
 
@@ -281,7 +281,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   
   #Try adding column headers:
   header = findHeader(colData2, data1, column.header, buffer = charheight)
-  colData2[, c("col.header","col.header.bottom","col.header.top")] = header[,c(3,2,1)]
+  colData2[, c("col.header","col.header.bottom","col.header.top")] = header[,c("text","bottom","top")]
   colData2 = colData2  %>% arrange(cluster)
   
   #2e. id column info ####
@@ -359,7 +359,7 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
     }
     
     # if still IDs, save them
-    if (length(id_cols) > 0) {
+    if (length(id_cols) > 0 & nrow(ids) > 0) {
       ids$table = as.numeric(as.factor(ids$table))
       id_cols = ids %>% group_by(table) %>% summarize(col.left = min(left),
                                                       col.right = max(right),

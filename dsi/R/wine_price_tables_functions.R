@@ -1,7 +1,7 @@
 # Component function for wine_price_tables####
 # Jane Carlen
 
-source("wine-price-extraction/dsi/R/helper.R")
+#source("helper.R")
 
 # 1. Get iterative column info  ####
 
