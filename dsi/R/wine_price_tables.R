@@ -80,7 +80,9 @@ price_table_extraction <- function(file1,
     stop("Image does not exist. Must supply valid path to image as as file1 argument.")
   }
   
-  height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
+  image.dims = dim(readJPEG(img1)) #note we'll use the image attribute here later
+  height1 = image.dims[1] 
+  width1 = image.dims[2] 
   
   ############ img check 1 ####
   api0 = tesseract(img1, pageSegMode = 6, engineMode = 3)
@@ -104,7 +106,7 @@ price_table_extraction <- function(file1,
     px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)
   }
   
-    # Set resolution to avoid warnings
+  # Set resolution to avoid warnings
   api1 = tesseract(px1)
   if(GetSourceYResolution(api1)==0) {SetSourceResolution(api1, res1)}
   
@@ -115,7 +117,7 @@ price_table_extraction <- function(file1,
     saveRDS(data1, file.path(data.output.folder, paste0(file1,"_data1.RDS")))
   }
   
-    # may want to save deskewed image for post-processing
+  # may want to save deskewed image for post-processing
   if (save.deskewed) {
     pixWrite(px1, file.path(output.folder, paste0(file1, "_deskew.png")))
     #return()
@@ -148,7 +150,7 @@ price_table_extraction <- function(file1,
   ############# img check 3 ####
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
   if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
-
+  
   ############# table check 1 ####
   if (!is.null(page.cols$ids)) {
     cat("We think there's", page.cols$n_id_cols, "table(s)\n")
@@ -199,6 +201,8 @@ price_table_extraction <- function(file1,
   page.cols$pix.newValue = pix.newValue
   page.cols$binary.threshold = binary.threshold
   page.cols$angle = angle1
+  page.cols$height_orig = height1
+  page.cols$width_orig = width1
   
   ############# img check 4 ####
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
@@ -260,4 +264,3 @@ price_table_extraction <- function(file1,
   
   return(list(final.data = final.data, page.cols = page.cols))
 }
-
