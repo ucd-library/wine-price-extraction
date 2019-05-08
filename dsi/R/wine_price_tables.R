@@ -36,10 +36,10 @@ library(cluster)
 library(changepoint)
 library(RecordLinkage)
 
-source("wine-price-extraction/dsi/R/wine_price_pageCols.R")
-source("wine-price-extraction/dsi/R/wine_price_tables_functions.R")
-source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R")
-source("wine-price-extraction/dsi/R/helper.R") 
+#source("wine_price_pageCols.R")
+#source("wine_price_tables_functions.R")
+#source("wine_price_nameBoxes.R")
+#source("helper.R") 
 
 # MAIN FUNCTION, encompassing all numbered steps below ----
 # for examples of this code being run see run_wine_price_tables.R in the adjacent scripts folder
