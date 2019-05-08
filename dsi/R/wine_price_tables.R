@@ -51,7 +51,7 @@ price_table_extraction <- function(file1,
                                    save.data = FALSE,
                                    save.deskewed = FALSE,
                                    pix.threshold = NULL, pix.newValue = NULL, #pix.threshold = 200, pix.newValue = 0
-                                   binary.threshold = 50,
+                                   binary.threshold = 150,
                                    column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
                                    res1 = 600,
                                    image.check = FALSE, 
@@ -59,7 +59,11 @@ price_table_extraction <- function(file1,
   # res1 is default resolution which is 600 for wine images. Only set if img resolution is missing.
   # column.header is convered to lower for comparison
   # save.data will save the output of GetBoxes to the data.output.folder
-  # save.desketed will save the clean deskewed image to the output.folder
+  # save.deskewed will save the clean deskewed image to the output.folder
+  # pix.threshold and pix.newValue effectively set the binary cutoff for OCR, and matter, e.g., if color on page
+  # binary threshold sets the binaryThreshold argument for deskew(ing).
+    # Can change angle slightly but often doesn't matter much
+    # Sticking with default of 150 for now -- improves examples like 4043 and 3737
   
   cat("************** setup (0-1) **************\n")
   
@@ -89,7 +93,13 @@ price_table_extraction <- function(file1,
   # tried removing low-confidence prices -- removed real prices, so don't do that
   
   # 1 ####
-  px1 = deskew(pixConvertTo8(pixRead(img1)), binaryThreshold = binary.threshold)
+  
+  # pre- process the image by deskewing and thresholding if necessary
+  px1 = pixRead(img1)
+  angle1 = pixFindSkew(pixThresholdToBinary(pixConvertTo8(pixRead(img1)), binary.threshold))
+  
+  px1 = deskew(px1, binaryThreshold = binary.threshold)
+  
   if (!is.null(pix.threshold) & !is.null(pix.newValue)) {
     px1 = pixThresholdToValue(px1, pix.threshold, pix.newValue)
   }
@@ -111,8 +121,8 @@ price_table_extraction <- function(file1,
     #return()
   }
   
-  if (sum(isPrice(data1$text)) + sum(isPrice(data1$text, maybe = T)=="*price") == 0) {
-    return("No prices detected. If prices suspected try a new pix.threshold.")
+  if (sum(isPrice(data1$text)) + sum(isPrice(data1$text, maybe = T)=="*price") <= 1) {
+    return("No price tables detected. (At most 1 price detected.) If prices suspected try a new pix.threshold.")
   }
   
   # 2 ####
@@ -183,6 +193,12 @@ price_table_extraction <- function(file1,
     }
     return(table.col)
   })
+  
+  #store image reading settings
+  page.cols$pix.threshold = pix.threshold
+  page.cols$pix.newValue = pix.newValue
+  page.cols$binary.threshold = binary.threshold
+  page.cols$angle = angle1
   
   ############# img check 4 ####
   if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
