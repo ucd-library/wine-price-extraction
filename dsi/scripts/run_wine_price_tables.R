@@ -14,13 +14,20 @@ library(jpeg)
 library(cluster)
 library(changepoint)
 library(RecordLinkage)
+
+source("../R/wine_price_tables.R")
+source("../R/wine_price_pageCols.R")
+source("../R/wine_price_tables_functions.R")
+source("../R/wine_price_nameBoxes.R")
+source("../R/helper.R") 
+
 #library(MASS) #<- Should have MASS installed for rlm, but load creates conflict with select
 
 # IF running from this script: 
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"
 #OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
-#DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 #DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
+#DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 #SAVE.DATA = FALSE
 
 args = commandArgs(trailingOnly = TRUE)
@@ -30,9 +37,11 @@ if (length(args) > 0) {
   if (length(args) > 1) {
     OUTPUT.DIR = args[2] 
     if (length(args) > 2) {
-      DATA.INPUT.DIR = args[3] #path to folder where pre-ocr'd data is stored
+      DATA.OUTPUT.DIR = args[3] #path to folder where pre-ocr'd data is stored
       if (length(args) > 3)
-        DATA.OUTPUT.DIR = args[4] #path to folder where ocr'd data will be saved if save.data is TRUE
+        DATA.INPUT.DIR = args[4] #path to folder where ocr'd data will be saved if save.data is TRUE
+        if (length(args) > 4)
+          SAVE.DESKEWED = as.logical(args[5])
     }
   }
 }
@@ -45,17 +54,6 @@ if (!file.exists (FILESET) ) {
 
 if (!file.exists (OUTPUT.DIR) ) {
   stop("Stopping: Path to store output not valid")
-}
-
-if (exists ("DATA.INPUT.DIR")) {
-  if (! file.exists(DATA.INPUT.DIR) ) {
-    DATA.INPUT.DIR = NULL
-    DATA1 = NULL
-    warning("path to existing data not valid, re-OCRing instead")
-  }
-} else {
-  DATA.INPUT.DIR = NULL
-  DATA1 = NULL
 }
 
 if (exists ("DATA.OUTPUT.DIR")) {
@@ -74,6 +72,20 @@ if (exists ("DATA.OUTPUT.DIR")) {
   SAVE.DATA = FALSE
 }
 
+if (exists ("DATA.INPUT.DIR")) {
+  if (! file.exists(DATA.INPUT.DIR) ) {
+    DATA.INPUT.DIR = NULL
+    DATA1 = NULL
+    warning("path to existing data not valid, re-OCRing instead")
+  }
+} else {
+  DATA.INPUT.DIR = NULL
+  DATA1 = NULL
+}
+
+if (! exists("SAVE.DESKEWED") ) {
+  SAVE.DESKEWED = FALSE
+}
 
 ####################################################################################################
 # RUN ####
@@ -86,7 +98,7 @@ if (exists ("DATA.OUTPUT.DIR")) {
 # 4105 (unaligned price in table)
 # 1591 (dollar sign used)
 # 1544 (repeat col), 
-# 2535 (needs new pix.threshold 100), 0939 -> if prices but not price tables, try with  pix.treshold 100 and 2000
+# 2535 (needs new pix.threshold 100?), 0939 (try 200), 1176 (try 150)
 # 2504 (many rotated)
 # 1452 (hard, lots of text no IDs)
 # 0644 (mixed ID types)
@@ -97,7 +109,6 @@ if (exists ("DATA.OUTPUT.DIR")) {
 
 # pages with lots of marks
 # marks_top_files = read.csv("wine-price-extraction/dsi/Data/marks_top_files.csv", stringsAsFactors = F)
-# 0939.jpg needs higher threshold, eg  200
 
 # pages we have truth for
 # truth_files = unique(unlist(sapply(list.files("~/Downloads/price_id_truth_RDS_files", recursive = T), str_extract, pattern =   "UCD_Lehmann_[0-9]{4}"))) #downloaded then deleted
@@ -108,31 +119,34 @@ if (exists ("DATA.OUTPUT.DIR")) {
 
 if (RUN.FILE) {
 
+### will remove later ###
+  file1 = "UCD_Lehmann_1176"# 0011
+  
+  if (paste0(file1, ".jpg") %in% list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages")) {
+    file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages", paste0(file1, ".jpg"))
+  }  else {
+    sample_files = readRDS("~/Documents/DSI/wine-price-extraction/dsi/Data/sample_files.RDS")
+    folder = sample_files[which(sample_files$file == file1),"Sample"]
+    file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/Sample", folder, paste0(file1, ".jpg"))
+  }
+###
+  
 file1 = FILESET
   
-### will remove later ###
-file1 = "UCD_Lehmann_0237"# 1106
 
-if (paste0(file1, ".jpg") %in% list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages")) {
-  file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages", paste0(file1, ".jpg"))
-}  else {
-  sample_files = readRDS("~/Documents/DSI/wine-price-extraction/dsi/Data/sample_files.RDS")
-  folder = sample_files[which(sample_files$file == file1),"Sample"]
-  file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/Sample", folder, paste0(file1, ".jpg"))
-}
-###
 
 if (!is.null(DATA.INPUT.DIR)) {
   DATA1 = readRDS(file.path(DATA.INPUT.DIR, paste0(nth(strsplit(file1, split = c("/|\\."))[[1]], -2), "_data1.RDS")))
 }
 
 price_table_extraction(file1,
-                       data1 = DATA1,
+                       data1 = NULL,#DATA1,
                        output.folder = OUTPUT.DIR, 
                        data.output.folder = DATA.OUTPUT.DIR,
                        save.data = SAVE.DATA,
-                       save.deskewed = FALSE,
+                       save.deskewed = SAVE.DESKEWED,
                        pix.threshold = NULL, pix.newValue = NULL, #pix.threshold = 200, pix.newValue = 0
+                       binary.threshold = 150,
                        column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
                        res1 = 600,
                        image.check = FALSE, 
@@ -173,7 +187,7 @@ if (!RUN.FILE) {
                                       output.folder = OUTPUT.DIR, 
                                       data.output.folder = DATA.OUTPUT.DIR,
                                       save.data = SAVE.DATA,
-                                      save.deskewed = FALSE,
+                                      save.deskewed = SAVE.DESKEWED,
                                       pix.threshold = PIX.THRESHOLD, pix.newValue = PIX.NEWVALUE, #pix.threshold = 200, pix.newValue = 0
                                       column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
                                       res1 = 600,

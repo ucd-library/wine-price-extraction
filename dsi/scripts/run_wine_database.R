@@ -49,9 +49,10 @@ source("~/Documents/DSI/wine-price-extraction/dsi/R/wine_evaluate.R")
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/MoreTruthPages/" #<- do both
 FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< do both
 OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
-DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
-#DATA.OUTPUT.DIR = /Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed",
+DATA.INPUT.DIR = "NULL" #"/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
+DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 SAVE.DATA = FALSE
+SAVE.DESKEWED = TRUE
 
 source("~/Documents/DSI/wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
 
@@ -124,6 +125,14 @@ write.csv(NAME_MATCH, file.path(TABLE.OUTPUT.DIR, "NAME_MATCH.csv"), row.names =
 price_RDS_files = list.files(OUTPUT.DIR, full.names = TRUE, pattern = ".RDS", recursive = F)
 
 #     ENTRY PRICE ----
+
+#points clockwise from bottom left
+#rotated_points = with(prices[35,], matrix(c(left,  left, right, right, top, bottom, bottom, top), ncol = 2)) 
+#rownames(rotated_points)  = c("bottomleft", "topleft", "topright",  "bottomright") #top in conventional sense (near top of page)
+#angle1 = -output$page.cols$angle[1] *pi/180
+#rotation1 = matrix(c(cos(angle1), sin(angle1), -sin(angle1), cos(angle1)), nrow = 2)
+#points1 = rotated_points %*% rotation1
+#points(rotated_points[,1], 6000 - rotated_points[,2], col = "green", pch = ".", cex = 2)
 
 price_output = lapply(price_RDS_files, function(x) {
   output = readRDS(x)
