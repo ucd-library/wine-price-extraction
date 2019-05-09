@@ -202,8 +202,12 @@ splitCol <- function(prices, type = "h", px = px1, buffer = 13, height = height1
   
   if (type == "v") {
   
-    prices = prices %>% arrange(top)
-    pricewidths = charWidth(prices) 
+    prices = prices %>% arrange(top) 
+    
+    tmp.prices = prices %>% mutate(text = prices$text)
+    tmp.prices$text[prices$text.new!=FALSE] = prices$text.new[prices$text.new!=FALSE]
+    pricewidths = charWidth(tmp.prices) 
+    
     if ((max(pricewidths) - min(pricewidths)) < min.chardiff) {return(prices)}
     
     # first row of compare.clusterings is within ss, second is min cluster size for that number of gropus

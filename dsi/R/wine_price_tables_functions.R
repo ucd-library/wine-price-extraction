@@ -209,23 +209,36 @@ addIds <- function(page.cols, px) {
 
 # 3. a) organize columns into tables + add table column to page.cols b) find table left edges using changepoint method. ####
 
+# Note: We order tables vertically (i.e. by where its top is on the page), then left to right. So, for example, if the left half of the page is split into two tables (one top, one bottom) and the right have of the page is one large table, the top left table would be #1, the right table would be #2, and the bottom left table would be #3. 
+
 pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
   
   page.cols$price_cols = page.cols$price_cols %>% arrange(col.bottom, col.top)
   
   # a) organize page into row ####
   
+  med.pricecol.width = median(page.cols$price_cols$col.right - page.cols$price_cols$col.left)
+  bottom.vs.earlier.top = outer(page.cols$price_cols$col.bottom, page.cols$price_cols$col.top, "-")
+  apply(outer(page.cols$price_cols$col.bottom, page.cols$price_cols$col.top, "-"), 1, max)
+  
   page.cols$price_cols$table.row = c(1,  1 + cumsum(
-            #check column height over gap with next - max 30%
-              ((page.cols$price_cols$col.top - page.cols$price_cols$col.bottom)/ 
-              (page.cols$price_cols$col.top - lead(page.cols$price_cols$col.bottom))  < .3 |
-                #if slight overlap
-            (page.cols$price_cols$col.top - page.cols$price_cols$col.bottom)/ 
-              (page.cols$price_cols$col.top - lead(page.cols$price_cols$col.bottom)) > 5))
-            )[1:length(page.cols$prices)] 
-            # or just see if colump tops are ?
-            #abs((page.cols$price_cols$col.bottom - lead(page.cols$price_cols$col.bottom))) > 
-             # 5*page.cols$charheight))
+                
+                        #check column height over gap with next - max 30%
+                        ( (page.cols$price_cols$col.top - page.cols$price_cols$col.bottom)/ 
+                        (page.cols$price_cols$col.top - lead(page.cols$price_cols$col.bottom)) )  < .3 |
+                          
+                        #if slight overlap
+                        ( (page.cols$price_cols$col.top - page.cols$price_cols$col.bottom)/ 
+                        (page.cols$price_cols$col.top - lead(page.cols$price_cols$col.bottom)) ) > 5 |
+                          
+                        #if further left than previous and bottom significantly lower
+                        lead( ( ( (page.cols$price_cols$col.right - lag(page.cols$price_cols$col.left, default = Inf) ) <
+                            2*med.pricecol.width ) &
+                          ( page.cols$price_cols$col.bottom - lag(page.cols$price_cols$col.bottom, default = Inf) ) >
+                        lag(page.cols$price_cols$col.top - page.cols$price_cols$col.bottom, default = Inf)/3 ))
+                        
+                        ) 
+                      )[1:length(page.cols$prices)]
   
   page.cols$price_cols = page.cols$price_cols %>% arrange(table.row, col.left)
   

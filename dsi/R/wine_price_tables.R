@@ -196,6 +196,7 @@ price_table_extraction <- function(file1,
     return(table.col)
   })
   
+  
   #store image reading settings
   page.cols$pix.threshold = pix.threshold
   page.cols$pix.newValue = pix.newValue

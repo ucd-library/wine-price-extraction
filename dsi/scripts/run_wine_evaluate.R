@@ -93,32 +93,34 @@ truth.subdir = list.dirs(TRUTH.DIR, full.names = T, recursive = T)
 summary.output = lapply(truth.subdir, function(elem) {
 
   fileset.truth = list.files(elem, pattern = ".RDS", full.names = TRUE)
-  summary.output = vector("list", length = length(fileset.truth))
-  
-  if (length(summary.output) > 0) {
-    names(summary.output) = list.files(elem, pattern = ".RDS", full.names = FALSE)
+
+  if (length(fileset.truth) > 0) {
+    
     summary.output1 = lapply(fileset.truth, function(truth.file) {
-    
-    test.name = gsub( file.path(EVAL.INPUT.DIR, last(str_split(truth.file, "/")[[1]])),  pattern = "_price_truth", replacement = "" )
-    if ( file.exists(test.name)) {
+
+      test.name = gsub( file.path(EVAL.INPUT.DIR, last(str_split(truth.file, "/")[[1]])),  pattern = "_price_truth", replacement = "" )
+      if ( file.exists(test.name)) {
       test.prices = readRDS( test.name )$prices
-    } else {
-      warning("no truth file:", test.name)
-      return(NULL)
-    }
-    truth.prices =  readRDS(truth.file)$prices
+      } else {
+        warning("no truth file:", test.name)
+        return(NULL)
+      }
+      truth.prices =  readRDS(truth.file)$prices
     
-    compare.list = NULL
-    try({compare.list = wine.compare(test.prices, truth.prices)})
-    if (!is.null(compare.list)) {
-      wine.summarize(compare.list)
-    } 
-  })
+      compare.list = NULL
+      try({compare.list = wine.compare(test.prices, truth.prices)})
+      if (!is.null(compare.list)) {
+        wine.summarize(compare.list)
+      } 
+    })
+    
+    rownames1 = sapply(sapply(fileset.truth, str_split, "/"), last)[!sapply(summary.output1, is.null)] 
+    summary.output1 = do.call("rbind", summary.output1)
+    rownames(summary.output1) = rownames1
+    summary.output1$name = last(strsplit(elem, "/")[[1]]) #name is containing folder
+    summary.output1
+    
   } else {return(NULL)}
-  
-  summary.output1 = do.call("rbind", summary.output1)
-  summary.output1$name = last(str_split(elem, "/")[[1]]) #name is containing folder
-  summary.output1
 })
 
 summary.output = do.call("rbind", summary.output)

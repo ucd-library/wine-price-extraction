@@ -51,14 +51,14 @@ source("wine-price-extraction/dsi/R/wine_evaluate.R")
 FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< do both
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_3291.jpg"#<- single file
 OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
-DATA.INPUT.DIR = "NULL" #"/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
+#DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 SAVE.DATA = TRUE
 SAVE.DESKEWED = TRUE
 
 source("wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
 
-#Check that files ran -- ones that didn't shoudl have bad color or no tables
+#Check that files ran -- ones that didn't should have bad color or no tables
 list.files(FILESET, pattern = ".jpg")[! sapply(str_split(list.files(FILESET, pattern = ".jpg"), "\\."), first) %in% sapply(str_split(list.files(OUTPUT.DIR, pattern = ".RDS"), "\\."), first) ]
 
 # TO DO -- rerun files that didn't run with a dynamically detected value for PIX.THRESHOLD

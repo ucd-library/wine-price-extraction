@@ -92,7 +92,7 @@ if (! exists("SAVE.DESKEWED") ) {
   SAVE.DESKEWED = FALSE
 }
 
-if ( exists("PIX.THRESHOLD") && !is.na(as.numeric(PIX.THRESHOLD))) {
+if ( (exists("PIX.THRESHOLD") && !is.null(PIX.THRESHOLD)) && !is.na(as.numeric(PIX.THRESHOLD)) ) {
   if (PIX.THRESHOLD <= 1 | PIX.THRESHOLD > 255) {PIX.THRESHOLD = NULL; PIX.NEWVALUE = NULL}
 } else {
   PIX.THRESHOLD = NULL
@@ -107,6 +107,7 @@ if ( exists("PIX.THRESHOLD") && !is.na(as.numeric(PIX.THRESHOLD))) {
 
 # 0551, 3392 0260, 3001 (hard, lots of un-aligned tables), 
 # 0208 & 0194 (hard, year columns)
+# 3737 ("Savings" columns)
 # 4105 (unaligned price in table)
 # 1591 (dollar sign used)
 # 1544 (repeat col), 
@@ -116,6 +117,7 @@ if ( exists("PIX.THRESHOLD") && !is.na(as.numeric(PIX.THRESHOLD))) {
 # 0644 (mixed ID types)
 # 1835 (before fixing, too few words in name), 0008, 1470
 # 0550 two types of IDs on one page
+
 
 # Other possible filesets:
 
@@ -127,12 +129,12 @@ if ( exists("PIX.THRESHOLD") && !is.na(as.numeric(PIX.THRESHOLD))) {
 # truth_files = truth_files[-grep(truth_files, pattern = "2759")] #remove bad one
 #-- files in truth not in sample folder: fileset = c("UCD_Lehmann_0008", "UCD_Lehmann_0027", "UCD_Lehmann_0267", "UCD_Lehmann_1470  ", "UCD_Lehmann_1994", "UCD_Lehmann_1544", "UCD_Lehmann_1835")
 
-# 1. Run on example ----
+# 1. Run on example -------------------------------------------------------------------------------------------------------------
 
 if (RUN.FILE) {
 
 ### will remove later ###
-  file1 = "UCD_Lehmann_1176"# 0011
+  file1 = "UCD_Lehmann_0321"# 0011
   
   if (paste0(file1, ".jpg") %in% list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages")) {
     file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages", paste0(file1, ".jpg"))
@@ -145,8 +147,6 @@ if (RUN.FILE) {
   
 file1 = FILESET
   
-
-
 if (!is.null(DATA.INPUT.DIR)) {
   DATA1 = readRDS(file.path(DATA.INPUT.DIR, paste0(nth(strsplit(file1, split = c("/|\\."))[[1]], -2), "_data1.RDS")))
 }
@@ -166,17 +166,15 @@ price_table_extraction(file1,
 
 }
 
-# 2. Run on fileset ----
+# 2. Run on fileset ----------------------------------------------------------------------------------------------------------
 
 if (!RUN.FILE) {
 
   fileset = FILESET
   fileset = list.files(FILESET, full.names = T, pattern = "\\.") #only files, not folders
-  PIX.THRESHOLD = NULL; PIX.NEWVALUE = NULL
   
   output = lapply(fileset, function(img1) {
     
-    height1 = dim(readJPEG(img1))[1] #note we'll use the image attribute here later
     px1 = deskew(pixConvertTo8(pixRead(img1)))
     api1 = tesseract(px1)
     if( GetSourceYResolution(api1)==0 ) {SetSourceResolution(api1, 600)}
@@ -201,6 +199,7 @@ if (!RUN.FILE) {
                                       save.data = SAVE.DATA,
                                       save.deskewed = SAVE.DESKEWED,
                                       pix.threshold = PIX.THRESHOLD, pix.newValue = PIX.NEWVALUE, #pix.threshold = 200, pix.newValue = 0
+                                      binary.threshold = 150,
                                       column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
                                       res1 = 600,
                                       image.check = FALSE, 
