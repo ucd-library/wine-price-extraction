@@ -15,11 +15,11 @@ library(cluster)
 library(changepoint)
 library(RecordLinkage)
 
-source("wine-price-extraction/dsi/R/wine_price_tables.R")
-source("wine-price-extraction/dsi/R/wine_price_pageCols.R")
-source("wine-price-extraction/dsi/R/wine_price_tables_functions.R")
-source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R")
-source("wine-price-extraction/dsi/R/helper.R") 
+#source("wine-price-extraction/dsi/R/wine_price_tables.R")
+#source("wine-price-extraction/dsi/R/wine_price_pageCols.R")
+#source("wine-price-extraction/dsi/R/wine_price_tables_functions.R")
+#source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R")
+#source("wine-price-extraction/dsi/R/helper.R") 
 
 #library(MASS) #<- Should have MASS installed for rlm, but load creates conflict with select
 
@@ -117,6 +117,7 @@ if ( (exists("PIX.THRESHOLD") && !is.null(PIX.THRESHOLD)) && !is.na(as.numeric(P
 # 0644 (mixed ID types)
 # 1835 (before fixing, too few words in name), 0008, 1470
 # 0550 two types of IDs on one page
+# 4043, 3737 why binaryThreshold should be 150
 
 
 # Other possible filesets:

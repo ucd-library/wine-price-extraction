@@ -15,7 +15,8 @@
 # NAME_MATCH 
   # **key is word_id**, which is entry_id (also in table) with an additional index pasted on
   # has individual word information (possibly multiple lines) for each entry in ENTRY_NAME
-
+# ENTRY_PAGE
+  # key is file_id <- change to different ID system?
 ######################################################################################################################################
 
 # 0. Setup ----
@@ -47,14 +48,14 @@ source("wine-price-extraction/dsi/R/wine_evaluate.R")
 # SAVE.DATA will be used if set
 
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/test_image"
-#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/MoreTruthPages/" #<- do both
-FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< do both
+#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/MoreTruthPages/"
+FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< has both now
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_3291.jpg"#<- single file
 OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
 #DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 SAVE.DATA = TRUE
-SAVE.DESKEWED = TRUE
+SAVE.DESKEWED = FALSE
 
 source("wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
 
@@ -97,10 +98,12 @@ colnames(page_results_all)
 exclude1 = names(unlist(sapply(page_results_all[1,], nrow)))
 
 # Currently converting all to characters for convencience
+
 ENTRY_NAME = data.frame(page_results_all[,!colnames(page_results_all) %in% exclude1]) %>% mutate_if(is.list, as.character)
-ENTRY_NAME$file = str_extract(ENTRY_NAME$file, "UCD.*")
-ENTRY_NAME$file_number = str_extract(ENTRY_NAME$file, pattern = "[0-9]{4}")
-ENTRY_NAME = ENTRY_NAME %>% group_by(file, table) %>% mutate(name_id = paste(file_number, table, 1:n(), sep = "_"))
+# remove unused file_name col
+ENTRY_NAME = ENTRY_NAME %>% select(-"file_name") %>% mutate(file_id = str_extract(file, "UCD_Lehmann_[0-9]{4}"))
+ENTRY_NAME$file_number = str_extract(ENTRY_NAME$file_id, pattern = "[0-9]{4}")
+ENTRY_NAME = ENTRY_NAME %>% group_by(file_id, table) %>% mutate(name_id = paste(file_number, table, 1:n(), sep = "_"))
 write.csv(ENTRY_NAME, file.path(TABLE.OUTPUT.DIR, "ENTRY_NAME.csv"), row.names = FALSE)
 
 #     NAME_MATCH ----
@@ -128,40 +131,53 @@ write.csv(NAME_MATCH, file.path(TABLE.OUTPUT.DIR, "NAME_MATCH.csv"), row.names =
 
 price_RDS_files = list.files(OUTPUT.DIR, full.names = TRUE, pattern = ".RDS", recursive = F)
 
-#     ENTRY PRICE ----
-
-#working on back-rotating price
-#points clockwise from bottom left
-#rotated_points = with(prices[35,], matrix(c(left,  left, right, right, top, bottom, bottom, top), ncol = 2)) 
-#rownames(rotated_points)  = c("bottomleft", "topleft", "topright",  "bottomright") #top in conventional sense (near top of page)
-#angle1 = -output$page.cols$angle[1] *pi/180
-#rotation1 = matrix(c(cos(angle1), sin(angle1), -sin(angle1), cos(angle1)), nrow = 2)
-#points1 = rotated_points %*% rotation1
-#points(rotated_points[,1], 6000 - rotated_points[,2], col = "green", pch = ".", cex = 2)
+#     ENTRY_PRICE ----
 
 price_output = lapply(price_RDS_files, function(x) {
   output = readRDS(x)
   prices = do.call("rbind", output$page.cols$prices)
   prices = prices %>% mutate(
-    file = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}"),
-    file_number = str_extract(file, pattern = "[0-9]{4}"),
+    file_id = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}"),
+    file_number = str_extract(file_id, pattern = "[0-9]{4}"),
     entry_id = paste(file_number, table, 1:nrow(prices), sep = "_"),
     name_id = paste(file_number, table, row, sep = "_")
     )
 })
 
 ENTRY_PRICE = do.call("rbind", price_output)
+
 # CHANGE "text" names to "price"
 names(ENTRY_PRICE)[names(ENTRY_PRICE) == "text"] = "price_raw"
 names(ENTRY_PRICE)[names(ENTRY_PRICE) == "confidence"] = "confidence"
 names(ENTRY_PRICE)[names(ENTRY_PRICE) == "text.new"] = "price_new"
 
+# Add an xy coordinate for the app to use
+# I experimented with back-rotating price but found a central point from my existing output was better
+ # This may be due to page skew, whereas dekew seem to only rotate
+ENTRY_PRICE = ENTRY_PRICE %>% mutate(xy = paste((left + right)/2, (bottom + top)/2, sep = ", "))
+
 write.csv(ENTRY_PRICE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PRICE.csv"), row.names = FALSE)
+
+#     ENTRY_PAGE ----
+
+page_output = lapply(price_RDS_files, function(x) {
+  output = readRDS(x)
+  page_info = data.frame(angle = output$page.cols$angle[1], height = output$page.cols$height_orig, 
+                         width = output$page.cols$width_orig, binary.threshold = output$page.cols$binary.threshold,
+                         pix.threshold = NA, pix.newValue = NA)
+  if (exists("output$page.cols$pix.threshold")) {page_info$pix.threshold  = output$page.cols$pix.threshold}
+  if (exists("output$page.cols$pix.threshold")) {page_info$pix.newValue  = output$page.cols$pix.newValue}
+  page_info$file_id = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}")
+  return(page_info)
+})
+
+ENTRY_PAGE = do.call("rbind", page_output)
+write.csv(ENTRY_PAGE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PAGE.csv"), row.names = FALSE)
 
 #     PRICE_NAME ----
 
 # see https://github.com/ucd-library/wine-price-extraction/issues/9 for discussion of vars
-text_vars_to_include = c("text", "text_raw", "name", "id", "name_id")
+text_vars_to_include = c("text", "text_raw", "name", "id", "name_id", "file_id") #remember this id is the id in the catalog
 wine_vars_to_include = c("country", "year", "color", "variety", "region", "province", "designation")
 price_vars_to_include = c("price_raw", "confidence", "type", "price_new", "cluster", "table","row", "entry_id", "name_id")
 
