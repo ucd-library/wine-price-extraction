@@ -104,8 +104,8 @@ exclude1 = names(unlist(sapply(page_results_all[1,], nrow)))
 # Currently converting all to characters for convencience
 
 ENTRY_NAME = data.frame(page_results_all[,!colnames(page_results_all) %in% exclude1]) %>% mutate_if(is.list, as.character)
-# remove unused file_name col
-ENTRY_NAME = ENTRY_NAME %>% select(-"file_name") %>% mutate(file_id = str_extract(file, "UCD_Lehmann_[0-9]{4}"))
+# remove unused file_name col and confidence which is all null
+ENTRY_NAME = ENTRY_NAME %>% select(-c("file_name", "confidence")) %>% mutate(file_id = str_extract(file, "UCD_Lehmann_[0-9]{4}"))
 ENTRY_NAME$file_number = str_extract(ENTRY_NAME$file_id, pattern = "[0-9]{4}")
 ENTRY_NAME = ENTRY_NAME %>% group_by(file_id, table) %>% mutate(name_id = paste(file_number, table, 1:n(), sep = "_"))
 
@@ -148,6 +148,9 @@ ENTRY_NAME = left_join(ENTRY_NAME,
 
 write.csv(ENTRY_NAME, file.path(TABLE.OUTPUT.DIR, "ENTRY_NAME.csv"), row.names = FALSE)
 
+#     Dictionary hit stat summary
+
+write.csv(name_summary_global_stats(ENTRY_NAME),  file.path(TABLE.OUTPUT.DIR, "name_summary_global_stats.csv"), row.names = TRUE)
 
 #     NAME_MATCH ----
 
