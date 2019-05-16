@@ -116,8 +116,9 @@ if ( (exists("PIX.THRESHOLD") && !is.null(PIX.THRESHOLD)) && !is.na(as.numeric(P
 # 1452 (hard, lots of text no IDs)
 # 0644 (mixed ID types)
 # 1835 (before fixing, too few words in name), 0008, 1470
-# 0550 two types of IDs on one page
+# 0550 two types of IDs on one pages
 # 4043, 3737 why binaryThreshold should be 150
+# 0644, heavier rotation
 
 
 # Other possible filesets:
@@ -135,7 +136,7 @@ if ( (exists("PIX.THRESHOLD") && !is.null(PIX.THRESHOLD)) && !is.na(as.numeric(P
 if (RUN.FILE) {
 
 ### will remove later ###
-  file1 = "UCD_Lehmann_0321"# 0011
+  file1 = "UCD_Lehmann_2535"# 0011
   
   if (paste0(file1, ".jpg") %in% list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages")) {
     file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages", paste0(file1, ".jpg"))

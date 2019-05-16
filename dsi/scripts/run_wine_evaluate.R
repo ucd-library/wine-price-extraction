@@ -128,7 +128,7 @@ summary.output = do.call("rbind", summary.output)
 
 write.csv(summary.output, file.path(EVAL.OUTPUT.DIR, "summary_vs_truth.csv"))
 
-# Get total truth to bind to extract prices in ENTRY_PRICE
+# C. Compile all truth data to bind to extract prices in ENTRY_PRICE ----
 
 truth_all = lapply(truth.subdir, function(elem) {
   
@@ -164,3 +164,5 @@ truth_all = truth_all %>% group_by(file_id, table, cluster, row) %>%
 names(truth_all)[names(truth_all)=="text.new"] = "text.true"
 
 write.csv(truth_all, file.path(EVAL.OUTPUT.DIR, "truth_all.csv"))
+
+
