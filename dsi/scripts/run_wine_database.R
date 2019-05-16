@@ -180,20 +180,23 @@ price_RDS_files = list.files(OUTPUT.DIR, full.names = TRUE, pattern = ".RDS", re
 #     ENTRY_PRICE ----
 
 price_output = lapply(price_RDS_files, function(x) {
-  output = readRDS(x)
-  prices = do.call("rbind", output$page.cols$prices)
+  page.cols = readRDS(x)$page.cols
+  col.header = rep(page.cols$price_cols$col.header[sapply(page.cols$prices, function(x) {first(x$cluster)})],
+                   times = sapply(page.cols$prices, nrow))
+  prices = do.call("rbind", page.cols$prices)
   prices = prices %>% mutate(
     file_id = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}"),
     file_number = str_extract(file_id, pattern = "[0-9]{4}"),
     entry_id = paste(file_number, table, 1:nrow(prices), sep = "_"),
-    name_id = paste(file_number, table, row, sep = "_")
-    )
+    name_id = paste(file_number, table, row, sep = "_"),
+    col.header = col.header
+  )
   # Add an xy coordinate for the app to use
   # flip.y argument can account for when images are plotted with flipped y scales
   prices_xy = prices %>% mutate(x = (left + right)/2, y = (top + bottom)/2) %>% select(x, y)
   prices_xy_orig = rotatePoints(prices_xy, 
-                                angle = output$page.cols$angle[1],
-                                height = output$page.cols$height_orig, width = output$page.cols$width_orig,
+                                angle = page.cols$angle[1],
+                                height = page.cols$height_orig, width = page.cols$width_orig,
                                 flip.y = FLIP.Y)
   prices = cbind(prices, price_center_x_orig = prices_xy_orig[,1], price_center_y_orig = prices_xy_orig[,2])
 })
