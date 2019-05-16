@@ -424,6 +424,28 @@ minDiffs <- function(vector) {
   apply(x, 1, min, na.rm = T)
 }
 
+
+# function used to rotate points back to their positions in the original image
+# NOTE: CENTRAL ROTATION: the origin for rotation is not 0,0, but the middle of the page, it seems
+# https://tpgit.github.io/Leptonica/skew_8c_source.html - documentation of leptonica deskew
+  # I think second number in pixFindSkew is a type of conficence score
+  # (DEFAULT_BINARY_THRESHOLD = 130) for leptonica?
+
+# flip.y accounts for when images are plotted with flipped y scales
+# assumes "points" has two columns listing x and y
+
+rotatePoints <- function(points, angle, height, width, flip.y = FALSE) {
+  center = c(width/2, height/2)
+  angle1 = -angle*pi/180
+  rotation1 = matrix(c(cos(angle1), -sin(angle1), sin(angle1), cos(angle1)), nrow = 2) #clockwise
+  if (flip.y) {
+    points[,2] = height - points[,2]
+  }
+  
+  points1 =  t((rotation1 %*% (t(points) - center)) + center)
+  return(points1)
+}
+
 #from duncan?
 fixPrice =
   #

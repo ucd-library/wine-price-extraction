@@ -52,9 +52,9 @@ source("wine-price-extraction/dsi/R/wine_evaluate.R")
 FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< has both now
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_3291.jpg"#<- single file
 OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
-#DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
+DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
-SAVE.DATA = TRUE
+SAVE.DATA = FALSE
 SAVE.DESKEWED = FALSE
 
 source("wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
@@ -142,18 +142,38 @@ price_output = lapply(price_RDS_files, function(x) {
     entry_id = paste(file_number, table, 1:nrow(prices), sep = "_"),
     name_id = paste(file_number, table, row, sep = "_")
     )
+  # Add an xy coordinate for the app to use
+  # flip.y argument can account for when images are plotted with flipped y scales
+  prices_xy = prices %>% mutate(x = (left + right)/2, y = (top + bottom)/2) %>% select(x, y)
+  prices_xy_orig = rotatePoints(prices_xy, 
+                                angle = output$page.cols$angle[1],
+                                height = output$page.cols$height_orig, width = output$page.cols$width_orig,
+                                flip.y = FALSE)
+  prices = cbind(prices, price_center_x_orig = prices_xy_orig[,1], price_center_y_orig = prices_xy_orig[,2])
 })
 
-ENTRY_PRICE = do.call("rbind", price_output)
+# Can unify this with above
+name_output = lapply(price_RDS_files, function(x) {
+  output = readRDS(x)
+  nameboxes = do.call("rbind", output$name.locations)
+  nameboxes$table = as.numeric(sapply( strsplit(rownames(nameboxes), "_|\\.") , nth, 2 ))
+  nameboxes$number = as.numeric(sapply( strsplit(rownames(nameboxes), "_|\\.") , last ))
+  nameboxes$file_id = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}")
+  nameboxes$file_number = str_extract(nameboxes$file_id, "[0-9]{4}")
+  nameboxes$entry_id = paste(nameboxes$file_number, nameboxes$table, nameboxes$number, sep = "_")
+  return(nameboxes)
+})
+
+tmp = do.call("rbind", name_output)
+dim(tmp)
+
+ENTRY_PRICE = do.call("rbind", price_output) #n_distinct(ENTRY_PRICE$name_id)
 
 # CHANGE "text" names to "price"
 names(ENTRY_PRICE)[names(ENTRY_PRICE) == "text"] = "price_raw"
 names(ENTRY_PRICE)[names(ENTRY_PRICE) == "confidence"] = "confidence"
 names(ENTRY_PRICE)[names(ENTRY_PRICE) == "text.new"] = "price_new"
 
-# Add an xy coordinate for the app to use
-# I experimented with back-rotating price but found a central point from my existing output was better
- # This may be due to page skew, whereas dekew seem to only rotate
 ENTRY_PRICE = ENTRY_PRICE %>% mutate(xy = paste((left + right)/2, (bottom + top)/2, sep = ", "))
 
 write.csv(ENTRY_PRICE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PRICE.csv"), row.names = FALSE)
