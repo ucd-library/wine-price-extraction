@@ -116,6 +116,8 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       t[t<b] = b[t<b] + 2*page.cols$charheight # something went wrong (top below bottom) use default height
       table.boxes[[i]] = data.frame(l, b, r, t) #update r
       
+      rownames(table.boxes[[i]]) = tmp.ids$row #for later sorting
+      
       # see if name boxes (top dimension) overlaps with next row -- if so update for re-ocring
       # overlap_below = lapply(t, function(tt) {
       #   filter(data1, 
@@ -270,6 +272,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       
       table.boxes[[i]] = data.frame(l = l, b = b, r = r, t = t)
       l = pmax(0, l) #in case buffer puts off page
+      rownames(table.boxes[[i]]) = tmp.prices$row #for later sorting
       
       # reocr
       table.boxes.words.reocr[[i]] = lapply(seq_along(b), function(x) {
@@ -281,8 +284,10 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
         gb
       })
       
-    }
+      }
+
   }
+  
   
   names(table.boxes) = paste("table", 1:length(table.boxes), sep = "_")
   names(table.boxes.words) = paste("table", 1:length(table.boxes.words), sep = "_")
