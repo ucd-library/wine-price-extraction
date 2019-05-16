@@ -108,6 +108,7 @@ summary.output = lapply(truth.subdir, function(elem) {
       truth.prices =  readRDS(truth.file)$prices
     
       compare.list = NULL
+      print(truth.file)
       try({compare.list = wine.compare(test.prices, truth.prices)})
       if (!is.null(compare.list)) {
         wine.summarize(compare.list)
@@ -127,3 +128,39 @@ summary.output = do.call("rbind", summary.output)
 
 write.csv(summary.output, file.path(EVAL.OUTPUT.DIR, "summary_vs_truth.csv"))
 
+# Get total truth to bind to extract prices in ENTRY_PRICE
+
+truth_all = lapply(truth.subdir, function(elem) {
+  
+  fileset.truth = list.files(elem, pattern = ".RDS", full.names = TRUE)
+
+  if (length(fileset.truth) > 0) {
+    truth1 = lapply(fileset.truth, function(truth.file) {
+      truth.found = unlist(sapply(readRDS(truth.file)$prices, "[", "prices"), recursive = FALSE)
+      cluster = rep(1:length(truth.found), times =  sapply(truth.found, nrow))
+      table = rep(1:length(truth.found), sapply(truth.found, nrow))
+      truth.found = do.call("rbind", truth.found)
+      truth.found$table = table
+      truth.found$cluster = cluster
+      truth.found$file_id = str_extract(last(sapply(truth.file, str_split, "/")[[1]]), "UCD_Lehmann_[0-9]{4}")
+      truth.found$truth_entered_by = last(sapply(elem, str_split, "/")[[1]])
+      return(truth.found)
+    })
+  } else {truth1 = list()}
+   
+  return(do.call("rbind", truth1))
+})
+
+truth_all = do.call("rbind", truth_all)
+
+# Check accuracy of truth by checking for deviation between repeated entries
+#View(truth_all %>% group_by(file_id, table, cluster, row) %>% mutate(n = n()) %>%
+#  filter(n > 1) %>% summarize(var(n)))
+
+# If all accurate, remove repeated
+truth_all = truth_all %>% group_by(file_id, table, cluster, row) %>%
+  arrange(truth_entered_by) %>% summarize_all(first) %>% ungroup()
+
+names(truth_all)[names(truth_all)=="text.new"] = "text.true"
+
+write.csv(truth_all, file.path(EVAL.OUTPUT.DIR, "truth_all.csv"))

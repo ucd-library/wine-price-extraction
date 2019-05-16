@@ -4,6 +4,7 @@
 #     - we may have an id from name extraction and one from table extraction, check if they align
 #     fix name naming so that ENTRY_PRICE and ENTRY_NAME have same number of entries
 #     - Add dictionary hit info to NAME_MATCH table
+#     - make evaluation code not depend on mac path names
 #
 # Tables
 # ENTRY_PRICE
@@ -39,6 +40,9 @@ source("wine-price-extraction/dsi/R/parse_items_data.R")
 
 # Evaluation 
 source("wine-price-extraction/dsi/R/wine_evaluate.R")
+
+# flip.y argument for back-rotating image points, accounts for when images are plotted with flipped y scales
+FLIP.Y = FALSE
 
 # 1. Run image files ----
 
@@ -104,7 +108,46 @@ ENTRY_NAME = data.frame(page_results_all[,!colnames(page_results_all) %in% exclu
 ENTRY_NAME = ENTRY_NAME %>% select(-"file_name") %>% mutate(file_id = str_extract(file, "UCD_Lehmann_[0-9]{4}"))
 ENTRY_NAME$file_number = str_extract(ENTRY_NAME$file_id, pattern = "[0-9]{4}")
 ENTRY_NAME = ENTRY_NAME %>% group_by(file_id, table) %>% mutate(name_id = paste(file_number, table, 1:n(), sep = "_"))
+
+# Can unify this with below so not looping through price_RDS_files twice
+name_output = 
+  do.call("rbind",
+  lapply(price_RDS_files, function(x) {
+    output = readRDS(x)
+    rows = unlist(sapply(output$name.locations, rownames))
+    nameboxes = do.call("rbind", output$name.locations)
+    nameboxes$table = as.numeric(sapply( strsplit(rownames(nameboxes), "_|\\.") , nth, 2 ))
+    nameboxes$number = as.numeric(sapply( strsplit(rownames(nameboxes), "_|\\.") , last ))
+    nameboxes$file_id = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}")
+    nameboxes$file_number = str_extract(nameboxes$file_id, "[0-9]{4}")
+    # possible that there can be slightly more names than prices if there were ids with unmatched price rows
+      # latest run:
+      # sum(!ENTRY_NAME$name_id %in% ENTRY_PRICE$name_id) #5
+      # "0027_1_14" "0237_1_26" "0644_1_9"  "2504_1_4"  "2504_2_5"
+    nameboxes$name_id = paste(nameboxes$file_number, nameboxes$table, rows, sep = "_")
+    
+    # Add an xy coordinate for the app to use
+    # flip.y argument can account for when images are plotted with flipped y scales
+    nameboxes_xy = nameboxes %>% mutate(x = (l + r)/2, y = (t + b)/2) %>% select(x, y)
+    nameboxes_xy_orig = rotatePoints(nameboxes_xy, 
+                                  angle = output$page.cols$angle[1],
+                                  height = output$page.cols$height_orig, width = output$page.cols$width_orig,
+                                  flip.y = FLIP.Y)
+    nameboxes = cbind(nameboxes, name_center_x_orig = nameboxes_xy_orig[,1], name_center_y_orig = nameboxes_xy_orig[,2])
+    
+    return(nameboxes)
+  }))
+
+#check
+sum(ENTRY_NAME$name_id != name_output$name_id)
+
+ENTRY_NAME = left_join(ENTRY_NAME,
+                       name_output[,c("l", "b", "r", "t","name_center_x_orig", "name_center_y_orig", "name_id")],
+                       by = "name_id")
+
+
 write.csv(ENTRY_NAME, file.path(TABLE.OUTPUT.DIR, "ENTRY_NAME.csv"), row.names = FALSE)
+
 
 #     NAME_MATCH ----
 
@@ -148,33 +191,29 @@ price_output = lapply(price_RDS_files, function(x) {
   prices_xy_orig = rotatePoints(prices_xy, 
                                 angle = output$page.cols$angle[1],
                                 height = output$page.cols$height_orig, width = output$page.cols$width_orig,
-                                flip.y = FALSE)
+                                flip.y = FLIP.Y)
   prices = cbind(prices, price_center_x_orig = prices_xy_orig[,1], price_center_y_orig = prices_xy_orig[,2])
 })
 
-# Can unify this with above
-name_output = lapply(price_RDS_files, function(x) {
-  output = readRDS(x)
-  nameboxes = do.call("rbind", output$name.locations)
-  nameboxes$table = as.numeric(sapply( strsplit(rownames(nameboxes), "_|\\.") , nth, 2 ))
-  nameboxes$number = as.numeric(sapply( strsplit(rownames(nameboxes), "_|\\.") , last ))
-  nameboxes$file_id = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}")
-  nameboxes$file_number = str_extract(nameboxes$file_id, "[0-9]{4}")
-  nameboxes$entry_id = paste(nameboxes$file_number, nameboxes$table, nameboxes$number, sep = "_")
-  return(nameboxes)
-})
-
-tmp = do.call("rbind", name_output)
-dim(tmp)
-
 ENTRY_PRICE = do.call("rbind", price_output) #n_distinct(ENTRY_PRICE$name_id)
+
+# Add in truth if accurate enough
+summary_vs_truth = read.csv(file.path(EVAL.OUTPUT.DIR, "summary_vs_truth.csv"), stringsAsFactors = FALSE)
+# Only report where number of extracted tables matches number of truth tables
+accurate_file = str_extract((summary_vs_truth %>% filter(diff.in.tables == 0))$X, "UCD_Lehmann_[0-9]{4}")
+truth_all = read.csv(file.path(EVAL.OUTPUT.DIR, "truth_all.csv"), stringsAsFactors = FALSE)
+truth_all = filter(truth_all, file_id %in% accurate_file) #removes about 20%
+truth_all 
+
+# Add truth to table
+ENTRY_PRICE = left_join(ENTRY_PRICE, truth_all[,c("text.true", "truth_entered_by", "file_id",
+                                                  "table", "row", "cluster")], 
+                by = c("file_id" = "file_id", "table" = "table", "row" = "row", "cluster" = "cluster"))
 
 # CHANGE "text" names to "price"
 names(ENTRY_PRICE)[names(ENTRY_PRICE) == "text"] = "price_raw"
 names(ENTRY_PRICE)[names(ENTRY_PRICE) == "confidence"] = "confidence"
 names(ENTRY_PRICE)[names(ENTRY_PRICE) == "text.new"] = "price_new"
-
-ENTRY_PRICE = ENTRY_PRICE %>% mutate(xy = paste((left + right)/2, (bottom + top)/2, sep = ", "))
 
 write.csv(ENTRY_PRICE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PRICE.csv"), row.names = FALSE)
 
@@ -199,7 +238,7 @@ write.csv(ENTRY_PAGE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PAGE.csv"), row.names =
 # see https://github.com/ucd-library/wine-price-extraction/issues/9 for discussion of vars
 text_vars_to_include = c("text", "text_raw", "name", "id", "name_id", "file_id") #remember this id is the id in the catalog
 wine_vars_to_include = c("country", "year", "color", "variety", "region", "province", "designation")
-price_vars_to_include = c("price_raw", "confidence", "type", "price_new", "cluster", "table","row", "entry_id", "name_id")
+price_vars_to_include = c("price_raw", "confidence", "type", "price_new", "cluster", "table","row", "entry_id", "name_id", "text.true", "truth_entered_by")
 
 PRICE_NAME = left_join(ENTRY_PRICE[,price_vars_to_include],
                         ENTRY_NAME[,c(text_vars_to_include, wine_vars_to_include)], 
