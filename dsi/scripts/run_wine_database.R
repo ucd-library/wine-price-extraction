@@ -181,7 +181,8 @@ price_RDS_files = list.files(OUTPUT.DIR, full.names = TRUE, pattern = ".RDS", re
 
 price_output = lapply(price_RDS_files, function(x) {
   page.cols = readRDS(x)$page.cols
-  col.header = rep(page.cols$price_cols$col.header[sapply(page.cols$prices, function(x) {first(x$cluster)})],
+  match.cluster.order = match(sapply(page.cols$prices, function(x) {first(x$cluster)}), page.cols$price_cols$cluster)
+  col.header = rep(page.cols$price_cols$col.header[match.cluster.order],
                    times = sapply(page.cols$prices, nrow))
   prices = do.call("rbind", page.cols$prices)
   prices = prices %>% mutate(
@@ -244,7 +245,7 @@ write.csv(ENTRY_PAGE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PAGE.csv"), row.names =
 # see https://github.com/ucd-library/wine-price-extraction/issues/9 for discussion of vars
 text_vars_to_include = c("text", "text_raw", "name", "id", "name_id", "file_id") #remember this id is the id in the catalog
 wine_vars_to_include = c("country", "year", "color", "variety", "region", "province", "designation")
-price_vars_to_include = c("price_raw", "confidence", "type", "price_new", "cluster", "table","row", "entry_id", "name_id", "text.true", "truth_entered_by")
+price_vars_to_include = c("price_raw", "confidence", "type", "price_new", "cluster", "table","row", "entry_id", "name_id", "text.true", "truth_entered_by", "col.header")
 
 PRICE_NAME = left_join(ENTRY_PRICE[,price_vars_to_include],
                         ENTRY_NAME[,c(text_vars_to_include, wine_vars_to_include)], 
