@@ -13,8 +13,10 @@
 #
 ########################################################################################################################
 # 0. Setup ####
+
 dir1 = "~/Documents/DSI/OCR_SherryLehmann/"
 setwd(dir1)
+
 tessdata_train = "~/Documents/DSI/ocrd-train-master/data/train"
 
 library(Rtesseract)
@@ -310,8 +312,6 @@ which_cat = which(unlist(lapply(cat_files, function(x) {
 }))>0)
 
 # look at text distribution from this catalog:
-#cat_textTypes = textTypes(cat_files, catalog = which_cat)
-#cat_files[which_cat][[1]][is.na(cat_textTypes$price) | cat_textTypes$price < 4,]
 
 # 6c. GetBoxes on all catalog images (results in cat.text) ####
 

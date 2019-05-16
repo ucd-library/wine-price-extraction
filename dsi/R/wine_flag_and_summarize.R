@@ -1,4 +1,4 @@
-# Code that acts on table output of run_wine_database 
+# Code that acts on table output of run_wine_database.R 
 # Jane Carlen
 # May 2019
 

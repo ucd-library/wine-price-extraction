@@ -194,4 +194,3 @@ wine.summarize = function(compare.list) {
                                        NA))
           
 }
-
