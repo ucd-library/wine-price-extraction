@@ -3,6 +3,7 @@ count-results.json
 node_modules
 screenshots
 node/patch/tmp/*
+dsi/test
 
 #emacs
 *~
