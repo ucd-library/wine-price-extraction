@@ -52,6 +52,7 @@ price_table_extraction <- function(file1,
                                    save.deskewed = FALSE,
                                    pix.threshold = NULL, pix.newValue = NULL, #pix.threshold = 200, pix.newValue = 0
                                    binary.threshold = 150,
+                                   ocr.only = FALSE,
                                    column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
                                    res1 = 600,
                                    image.check = FALSE, 
@@ -115,6 +116,7 @@ price_table_extraction <- function(file1,
   }
   if (save.data) {
     saveRDS(data1, file.path(data.output.folder, paste0(file1,"_data1.RDS")))
+    if (ocr.only = TRUE) { return( paste("OCR_ONLY:", file1) )}
   }
   
   # may want to save deskewed image for post-processing
