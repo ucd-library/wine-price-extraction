@@ -145,15 +145,15 @@ if (! exists("OCR.ONLY") ) {
 if (RUN.FILE) {
   
   ### will remove later ###
-  file1 = "UCD_Lehmann_2535"# 0011
-  
-  if (paste0(file1, ".jpg") %in% list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages")) {
-    file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages", paste0(file1, ".jpg"))
-  }  else {
-    sample_files = readRDS("~/Documents/DSI/wine-price-extraction/dsi/Data/sample_files.RDS")
-    folder = sample_files[which(sample_files$file == file1),"Sample"]
-    file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/Sample", folder, paste0(file1, ".jpg"))
-  }
+  #file1 = "UCD_Lehmann_2535"# 0011
+  #
+  #if (paste0(file1, ".jpg") %in% list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages")) {
+  #  file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages", paste0(file1, ".jpg"))
+  #}  else {
+  #  sample_files = readRDS("~/Documents/DSI/wine-price-extraction/dsi/Data/sample_files.RDS")
+  #  folder = sample_files[which(sample_files$file == file1),"Sample"]
+  #  file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/Sample", folder, paste0(file1, ".jpg"))
+  #}
   ###
   
   file1 = FILESET
