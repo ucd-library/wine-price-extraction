@@ -32,19 +32,19 @@ source("../dsi/R/helper.R")
 
 args = commandArgs(trailingOnly = TRUE)
 
-if (length(args) > 0) {
+if (length(args) >= 1) {
   FILESET = args[1]
-  if (length(args) > 1) {
-    OUTPUT.DIR = args[2] 
-      if (length(args) > 2) {
+  if (length(args) >= 2) {
+    DATA.OUTPUT.DIR = args[2] 
+      if (length(args) >= 3) {
         OCR.ONLY = as.logical(args[3])
-        if (length(args) > 3) {
-          DATA.OUTPUT.DIR = args[4] #path to folder where pre-ocr'd data is stored
-          if (length(args) > 4) {
+        if (length(args) >= 4) {
+          OUTPUT.DIR = args[4] #path to folder where pre-ocr'd data is stored
+          if (length(args) >= 5) {
             DATA.INPUT.DIR = args[5] #path to folder where ocr'd data will be saved if save.data is TRUE
-            if (length(args) > 5) {
+            if (length(args) >= 6) {
               SAVE.DESKEWED = as.logical(args[6])
-              if (length(args) > 6) {
+              if (length(args) >= 7) {
                 PIX.THRESHOLD = as.numeric(args[7])
               }
             }
@@ -60,13 +60,9 @@ if (!file.exists (FILESET) ) {
   RUN.FILE = ifelse (grepl(FILESET, pattern = "\\.[a-zA-Z]+$"), TRUE, FALSE) #otherwise run folder
 }
 
-if (! exists("OCR.ONLY") ) {
-  OCR.ONLY = FALSE
-}
-
-if (!file.exists (OUTPUT.DIR) ) {
-  stop("Stopping: Path to store output not valid")
-}
+#if (!file.exists (OUTPUT.DIR)) {
+#  stop("Stopping: Path to store output not valid")
+#}
 
 if (exists ("DATA.OUTPUT.DIR")) {
   if (!is.null(DATA.OUTPUT.DIR) && ! file.exists(DATA.OUTPUT.DIR) ) {
@@ -104,6 +100,12 @@ if ( (exists("PIX.THRESHOLD") && !is.null(PIX.THRESHOLD)) && !is.na(as.numeric(P
 } else {
   PIX.THRESHOLD = NULL
   PIX.NEWVALUE = NULL
+}
+
+if (! exists("OCR.ONLY") ) {
+  OCR.ONLY = FALSE
+} else {
+  if (OCR.ONLY) {SAVE.DATA = TRUE}
 }
 
 ####################################################################################################

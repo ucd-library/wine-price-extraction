@@ -116,8 +116,9 @@ price_table_extraction <- function(file1,
   }
   if (save.data) {
     saveRDS(data1, file.path(data.output.folder, paste0(file1,"_data1.RDS")))
-    if (ocr.only == TRUE) { return( paste("OCR_ONLY:", file1) )}
   }
+  
+  if (ocr.only == TRUE) { return(data.frame(result = paste("OCR_ONLY:", file1)) )}
   
   # may want to save deskewed image for post-processing
   if (save.deskewed) {
