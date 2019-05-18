@@ -174,7 +174,7 @@ if (RUN.FILE) {
   file1 = FILESET
   
   if (!is.null(DATA.INPUT.DIR)) {
-    DATA1 = readRDS(file.path(DATA.INPUT.DIR, paste0(nth(strsplit(file1, split = c("/|\\."))[[1]], -2), "_data1.RDS")))
+    DATA1 = readRDS(file.path(DATA.INPUT.DIR, paste0(strsplit(basename(file1), "\\.")[[1]][1], "_data1.RDS")))
   }
   
   price_table_extraction(file1,
