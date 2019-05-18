@@ -7,14 +7,13 @@
 
 library(reshape2)
 library(ggplot2)
-library(stringr)
 library(dplyr)
 library(RecordLinkage)
 
 #source("~/Documents/DSI/wine-price-extraction/dsi/R/wine_evaluate.R")
 
-EVAL.INPUT.DIR = "/Users/janecarlen//Documents/DSI/wine-price-extraction/dsi/Data/price_table_output"
-TRUTH.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth"
+#EVAL.INPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output"
+#TRUTH.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth"
 
 args = commandArgs(trailingOnly = TRUE)
 
@@ -73,7 +72,7 @@ output_summary_internal = data.frame(t(sapply(evaluate.output, function(eval) {
     "mean.unsorted" =  paste(unlist(sapply(eval$table.ordering, sapply, nth, 2)), collapse = ", ")#mean of how much they're greater by
   )
   })),  
-  row.names = sapply(sapply(fileset1, str_split, "/"), last))
+  row.names = basename(fileset1))
 
 write.csv(output_summary_internal, file.path(EVAL.OUTPUT.DIR, "output_summary_internal.csv"))
 
@@ -98,7 +97,7 @@ summary.output = lapply(truth.subdir, function(elem) {
     
     summary.output1 = lapply(fileset.truth, function(truth.file) {
 
-      test.name = gsub( file.path(EVAL.INPUT.DIR, last(str_split(truth.file, "/")[[1]])),  pattern = "_price_truth", replacement = "" )
+      test.name = gsub( file.path(EVAL.INPUT.DIR, basename(truth.file)),  pattern = "_price_truth", replacement = "" )
       if ( file.exists(test.name)) {
       test.prices = readRDS( test.name )$prices
       } else {
@@ -115,10 +114,10 @@ summary.output = lapply(truth.subdir, function(elem) {
       } 
     })
     
-    rownames1 = sapply(sapply(fileset.truth, str_split, "/"), last)[!sapply(summary.output1, is.null)] 
+    rownames1 = basename(fileset.truth)[!sapply(summary.output1, is.null)] 
     summary.output1 = do.call("rbind", summary.output1)
     rownames(summary.output1) = rownames1
-    summary.output1$name = last(strsplit(elem, "/")[[1]]) #name is containing folder
+    summary.output1$name = basename(elem) #name is containing folder
     summary.output1
     
   } else {return(NULL)}
@@ -142,8 +141,8 @@ truth_all = lapply(truth.subdir, function(elem) {
       truth.found = do.call("rbind", truth.found)
       truth.found$table = table
       truth.found$cluster = cluster
-      truth.found$file_id = str_extract(last(sapply(truth.file, str_split, "/")[[1]]), "UCD_Lehmann_[0-9]{4}")
-      truth.found$truth_entered_by = last(sapply(elem, str_split, "/")[[1]])
+      truth.found$file_id = gsub(basename(truth.file), pattern = "_price_truth.RDS", replacement = "")
+      truth.found$truth_entered_by = basename(elem)
       return(truth.found)
     })
   } else {truth1 = list()}

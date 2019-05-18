@@ -30,9 +30,9 @@
 
 library(Rtesseract)
 library(tidyverse)
-library(stringr)
 library(jpeg)
 library(cluster)
+library(stringr)
 library(changepoint)
 library(RecordLinkage)
 
@@ -76,14 +76,14 @@ price_table_extraction <- function(file1,
   # Check image name input
   if (file.exists(file1)) {
     img1 = file1
-    file1 = first(strsplit(last(strsplit(file1, "/")[[1]]), "\\.")[[1]])  #file1 now is stub name
+    file1 = strsplit(basename(file1), "\\.")[[1]][1] #file1 now is stub name
   } else {
     stop("Image does not exist. Must supply valid path to image as as file1 argument.")
   }
   
-  image.dims = dim(readJPEG(img1)) #note we'll use the image attribute here later
-  height1 = image.dims[1] 
-  width1 = image.dims[2] 
+  image.dims = attributes(readJPEG(img1))$dim #note we hope to use Rtesseract attribute here later so we can skip this
+  height1 = image.dims[1]
+  width1 = image.dims[2]
   
   ############ img check 1 ####
   api0 = tesseract(img1, pageSegMode = 6, engineMode = 3)
