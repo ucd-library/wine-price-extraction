@@ -114,6 +114,10 @@ price_table_extraction <- function(file1,
   if (is.null(data1)) {
     data1 = GetBoxes(api1, pageSegMode = 6, engineMode = 3)
   }
+  
+  # Add angle to data1 attributes so that it's stored even if we ocr.only is TRUE
+  attr(data1, "imageDims") = c(attr(data1, "imageDims"), angle1 = angle1[1], angle2 = angle1[2])
+  
   if (save.data) {
     saveRDS(data1, file.path(data.output.folder, paste0(file1,"_data1.RDS")))
   }

@@ -14,16 +14,31 @@ library(jpeg)
 library(cluster)
 library(changepoint)
 library(RecordLinkage)
-
-source("../dsi/R/wine_price_tables.R")
-source("../dsi/R/wine_price_pageCols.R")
-source("../dsi/R/wine_price_tables_functions.R")
-source("../dsi/R/wine_price_nameBoxes.R")
-source("../dsi/R/helper.R") 
-
 #library(MASS) #<- Should have MASS installed for rlm, but load creates conflict with select
 
-# IF running from this script: 
+#https://stackoverflow.com/questions/1815606/rscript-determine-path-of-the-executing-script
+thisFile <- function() {
+  cmdArgs <- commandArgs(trailingOnly = FALSE)
+  needle <- "--file="
+  match <- grep(needle, cmdArgs)
+  if (length(match) > 0) {
+    # Rscript
+    return(dirname(sub(needle, "", cmdArgs[match])))
+  } else {
+    # 'source'd via R console
+    return(dirname(sys.frames()[[1]]$ofile))
+  }
+}
+
+thisdir <- thisFile()
+
+source(file.path(thisdir, "../R/wine_price_tables.R"))
+source(file.path(thisdir, "../R/wine_price_pageCols.R"))
+source(file.path(thisdir, "../R/wine_price_tables_functions.R"))
+source(file.path(thisdir, "../R/wine_price_nameBoxes.R"))
+source(file.path(thisdir, "../R/helper.R"))
+
+# IF running from this script, set args like...: 
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"
 #OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
 #DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
