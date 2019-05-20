@@ -4,7 +4,6 @@
 #     - we may have an id from name extraction and one from table extraction, check if they align
 #     fix name naming so that ENTRY_PRICE and ENTRY_NAME have same number of entries
 #     - Add dictionary hit info to NAME_MATCH table
-#     - make evaluation code not depend on mac path names
 #
 # Tables
 # ENTRY_PRICE

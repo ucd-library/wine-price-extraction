@@ -30,9 +30,9 @@
 
 library(Rtesseract)
 library(tidyverse)
-library(stringr)
 library(jpeg)
 library(cluster)
+library(stringr)
 library(changepoint)
 library(RecordLinkage)
 
@@ -76,14 +76,14 @@ price_table_extraction <- function(file1,
   # Check image name input
   if (file.exists(file1)) {
     img1 = file1
-    file1 = first(strsplit(last(strsplit(file1, "/")[[1]]), "\\.")[[1]])  #file1 now is stub name
+    file1 = strsplit(basename(file1), "\\.")[[1]][1] #file1 now is stub name
   } else {
     stop("Image does not exist. Must supply valid path to image as as file1 argument.")
   }
   
-  image.dims = dim(readJPEG(img1)) #note we'll use the image attribute here later
-  height1 = image.dims[1] 
-  width1 = image.dims[2] 
+  image.dims = attributes(readJPEG(img1))$dim #note we hope to use Rtesseract attribute here later so we can skip this
+  height1 = image.dims[1]
+  width1 = image.dims[2]
   
   ############ img check 1 ####
   api0 = tesseract(img1, pageSegMode = 6, engineMode = 3)
@@ -114,6 +114,15 @@ price_table_extraction <- function(file1,
   if (is.null(data1)) {
     data1 = GetBoxes(api1, pageSegMode = 6, engineMode = 3)
   }
+  
+  # Add angle to data1 attributes so that it's stored even if we ocr.only is TRUE
+  attr(data1, "imageDims") = c(attr(data1, "imageDims"), 
+                        angle1 = angle1[1], angle2 = angle1[2])
+  
+  attr(data1, "imageThresholds") = c(binaryThreshold = binary.threshold,
+                                     pixThreshold = pix.threshold,
+                                     pixNewValue = pix.newValue)
+  
   if (save.data) {
     saveRDS(data1, file.path(data.output.folder, paste0(file1,"_data1.RDS")))
   }
