@@ -4,6 +4,7 @@ node_modules
 screenshots
 node/patch/tmp/*
 dsi/test
+dsi/google-cloud
 
 #emacs
 *~
