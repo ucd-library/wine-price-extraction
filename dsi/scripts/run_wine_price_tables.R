@@ -6,95 +6,137 @@
 # Setup ####
 ####################################################################################################
 
-library(dplyr)
-library(Rtesseract)
-library(tidyverse)
-library(stringr)
-library(jpeg)
-library(cluster)
-library(changepoint)
-library(RecordLinkage)
-
-#source("wine-price-extraction/dsi/R/wine_price_tables.R")
-#source("wine-price-extraction/dsi/R/wine_price_pageCols.R")
-#source("wine-price-extraction/dsi/R/wine_price_tables_functions.R")
-#source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R")
-#source("wine-price-extraction/dsi/R/helper.R") 
-
+# Load packages, source files ----
+library(dplyr, warn.conflicts = FALSE)
+library(Rtesseract, warn.conflicts = FALSE)
+library(tidyverse, warn.conflicts = FALSE)
+library(stringr, warn.conflicts = FALSE)
+library(jpeg, warn.conflicts = FALSE)
+library(cluster, warn.conflicts = FALSE)
+library(changepoint, warn.conflicts = FALSE)
+library(RecordLinkage, warn.conflicts = FALSE)
 #library(MASS) #<- Should have MASS installed for rlm, but load creates conflict with select
 
-# IF running from this script: 
+# Source necessary files when running from command line ----
+if (length(commandArgs(trailingOnly = TRUE)) >= 1) {
+  #https://stackoverflow.com/questions/1815606/rscript-determine-path-of-the-executing-script
+  thisFile <- function() {
+    cmdArgs <- commandArgs(trailingOnly = FALSE)
+    needle <- "--file="
+    match <- grep(needle, cmdArgs)
+    if (length(match) > 0) {
+      # Rscript
+      return(dirname(sub(needle, "", cmdArgs[match])))
+    } else {
+      # 'source'd via R console
+      return(dirname(sys.frames()[[1]]$ofile))
+    }
+  }
+  
+  thisdir <- thisFile()
+  
+  source(file.path(thisdir, "../R/wine_price_tables.R"), echo = FALSE)
+  source(file.path(thisdir, "../R/wine_price_pageCols.R"), echo = FALSE)
+  source(file.path(thisdir, "../R/wine_price_tables_functions.R"), echo = FALSE)
+  source(file.path(thisdir, "../R/wine_price_nameBoxes.R"), echo = FALSE)
+  source(file.path(thisdir, "../R/helper.R"), echo = FALSE)
+}
+
+# Get args (defaults and process from command line) ----
+
+# IF running from this script, set args like...: 
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"
 #OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
 #DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 #DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 #SAVE.DATA = FALSE
 
+#DEFAULTS
+OCR.ONLY = FALSE
+SAVE.DATA = TRUE
+DATA1 = NULL
+
+# For command line args, case doesn't matter (they'll be converted to upper either way)
+possible.args = c("FILESET", "OUTPUT.DIR", "DATA.OUTPUT.DIR", "DATA.INPUT.DIR", "OCR.ONLY", "SAVE.DESKEWED", "PIX.THRESHOLD")
 args = commandArgs(trailingOnly = TRUE)
 
-if (length(args) > 0) {
-  FILESET = args[1]
-  if (length(args) > 1) {
-    OUTPUT.DIR = args[2] 
-    if (length(args) > 2) {
-      DATA.OUTPUT.DIR = args[3] #path to folder where pre-ocr'd data is stored
-      if (length(args) > 3) {
-        DATA.INPUT.DIR = args[4] #path to folder where ocr'd data will be saved if save.data is TRUE
-        if (length(args) > 4) {
-          SAVE.DESKEWED = as.logical(args[5])
-          if (length(args) > 5) {
-            PIX.THRESHOLD = as.numeric(args[6])
-          }
-        }
-      }
-    }
-  }
+# Use command line args if running from terminal:
+if (length(args) >= 1) {
+  
+  argnames = toupper(sapply(args, function(x) strsplit(x, "=")[[1]][1])) # For command line args, case doesn't matter
+  argnums = sapply(possible.args, match, argnames)
+  argvals = rep(NA, length(possible.args))
+  argvals[which(!is.na(argnums))] = 
+    sapply(args, function(x) trimws(last(strsplit(x, "=")[[1]])) )[order(argnums[!is.na(argnums)])]
+  
+  FILESET = argvals[1]
+  OUTPUT.DIR = argvals[2]
+  DATA.OUTPUT.DIR = argvals[3]
+  DATA.INPUT.DIR = argvals[4] 
+  OCR.ONLY = as.logical(argvals[5])
+  SAVE.DESKEWED = as.logical(argvals[6])
+  PIX.THRESHOLD = argvals[7] 
 }
 
-if (!file.exists (FILESET) ) {
-  stop("Path to image file or folder containing images not valid. Stopping.")
+print(argvals)
+
+# Arg checks ---- 
+
+# Check if a valid file or folder was given as FILESET, and run file or folder accordingly
+# If non, will stop.
+if (!exists("FILESET") || is.na(FILESET) || !file.exists (FILESET) ) {
+  stop(call.= FALSE, "Path to image file or folder containing images missing or not valid. Stopping.")
 } else {
   RUN.FILE = ifelse (grepl(FILESET, pattern = "\\.[a-zA-Z]+$"), TRUE, FALSE) #otherwise run folder
 }
 
-if (!file.exists (OUTPUT.DIR) ) {
-  stop("Stopping: Path to store output not valid")
+# Unless OCR.ONLY is explicitly set to true, set it to false
+# If OCR.ONLY is specific but not valid DATA.OUTPUT.DIR was given, stop
+if (! exists("OCR.ONLY") || is.na(OCR.ONLY)) {
+  OCR.ONLY = FALSE
+} else if (OCR.ONLY!= TRUE) {
+  OCR.ONLY = FALSE
+} else {
+  print("OCR.ONLY is set to TRUE")
 }
 
-if (exists ("DATA.OUTPUT.DIR")) {
-  if (!is.null(DATA.OUTPUT.DIR) && ! file.exists(DATA.OUTPUT.DIR) ) {
-    DATA.OUTPUT.DIR = NULL
-    SAVE.DATA = FALSE
-    warning("path to store data not valid. will not store")
-  } else {
-    # If path to save data output is valid and SAVE.DATA not already set, then save
-    if (! exists("SAVE.DATA")) {
-      SAVE.DATA = TRUE
-    }
-  }
-} else {
+# Check for valid directory to store table extraction output.
+# If none, will stop unless OCR.ONLY is true
+if ( (!exists("OUTPUT.DIR") || is.na(OUTPUT.DIR) || !file.exists(OUTPUT.DIR)) && !OCR.ONLY) {
+  stop("No valid path to store output supplied and OCR.ONLY is false")
+}
+
+# Check for valid directory to store data (getBoxes) output.
+# If none, data won't be stored. SAVE.DATA will be false.
+if ( !exists("DATA.OUTPUT.DIR") || is.na(DATA.OUTPUT.DIR) || !file.exists (DATA.OUTPUT.DIR) ) {
   DATA.OUTPUT.DIR = NULL
   SAVE.DATA = FALSE
+  ifelse(OCR.ONLY, stop(call. = FALSE, "OCR.ONLY is set to TRUE but no valid path to store data was supplied."),
+         warning("No valid path to store data (output of GetBoxes). Will not store."))
+} else {
+  # If path to save data output not already given as false, SAVE.DATA -> TRUE
+  if (SAVE.DATA != FALSE) {SAVE.DATA = TRUE}
 }
 
-if (exists ("DATA.INPUT.DIR")) {
-  if (! file.exists(DATA.INPUT.DIR) ) {
-    DATA.INPUT.DIR = NULL
-    DATA1 = NULL
-    warning("path to existing data not valid, re-OCRing instead")
-  }
-} else {
+# Check for valid directory for input data. If given, function will attempt to use it
+if (!exists("DATA.INPUT.DIR") || is.na(DATA.INPUT.DIR) || !file.exists (DATA.INPUT.DIR) ) {
   DATA.INPUT.DIR = NULL
   DATA1 = NULL
-}
+  if (!OCR.ONLY) warning("No valid path to existing data (output of GetBoxes) supplied. Will OCR images instead.")
+} 
 
-if (! exists("SAVE.DESKEWED") ) {
+# Unless save.deskewed is explicitly set to true, set it to false
+if (!exists("SAVE.DESKEWED") || is.na(SAVE.DESKEWED)) {
   SAVE.DESKEWED = FALSE
+} else {
+  if (SAVE.DESKEWED!=TRUE) {SAVE.DESKEWED = FALSE}
 }
 
-if ( (exists("PIX.THRESHOLD") && !is.null(PIX.THRESHOLD)) && !is.na(as.numeric(PIX.THRESHOLD)) ) {
-  if (PIX.THRESHOLD <= 1 | PIX.THRESHOLD > 255) {PIX.THRESHOLD = NULL; PIX.NEWVALUE = NULL}
-} else {
+if ( !exists("PIX.THRESHOLD") || is.na(PIX.THRESHOLD) || is.na(as.numeric(PIX.THRESHOLD)) ) {
+  PIX.THRESHOLD = NULL
+  PIX.NEWVALUE = NULL
+} else if (is.numeric(PIX.THRESHOLD) && (PIX.THRESHOLD <=1 || PIX.THRESHOLD > 255)) {
+  warning("Invalid PIX.THRESHOLD supplied (outside 1-255 range). Using defaults instead")
   PIX.THRESHOLD = NULL
   PIX.NEWVALUE = NULL
 }
@@ -134,88 +176,90 @@ if ( (exists("PIX.THRESHOLD") && !is.null(PIX.THRESHOLD)) && !is.na(as.numeric(P
 # 1. Run on example -------------------------------------------------------------------------------------------------------------
 
 if (RUN.FILE) {
-
-### will remove later ###
-  file1 = "UCD_Lehmann_2535"# 0011
   
-  if (paste0(file1, ".jpg") %in% list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages")) {
-    file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages", paste0(file1, ".jpg"))
-  }  else {
-    sample_files = readRDS("~/Documents/DSI/wine-price-extraction/dsi/Data/sample_files.RDS")
-    folder = sample_files[which(sample_files$file == file1),"Sample"]
-    file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/Sample", folder, paste0(file1, ".jpg"))
-  }
-###
+  ### will remove later ###
+  #file1 = "UCD_Lehmann_2535"# 0011
+  #
+  #if (paste0(file1, ".jpg") %in% list.files("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages")) {
+  #  file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages", paste0(file1, ".jpg"))
+  #}  else {
+  #  sample_files = readRDS("~/Documents/DSI/wine-price-extraction/dsi/Data/sample_files.RDS")
+  #  folder = sample_files[which(sample_files$file == file1),"Sample"]
+  #  file1 = file.path("~/Documents/DSI/OCR_SherryLehmann/Sample", folder, paste0(file1, ".jpg"))
+  #}
+  ###
   
-file1 = FILESET
+  file1 = FILESET
   
-if (!is.null(DATA.INPUT.DIR)) {
-  DATA1 = readRDS(file.path(DATA.INPUT.DIR, paste0(strsplit(basename(file1), "\\.")[[1]][1], "_data1.RDS")))
-}
-
-price_table_extraction(file1,
-                       data1 = NULL,#DATA1,
-                       output.folder = OUTPUT.DIR, 
-                       data.output.folder = DATA.OUTPUT.DIR,
-                       save.data = SAVE.DATA,
-                       save.deskewed = SAVE.DESKEWED,
-                       pix.threshold = NULL, pix.newValue = NULL, #pix.threshold = 200, pix.newValue = 0
-                       binary.threshold = 150,
-                       column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
-                       res1 = 600,
-                       image.check = FALSE, 
-                       show.ggplot = TRUE) 
-
+  if (!is.null(DATA.INPUT.DIR)) {
+    try.data.path = file.path(DATA.INPUT.DIR, paste0(strsplit(basename(file1), "\\.")[[1]][1], "_data1.RDS"))
+    if (file.exists(try.data.path)) {
+      DATA1 = readRDS(try.data.path)
+    } else {DATA1 = NULL}
+  } else {DATA1 = NULL}
+  
+  price_table_extraction(file1,
+                         data1 = DATA1,
+                         output.dir = OUTPUT.DIR, 
+                         data.output.dir = DATA.OUTPUT.DIR,
+                         save.data = SAVE.DATA,
+                         save.deskewed = SAVE.DESKEWED,
+                         pix.threshold = NULL, pix.newValue = NULL, #pix.threshold = 200, pix.newValue = 0
+                         binary.threshold = 150,
+                         ocr.only = OCR.ONLY,
+                         column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
+                         res1 = 600,
+                         image.check = FALSE, 
+                         show.ggplot = TRUE) 
+  
 }
 
 # 2. Run on fileset ----------------------------------------------------------------------------------------------------------
 
 if (!RUN.FILE) {
-
+  
   fileset = FILESET
   fileset = list.files(FILESET, full.names = T, pattern = "\\.") #only files, not folders
   
-  output = lapply(fileset, function(img1) {
+  output = lapply(fileset, function(file1) {
     
-    px1 = deskew(pixConvertTo8(pixRead(img1)))
-    api1 = tesseract(px1)
-    if( GetSourceYResolution(api1)==0 ) {SetSourceResolution(api1, 600)}
-    
-    # Should we use pre-run get boxes?
     if (!is.null(DATA.INPUT.DIR)) {
-      DATA1 = readRDS(file.path(DATA.INPUT.DIR, paste0(nth(strsplit(img1, split = c("/|\\."))[[1]], -2), "_data1.RDS")))
-    } else {
-      # this is done here instead of in price table extraction so that we know whether to continue
-      DATA1 = GetBoxes(api1, pageSegMode = 6, engineMode = 3)
+      try.data.path = file.path(DATA.INPUT.DIR, paste0(strsplit(basename(file1), "\\.")[[1]][1], "_data1.RDS"))
+      if (file.exists(try.data.path)) {
+        DATA1 = readRDS(try.data.path)
+      } else {DATA1 = NULL}
+    } else {DATA1 = NULL}
+    
+    # Decided to move page classification out of here 
+    # Use DATA1 to classify if a page (probably) has readable price tables:
+    # if (median(DATA1$confidence) > 30 & sum(isPrice(DATA1$text, dollar = FALSE)) >= 3) {
+    
+    output1 = try({ # names will tell us if it was successful, but output is stored externally
+      price_table_extraction(file1, 
+                             data1 = DATA1,
+                             output.dir = OUTPUT.DIR, 
+                             data.output.dir = DATA.OUTPUT.DIR,
+                             save.data = SAVE.DATA,
+                             save.deskewed = SAVE.DESKEWED,
+                             pix.threshold = PIX.THRESHOLD, pix.newValue = PIX.NEWVALUE, #pix.threshold = 200, pix.newValue = 0
+                             binary.threshold = 150,
+                             ocr.only = OCR.ONLY,
+                             column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
+                             res1 = 600,
+                             image.check = FALSE, 
+                             show.ggplot = FALSE)
+    }) 
+    
+    if (class(output1) == "try-error") {
+      if (!is.null(DATA1)) {
+        output1 = c(output1, "median_conf" = median(DATA1$confidence), "n_price" = sum(isPrice(DATA1$text, dollar = FALSE, maybe = F)))
+      }
     }
     
-    # Use getBoxes output in data1 to classify if a page (probably) has readable price tables
-
-    if (median(DATA1$confidence) > 30 & sum(isPrice(DATA1$text, dollar = FALSE)) >= 3) {
-      output1 = try({ # names will tell us if it was successful, but output is stored expernally
-        names( 
-          price_table_extraction(img1, 
-                                      data1 = DATA1,
-                                      output.folder = OUTPUT.DIR, 
-                                      data.output.folder = DATA.OUTPUT.DIR,
-                                      save.data = SAVE.DATA,
-                                      save.deskewed = SAVE.DESKEWED,
-                                      pix.threshold = PIX.THRESHOLD, pix.newValue = PIX.NEWVALUE, #pix.threshold = 200, pix.newValue = 0
-                                      binary.threshold = 150,
-                                      column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
-                                      res1 = 600,
-                                      image.check = FALSE, 
-                                      show.ggplot = FALSE)
-        )
-      })
-    } else {output1 = NULL}
-  
-    if (is.null(output1)) {cat("\nNO PRICE TABLES DETECTED IN", img1, "\n\n")}
-    output1 = c(output1, "median_conf" = median(DATA1$confidence), "n_price" = sum(isPrice(DATA1$text, dollar = FALSE)))
-   
     return(output1)
   })
   
   names(output) = fileset
+  
   
 }
