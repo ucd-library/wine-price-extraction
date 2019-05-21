@@ -26,8 +26,9 @@ library(RecordLinkage, quietly = TRUE)
 
 ##################################################################################################################
 # 1. Evaluation and comparison functions
-##################################################################################################################
+################################################################################################################
 
+##
 wine.evaluate <- function(test.prices) {
   list(n.tables = length(test.prices),
        n.columns.per.table = sapply(test.prices, function(x) {length(x$prices)}),

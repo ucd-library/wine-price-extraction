@@ -230,7 +230,9 @@ write.csv(ENTRY_PRICE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PRICE.csv"), row.names
 
 page_output = lapply(price_RDS_files, function(x) {
   output = readRDS(x)
-  page_info = data.frame(angle = output$page.cols$angle[1], height = output$page.cols$height_orig, 
+  page_info = data.frame(angle = output$page.cols$angle[1], 
+                         angle_conf= output$page.cols$angle[2], #I think this is a confidence measure on the angle
+                         height = output$page.cols$height_orig, 
                          width = output$page.cols$width_orig, binary.threshold = output$page.cols$binary.threshold,
                          pix.threshold = NA, pix.newValue = NA)
   if (exists("output$page.cols$pix.threshold")) {page_info$pix.threshold  = output$page.cols$pix.threshold}
