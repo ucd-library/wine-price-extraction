@@ -5,10 +5,10 @@
 # 0. Setup
 ##################################################################################################################
 
-library(reshape2)
-library(ggplot2)
-library(dplyr)
-library(RecordLinkage)
+library(reshape2, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(RecordLinkage, quietly = TRUE)
 
 #source("~/Documents/DSI/wine-price-extraction/dsi/R/wine_evaluate.R")
 
@@ -17,11 +17,11 @@ library(RecordLinkage)
 
 args = commandArgs(trailingOnly = TRUE)
 
-if (length(args) > 0) {
+if (length(args) >= 1) {
   EVAL.INPUT.DIR = args[1] 
-  if (length(args) > 1) {
+  if (length(args) >= 2) {
     TRUTH.DIR = args[2] # Where manually created truth file .RDS live
-    if (length(args) > 2) {
+    if (length(args) >= 3) {
       EVAL.OUTPUT.DIR = args[3]
     }
   }

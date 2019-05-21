@@ -18,11 +18,11 @@
 # 0. Setup
 ##################################################################################################################
 
-library(reshape2)
-library(ggplot2)
-library(stringr)
-library(dplyr)
-library(RecordLinkage)
+library(reshape2, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+library(stringr, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(RecordLinkage, quietly = TRUE)
 
 ##################################################################################################################
 # 1. Evaluation and comparison functions
