@@ -28,11 +28,11 @@ setwd("~/Documents/DSI")
 
 # Source files ----
 # Table extraction
-source("wine-price-extraction/dsi/R/wine_price_pageCols.R") #redundant
-source("wine-price-extraction/dsi/R/wine_price_tables_functions.R") #redundant
-source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R") #redundant
-source("wine-price-extraction/dsi/R/helper.R") #redundant
-source("wine-price-extraction/dsi/R/wine_price_tables.R")
+source("wine-price-extraction/dsi/R/wine_price_pageCols.R", echo = F) #redundant
+source("wine-price-extraction/dsi/R/wine_price_tables_functions.R", echo = F) #redundant
+source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R", echo = F) #redundant
+source("wine-price-extraction/dsi/R/helper.R", echo = F) #redundant
+source("wine-price-extraction/dsi/R/wine_price_tables.R", echo = F)
 
 # Name parsing 
 source("wine-price-extraction/dsi/R/parse_items_data.R")
@@ -59,6 +59,8 @@ DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalo
 DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 SAVE.DATA = FALSE
 SAVE.DESKEWED = FALSE
+OCR.ONLY = FALSE
+BINARY.THRESHOLD = 150
 
 source("wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
 

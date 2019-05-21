@@ -51,13 +51,15 @@ if (length(commandArgs(trailingOnly = TRUE)) >= 1) {
 #DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 #SAVE.DATA = FALSE
 
-#DEFAULTS
+#DEFAULTS 
 OCR.ONLY = FALSE
 SAVE.DATA = TRUE
 DATA1 = NULL
+SAVE.DESKEWED = FALSE
 
 # For command line args, case doesn't matter (they'll be converted to upper either way)
-possible.args = c("FILESET", "OUTPUT.DIR", "DATA.OUTPUT.DIR", "DATA.INPUT.DIR", "OCR.ONLY", "SAVE.DESKEWED", "PIX.THRESHOLD")
+possible.args = c("FILESET", "OUTPUT.DIR", "DATA.OUTPUT.DIR", "DATA.INPUT.DIR",
+                  "OCR.ONLY", "SAVE.DESKEWED", "PIX.THRESHOLD", "BINARY.THRESHOLD")
 args = commandArgs(trailingOnly = TRUE)
 
 # Use command line args if running from terminal:
@@ -67,7 +69,7 @@ if (length(args) >= 1) {
   argnums = sapply(possible.args, match, argnames)
   argvals = rep(NA, length(possible.args))
   argvals[which(!is.na(argnums))] = 
-    sapply(args, function(x) trimws(last(strsplit(x, "=")[[1]])) )[order(argnums[!is.na(argnums)])]
+    sapply(args, function(x) trimws(last(strsplit(x, "=")[[1]])) )[argnums[!is.na(argnums)]]
   
   FILESET = argvals[1]
   OUTPUT.DIR = argvals[2]
@@ -75,7 +77,8 @@ if (length(args) >= 1) {
   DATA.INPUT.DIR = argvals[4] 
   OCR.ONLY = as.logical(argvals[5])
   SAVE.DESKEWED = as.logical(argvals[6])
-  PIX.THRESHOLD = argvals[7] 
+  PIX.THRESHOLD = as.numeric(argvals[7]) 
+  BINARY.THRESHOLD = as.numeric(argvals[8]) 
 }
 
 print(argvals)
@@ -92,7 +95,7 @@ if (!exists("FILESET") || is.na(FILESET) || !file.exists (FILESET) ) {
 
 # Unless OCR.ONLY is explicitly set to true, set it to false
 # If OCR.ONLY is specific but not valid DATA.OUTPUT.DIR was given, stop
-if (! exists("OCR.ONLY") || is.na(OCR.ONLY)) {
+if (!exists("OCR.ONLY") || is.na(OCR.ONLY)) {
   OCR.ONLY = FALSE
 } else if (OCR.ONLY!= TRUE) {
   OCR.ONLY = FALSE
@@ -108,11 +111,11 @@ if ( (!exists("OUTPUT.DIR") || is.na(OUTPUT.DIR) || !file.exists(OUTPUT.DIR)) &&
 
 # Check for valid directory to store data (getBoxes) output.
 # If none, data won't be stored. SAVE.DATA will be false.
-if ( !exists("DATA.OUTPUT.DIR") || is.na(DATA.OUTPUT.DIR) || !file.exists (DATA.OUTPUT.DIR) ) {
+if ( !exists("DATA.OUTPUT.DIR") || is.na(DATA.OUTPUT.DIR) || !file.exists(DATA.OUTPUT.DIR) ) {
   DATA.OUTPUT.DIR = NULL
   SAVE.DATA = FALSE
   ifelse(OCR.ONLY, stop(call. = FALSE, "OCR.ONLY is set to TRUE but no valid path to store data was supplied."),
-         warning("No valid path to store data (output of GetBoxes). Will not store."))
+         "No valid path to store data (output of GetBoxes). Will not store.")
 } else {
   # If path to save data output not already given as false, SAVE.DATA -> TRUE
   if (SAVE.DATA != FALSE) {SAVE.DATA = TRUE}
@@ -122,7 +125,7 @@ if ( !exists("DATA.OUTPUT.DIR") || is.na(DATA.OUTPUT.DIR) || !file.exists (DATA.
 if (!exists("DATA.INPUT.DIR") || is.na(DATA.INPUT.DIR) || !file.exists (DATA.INPUT.DIR) ) {
   DATA.INPUT.DIR = NULL
   DATA1 = NULL
-  if (!OCR.ONLY) warning("No valid path to existing data (output of GetBoxes) supplied. Will OCR images instead.")
+  if (!OCR.ONLY) print("No valid path to load existing data (output of GetBoxes). Will OCR images instead.")
 } 
 
 # Unless save.deskewed is explicitly set to true, set it to false
@@ -135,10 +138,17 @@ if (!exists("SAVE.DESKEWED") || is.na(SAVE.DESKEWED)) {
 if ( !exists("PIX.THRESHOLD") || is.na(PIX.THRESHOLD) || is.na(as.numeric(PIX.THRESHOLD)) ) {
   PIX.THRESHOLD = NULL
   PIX.NEWVALUE = NULL
-} else if (is.numeric(PIX.THRESHOLD) && (PIX.THRESHOLD <=1 || PIX.THRESHOLD > 255)) {
-  warning("Invalid PIX.THRESHOLD supplied (outside 1-255 range). Using defaults instead")
+} else if (is.numeric(PIX.THRESHOLD) && (PIX.THRESHOLD <=1 || PIX.THRESHOLD >= 256)) {
+  warning("Invalid PIX.THRESHOLD supplied (outside 1-255 range). Using defaults instead.")
   PIX.THRESHOLD = NULL
   PIX.NEWVALUE = NULL
+}
+
+if ( !exists("BINARY.THRESHOLD") || is.na(BINARY.THRESHOLD) || is.na(as.numeric(BINARY.THRESHOLD)) ) {
+  BINARY.THRESHOLD = 150
+} else if (is.numeric(BINARY.THRESHOLD) && (BINARY.THRESHOLD <=1 || BINARY.THRESHOLD >= 256)) {
+  warning("Invalid BINARY.THRESHOLD supplied (outside 1-255 range). Using default instead.")
+  BINARY.THRESHOLD = 150
 }
 
 ####################################################################################################
@@ -205,7 +215,7 @@ if (RUN.FILE) {
                          save.data = SAVE.DATA,
                          save.deskewed = SAVE.DESKEWED,
                          pix.threshold = NULL, pix.newValue = NULL, #pix.threshold = 200, pix.newValue = 0
-                         binary.threshold = 150,
+                         binary.threshold = BINARY.THRESHOLD,
                          ocr.only = OCR.ONLY,
                          column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
                          res1 = 600,
@@ -242,7 +252,7 @@ if (!RUN.FILE) {
                              save.data = SAVE.DATA,
                              save.deskewed = SAVE.DESKEWED,
                              pix.threshold = PIX.THRESHOLD, pix.newValue = PIX.NEWVALUE, #pix.threshold = 200, pix.newValue = 0
-                             binary.threshold = 150,
+                             binary.threshold = BINARY.THRESHOLD,
                              ocr.only = OCR.ONLY,
                              column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
                              res1 = 600,
