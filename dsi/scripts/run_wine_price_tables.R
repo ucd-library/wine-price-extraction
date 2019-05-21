@@ -87,7 +87,7 @@ if (length(args) >= 1) {
 # Check if a valid file or folder was given as FILESET, and run file or folder accordingly
 # If non, will stop.
 if (!exists("FILESET") || is.na(FILESET) || !file.exists (FILESET) ) {
-  stop(call.= FALSE, "Path to image file or folder containing images missing or not valid. Stopping.")
+  stop(call. = FALSE, "Path to image file or folder containing images missing or not valid. Stopping.")
 } else {
   RUN.FILE = ifelse (grepl(FILESET, pattern = "\\.[a-zA-Z]+$"), TRUE, FALSE) #otherwise run folder
 }
@@ -105,7 +105,7 @@ if (!exists("OCR.ONLY") || is.na(OCR.ONLY)) {
 # Check for valid directory to store table extraction output.
 # If none, will stop unless OCR.ONLY is true
 if ( (!exists("OUTPUT.DIR") || is.na(OUTPUT.DIR) || !file.exists(OUTPUT.DIR)) && !OCR.ONLY) {
-  stop("No valid path to store output supplied and OCR.ONLY is false")
+  stop(call. = FALSE, "No valid path to store output supplied and OCR.ONLY is false")
 }
 
 # Check for valid directory to store data (getBoxes) output.
