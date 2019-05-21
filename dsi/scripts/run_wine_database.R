@@ -61,6 +61,7 @@ SAVE.DATA = FALSE
 SAVE.DESKEWED = FALSE
 OCR.ONLY = FALSE
 BINARY.THRESHOLD = 150
+#PIX.THRESHOLD
 
 source("wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
 

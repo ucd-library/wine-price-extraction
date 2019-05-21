@@ -61,6 +61,7 @@ SAVE.DESKEWED = FALSE
 possible.args = c("FILESET", "OUTPUT.DIR", "DATA.OUTPUT.DIR", "DATA.INPUT.DIR",
                   "OCR.ONLY", "SAVE.DESKEWED", "PIX.THRESHOLD", "BINARY.THRESHOLD")
 args = commandArgs(trailingOnly = TRUE)
+print(args)
 
 # Use command line args if running from terminal:
 if (length(args) >= 1) {
@@ -80,8 +81,6 @@ if (length(args) >= 1) {
   PIX.THRESHOLD = as.numeric(argvals[7]) 
   BINARY.THRESHOLD = as.numeric(argvals[8]) 
 }
-
-print(argvals)
 
 # Arg checks ---- 
 
@@ -118,7 +117,10 @@ if ( !exists("DATA.OUTPUT.DIR") || is.na(DATA.OUTPUT.DIR) || !file.exists(DATA.O
          "No valid path to store data (output of GetBoxes). Will not store.")
 } else {
   # If path to save data output not already given as false, SAVE.DATA -> TRUE
-  if (SAVE.DATA != FALSE) {SAVE.DATA = TRUE}
+  if (SAVE.DATA != FALSE) {
+    SAVE.DATA = TRUE
+    print(paste("Data will be saved in",DATA.OUTPUT.DIR))
+  }
 }
 
 # Check for valid directory for input data. If given, function will attempt to use it
