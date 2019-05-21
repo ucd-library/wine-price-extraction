@@ -12,7 +12,7 @@ Notes on running scripts:
 
 Example 1 to run only OCR on a single file:
 ```
-Rscript run_wine_price_tables.R FILESET=OCR_SherryLehmann/Sample/Sample1/UCD_Lehmann_0015.jpg . DATA.OUTPUT.DIR=Data/sample_output OCR.ONLY=TRUE
+Rscript run_wine_price_tables.R FILESET=OCR_SherryLehmann/Sample/Sample1/UCD_Lehmann_0015.jpg DATA.OUTPUT.DIR=Data/sample_output OCR.ONLY=TRUE
 ```
 Example 2 to run a whole folder, supplying data from previous 
 ```
