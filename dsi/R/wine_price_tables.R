@@ -28,26 +28,26 @@
 # Setup ####
 ####################################################################################################
 
-library(Rtesseract)
-library(tidyverse)
-library(jpeg)
-library(cluster)
-library(stringr)
-library(changepoint)
-library(RecordLinkage)
+library(Rtesseract, warn.conflicts = FALSE)
+library(tidyverse, warn.conflicts = FALSE)
+library(jpeg, warn.conflicts = FALSE)
+library(cluster, warn.conflicts = FALSE)
+library(stringr, warn.conflicts = FALSE)
+library(changepoint, warn.conflicts = FALSE)
+library(RecordLinkage, warn.conflicts = FALSE)
 
-#source("wine_price_pageCols.R")
-#source("wine_price_tables_functions.R")
-#source("wine_price_nameBoxes.R")
-#source("helper.R") 
+#source("R/wine_price_pageCols.R")
+#source("R/wine_price_tables_functions.R")
+#source("R/wine_price_nameBoxes.R")
+#source("R/helper.R") 
 
 # MAIN FUNCTION, encompassing all numbered steps below ----
 # for examples of this code being run see run_wine_price_tables.R in the adjacent scripts folder
 
 price_table_extraction <- function(file1,
                                    data1 = NULL,
-                                   output.folder = ".",
-                                   data.output.folder = NULL,
+                                   output.dir = ".",
+                                   data.output.dir = NULL,
                                    save.data = FALSE,
                                    save.deskewed = FALSE,
                                    pix.threshold = NULL, pix.newValue = NULL, #pix.threshold = 200, pix.newValue = 0
@@ -59,8 +59,8 @@ price_table_extraction <- function(file1,
                                    show.ggplot = TRUE) {
   # res1 is default resolution which is 600 for wine images. Only set if img resolution is missing.
   # column.header is convered to lower for comparison
-  # save.data will save the output of GetBoxes to the data.output.folder
-  # save.deskewed will save the clean deskewed image to the output.folder
+  # save.data will save the output of GetBoxes to the data.output.dir
+  # save.deskewed will save the clean deskewed image to the output.dir
   # pix.threshold and pix.newValue effectively set the binary cutoff for OCR, and matter, e.g., if color on page
   # binary threshold sets the binaryThreshold argument for deskew(ing).
     # Can change angle slightly but often doesn't matter much
@@ -124,17 +124,17 @@ price_table_extraction <- function(file1,
                                      pixNewValue = pix.newValue)
   
   if (save.data) {
-    saveRDS(data1, file.path(data.output.folder, paste0(file1,"_data1.RDS")))
+    saveRDS(data1, file.path(data.output.dir, paste0(file1,"_data1.RDS")))
   }
-  
-  if (ocr.only == TRUE) { return(data.frame(result = paste("OCR_ONLY:", file1)) )}
   
   # may want to save deskewed image for post-processing
   if (save.deskewed) {
-    pixWrite(px1, file.path(output.folder, paste0(file1, "_deskew.png")))
+    pixWrite(px1, file.path(output.dir, paste0(file1, "_deskew.png")))
     #return()
   }
   
+  if (ocr.only == TRUE) { return(data.frame(result = paste("OCR_ONLY:", file1)) )}
+
   if (sum(isPrice(data1$text)) + sum(isPrice(data1$text, maybe = T)=="*price") <= 1) {
     return("No price tables detected. (At most 1 price detected.) If prices suspected try a new pix.threshold.")
   }
@@ -259,7 +259,7 @@ price_table_extraction <- function(file1,
     
     #### save name box image ####
     tmp.boxes = do.call("rbind", name.boxes[[1]])
-    png(file.path(output.folder, paste0(file1, "_name_boxes.png")), width = 1000, height = 1500)
+    png(file.path(output.dir, paste0(file1, "_name_boxes.png")), width = 1000, height = 1500)
     plot(tesseract(px1), cropToBoxes = F, bbox = tmp.boxes, img = px1, confidence = FALSE)
     dev.off()
     
@@ -267,10 +267,10 @@ price_table_extraction <- function(file1,
     final.data = list(prices = final.prices)
   }
   
-  saveRDS(final.data, file.path(output.folder, paste0(file1, ".RDS")))
+  saveRDS(final.data, file.path(output.dir, paste0(file1, ".RDS")))
   
   #### save price image ####
-  png(file.path(output.folder, paste0(file1, "_price_boxes.png")), width = 1000, height = 1500)
+  png(file.path(output.dir, paste0(file1, "_price_boxes.png")), width = 1000, height = 1500)
   #page.cols$prices entries should only have class data.frame, not also tbl_df or other
   plot(tesseract(px1), cropToBoxes = FALSE, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
   dev.off()

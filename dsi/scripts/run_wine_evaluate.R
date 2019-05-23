@@ -5,44 +5,49 @@
 # 0. Setup
 ##################################################################################################################
 
-library(reshape2)
-library(ggplot2)
-library(dplyr)
-library(RecordLinkage)
+library(reshape2, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(RecordLinkage, quietly = TRUE)
 
 #source("~/Documents/DSI/wine-price-extraction/dsi/R/wine_evaluate.R")
 
 #EVAL.INPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output"
 #TRUTH.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth"
+#EVAL.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data"
 
+# For command line args, case doesn't matter (they'll be converted to upper either way)
+possible.args = c("EVAL.INPUT.DIR", "TRUTH.DIR", "EVAL.OUTPUT.DIR")
 args = commandArgs(trailingOnly = TRUE)
+print(args)
 
-if (length(args) > 0) {
-  EVAL.INPUT.DIR = args[1] 
-  if (length(args) > 1) {
-    TRUTH.DIR = args[2] # Where manually created truth file .RDS live
-    if (length(args) > 2) {
-      EVAL.OUTPUT.DIR = args[3]
-    }
-  }
+# Use command line args if running from terminal:
+if (length(args) >= 1) {
+  
+  argnames = toupper(sapply(args, function(x) strsplit(x, "=")[[1]][1])) # For command line args, case doesn't matter
+  argnums = sapply(possible.args, match, argnames)
+  argvals = rep(NA, length(possible.args))
+  argvals[which(!is.na(argnums))] = 
+    sapply(args, function(x) trimws(last(strsplit(x, "=")[[1]])) )[argnums[!is.na(argnums)]]
+  
+  EVAL.INPUT.DIR = argvals[1]
+  TRUTH.DIR = argvals[2]
+  EVAL.OUTPUT.DIR = argvals[3]
 }
 
+# Checks
+
 if (!file.exists (EVAL.INPUT.DIR) ) {
-  stop("Path to input data (price table output RDS files) not valid. Stopping.")
+  stop(call. = FALSE, "Path to input data (price table output RDS files) not valid.")
 } 
 
 if (!file.exists (TRUTH.DIR) ) {
-  stop("Path to folder containing truth files (.RDS) not valid. Stopping.")
+  stop(call. = FALSE, "Path to folder containing truth files (.RDS) not valid.")
 } 
 
-# file.number = "0069"
-# test.prices = readRDS(file.path(output.directory, paste0("UCD_Lehmann_", file.number,".RDS")))$prices
-# truth.prices = readRDS(file.path(truth.directory, paste0("UCD_Lehmann_", file.number,"_price_truth.RDS")))$prices
-
-#if correction necessary to truth, something like:
-#tmp = readRDS(file.path(truth.directory, paste0("UCD_Lehmann_", file.number,"_price_truth.RDS")))
-#tmp$prices[[1]]$prices[[2]]$row = 1:8
-#saveRDS(tmp, file.path(truth.directory, paste0("UCD_Lehmann_", file.number,"_price_truth.RDS")))
+if (!file.exists (EVAL.OUTPUT.DIR) ) {
+  stop(call. = FALSE, "Path to store evaluation output not valid.")
+} 
 
 ##################################################################################################################
 # 2. Run comparison on fileset

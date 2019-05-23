@@ -18,16 +18,17 @@
 # 0. Setup
 ##################################################################################################################
 
-library(reshape2)
-library(ggplot2)
-library(stringr)
-library(dplyr)
-library(RecordLinkage)
+library(reshape2, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+library(stringr, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(RecordLinkage, quietly = TRUE)
 
 ##################################################################################################################
 # 1. Evaluation and comparison functions
-##################################################################################################################
+################################################################################################################
 
+##
 wine.evaluate <- function(test.prices) {
   list(n.tables = length(test.prices),
        n.columns.per.table = sapply(test.prices, function(x) {length(x$prices)}),

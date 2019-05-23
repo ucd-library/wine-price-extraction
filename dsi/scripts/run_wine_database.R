@@ -28,11 +28,11 @@ setwd("~/Documents/DSI")
 
 # Source files ----
 # Table extraction
-source("wine-price-extraction/dsi/R/wine_price_pageCols.R") #redundant
-source("wine-price-extraction/dsi/R/wine_price_tables_functions.R") #redundant
-source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R") #redundant
-source("wine-price-extraction/dsi/R/helper.R") #redundant
-source("wine-price-extraction/dsi/R/wine_price_tables.R")
+source("wine-price-extraction/dsi/R/wine_price_pageCols.R", echo = F) #redundant
+source("wine-price-extraction/dsi/R/wine_price_tables_functions.R", echo = F) #redundant
+source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R", echo = F) #redundant
+source("wine-price-extraction/dsi/R/helper.R", echo = F) #redundant
+source("wine-price-extraction/dsi/R/wine_price_tables.R", echo = F)
 
 # Name parsing 
 source("wine-price-extraction/dsi/R/parse_items_data.R")
@@ -59,6 +59,9 @@ DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalo
 DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 SAVE.DATA = FALSE
 SAVE.DESKEWED = FALSE
+OCR.ONLY = FALSE
+BINARY.THRESHOLD = 150
+#PIX.THRESHOLD
 
 source("wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
 
@@ -227,7 +230,9 @@ write.csv(ENTRY_PRICE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PRICE.csv"), row.names
 
 page_output = lapply(price_RDS_files, function(x) {
   output = readRDS(x)
-  page_info = data.frame(angle = output$page.cols$angle[1], height = output$page.cols$height_orig, 
+  page_info = data.frame(angle = output$page.cols$angle[1], 
+                         angle_conf= output$page.cols$angle[2], #I think this is a confidence measure on the angle
+                         height = output$page.cols$height_orig, 
                          width = output$page.cols$width_orig, binary.threshold = output$page.cols$binary.threshold,
                          pix.threshold = NA, pix.newValue = NA)
   if (exists("output$page.cols$pix.threshold")) {page_info$pix.threshold  = output$page.cols$pix.threshold}
