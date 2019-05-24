@@ -1,8 +1,11 @@
 let Crawler = require('./lib/crawler');
 
-const Master = require('@ucd-lib/sloan-ocr-autoscaler-worker/model/master');
-const Job = require('@ucd-lib/sloan-ocr-autoscaler-worker/model/job');
-const cloudStorage = require('@ucd-lib/sloan-ocr-autoscaler-worker/lib/cloud-storage');
+const {Master, Job, cloudStorage, config} = require('@ucd-lib/job-autoscaler-commons');
+
+config.cloudStorage.rootBucketName = 'sloan-ocr';
+config.pubsub.topic = 'sloan-ocr';
+config.pubsub.subscription = 'sloan-ocr-sub';
+config.firebase.collection = 'sloan-ocr';
 
 (async function() {
   console.log('ensuring bucket');
@@ -20,11 +23,13 @@ const cloudStorage = require('@ucd-lib/sloan-ocr-autoscaler-worker/lib/cloud-sto
 
   for( let image of images ) {
     let task = job.addTask({
-      title: 'sherry-lehmann ocr test'
+      url : image.imageUrl,
+      filename: image.filename
     });
 
     image.ocr = true;
     image.processOcr = true;
+    image.force = true;
 
     job.addTaskSegment(task.id, image);
   }
@@ -32,6 +37,5 @@ const cloudStorage = require('@ucd-lib/sloan-ocr-autoscaler-worker/lib/cloud-sto
   console.log('starting');
   await Master.init('sloan-ocr');
   await Master.startJob(job);
-
 })();
 
