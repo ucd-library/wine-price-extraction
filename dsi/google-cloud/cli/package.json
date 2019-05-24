@@ -1,0 +1,15 @@
+{
+  "name": "@ucd-lib/sloan-cloud-cli",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "jrmerz@ucdavis.edu",
+  "license": "MIT",
+  "dependencies": {
+    "@ucd-lib/fin-node-api": "^0.10.12",
+    "@ucd-lib/job-autoscaler-commons": "0.0.4"
+  }
+}
