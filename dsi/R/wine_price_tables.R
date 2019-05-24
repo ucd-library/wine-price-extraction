@@ -101,6 +101,16 @@ price_table_extraction <- function(file1,
   px1 = pixRead(img1)
   angle1 = pixFindSkew(pixThresholdToBinary(pixConvertTo8(pixRead(img1)), binary.threshold))
   
+  # If low conf, consider another binary threshold?
+  # Not good enough to implement yet. Need to integreate with color clustering and pixThreshold.
+  #if (angle1[2] < 2) {
+  #  angle.test = pixFindSkew(pixThresholdToBinary(pixConvertTo8(pixRead(img1)), 100)) 
+  #  if (angle.test[2] > 5) {
+  #    angle1 = angle.test
+  #    binary.threshold = 100
+  #  }
+  #}
+  
   px1 = deskew(px1, binaryThreshold = binary.threshold)
   
   if (!is.null(pix.threshold) & !is.null(pix.newValue)) {
