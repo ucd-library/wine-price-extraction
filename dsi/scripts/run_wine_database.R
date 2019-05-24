@@ -26,7 +26,8 @@ library(stringr)
 
 setwd("~/Documents/DSI")
 
-# Source files ----
+# Source function files ----
+
 # Table extraction
 source("wine-price-extraction/dsi/R/wine_price_pageCols.R", echo = F) #redundant
 source("wine-price-extraction/dsi/R/wine_price_tables_functions.R", echo = F) #redundant
@@ -40,7 +41,7 @@ source("wine-price-extraction/dsi/R/parse_items_data.R")
 # Evaluation 
 source("wine-price-extraction/dsi/R/wine_evaluate.R")
 
-# flip.y argument for back-rotating image points, accounts for when images are plotted with flipped y scales
+# flip.y argument for back-rotating image points, accounts for plotting images with y = 0 at top left instead of bottom left
 FLIP.Y = FALSE
 
 # 1. Run image files ----
