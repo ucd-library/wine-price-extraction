@@ -19,15 +19,22 @@ class Crawler {
    * 
    */
   async getImageUrls(options={}) {
-    let root = '/collection/' + this.collection + (options.root || '/');
-
     options.images = [];
 
     api.setConfig({
       host : this.host
     });
 
-    await this._crawl(root, options);
+    let roots = options.root || '/';
+    if( !Array.isArray(roots) ) {
+      roots = [roots];
+    }
+
+    for( let root of roots ) {
+      root = '/collection/' + this.collection + root;
+      console.log('crawling '+root);
+      await this._crawl(root, options);
+    }
 
     return options.images;
   }
