@@ -40,6 +40,8 @@ source("wine-price-extraction/dsi/R/parse_items_data.R")
 
 # Evaluation 
 source("wine-price-extraction/dsi/R/wine_evaluate.R")
+# Functions to summarize name hit success and add flags to ENTRY_PRICE
+source("wine-price-extraction/dsi/R/wine_flag_and_summarize.R")
 
 # flip.y argument for back-rotating image points, accounts for plotting images with y = 0 at top left instead of bottom left
 FLIP.Y = FALSE
@@ -176,11 +178,12 @@ NAME_MATCH  = lapply(1:length(NAME_MATCH ), function(i) {
 NAME_MATCH  = do.call("rbind", NAME_MATCH )
 write.csv(NAME_MATCH, file.path(TABLE.OUTPUT.DIR, "NAME_MATCH.csv"), row.names = FALSE)
 
-#     Load PRICE data ----
+#     ENTRY_PRICE ----
 
+#     - Load PRICE data ----
 price_RDS_files = list.files(OUTPUT.DIR, full.names = TRUE, pattern = ".RDS", recursive = F)
 
-#     ENTRY_PRICE ----
+#     - Initialize table  ----
 
 price_output = lapply(price_RDS_files, function(x) {
   page.cols = readRDS(x)$page.cols
@@ -204,10 +207,9 @@ price_output = lapply(price_RDS_files, function(x) {
                                 flip.y = FLIP.Y)
   prices = cbind(prices, price_center_x_orig = prices_xy_orig[,1], price_center_y_orig = prices_xy_orig[,2])
 })
-
 ENTRY_PRICE = do.call("rbind", price_output) #n_distinct(ENTRY_PRICE$name_id)
 
-# Add in truth if accurate enough
+#     - Add in truth if accurate enough ----
 summary_vs_truth = read.csv(file.path(EVAL.OUTPUT.DIR, "summary_vs_truth.csv"), stringsAsFactors = FALSE)
 # Only report where number of extracted tables matches number of truth tables
 accurate_file = str_extract((summary_vs_truth %>% filter(diff.in.tables == 0))$X, "UCD_Lehmann_[0-9]{4}")
@@ -215,16 +217,37 @@ truth_all = read.csv(file.path(EVAL.OUTPUT.DIR, "truth_all.csv"), stringsAsFacto
 truth_all = filter(truth_all, file_id %in% accurate_file) #removes about 20%
 truth_all 
 
-# Add truth to table
+#     - Add truth to table ----
 ENTRY_PRICE = left_join(ENTRY_PRICE, truth_all[,c("text.true", "truth_entered_by", "file_id",
                                                   "table", "row", "cluster")], 
                 by = c("file_id" = "file_id", "table" = "table", "row" = "row", "cluster" = "cluster"))
 
-# CHANGE "text" names to "price"
-names(ENTRY_PRICE)[names(ENTRY_PRICE) == "text"] = "price_raw"
-names(ENTRY_PRICE)[names(ENTRY_PRICE) == "confidence"] = "confidence"
-names(ENTRY_PRICE)[names(ENTRY_PRICE) == "text.new"] = "price_new"
+#     - Variable transformations --------
 
+# change "text" names to "price" and move to end
+# replace existing "price" and "type" fields with just "type" on raw and new -> "type_raw" and "type_new"
+
+ENTRY_PRICE$price_raw = ENTRY_PRICE$text 
+ENTRY_PRICE$type_raw = isPrice(ENTRY_PRICE$price_raw, maybe = TRUE, dollar = FALSE, years = c(1800, 1999)) 
+ENTRY_PRICE$price_new = ENTRY_PRICE$text.new
+ENTRY_PRICE$type_new = isPrice(ENTRY_PRICE$price_new, maybe = TRUE, dollar = FALSE) 
+ENTRY_PRICE = ENTRY_PRICE %>% select(-c("price","type", "text", "text.new"))
+
+#     - Add flags ----
+
+ENTRY_PRICE$flag_year = year_flag(ENTRY_PRICE$price_new)
+ENTRY_PRICE$flag_amount = amount_flag(ENTRY_PRICE$price_new)
+ENTRY_PRICE$flag_size = size_flag(ENTRY_PRICE$price_new, size_left = 4, size_right = 2)
+ENTRY_PRICE$flag_digit = digit_flag(ENTRY_PRICE$price_new, ratio = .04)
+ENTRY_PRICE$flag_order = order_flag(ENTRY_PRICE, tocheck = "price_new")
+ENTRY_PRICE$flag_type_new = ENTRY_PRICE$type_new!="TRUE"
+# Sum of flags is a placeholder for class detection until we develop a better model
+ENTRY_PRICE$sum_flag = rowSums(ENTRY_PRICE %>% select(contains("flag_")) %>% 
+                                 select(-"flage_digit")) #digit has too many false positives
+
+#ENTRY_PRICE %>% arrange(-sum_flag*!is.na(text.true))
+
+# Save ----
 write.csv(ENTRY_PRICE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PRICE.csv"), row.names = FALSE)
 
 #     ENTRY_PAGE ----

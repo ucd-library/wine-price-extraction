@@ -5,7 +5,7 @@
 
 isPrice = #Jane's version - different than Duncan's isPrice
   
-  function(x, dollar = FALSE, maybe = FALSE, years = c(1900,2000), warn = FALSE) {
+  function(x, dollar = FALSE, maybe = FALSE, years = c(1800,1999), warn = FALSE) {
     
     x = as.character(x)
     
