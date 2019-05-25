@@ -76,6 +76,9 @@ class WorkerImpl extends Worker {
       await cloudStorage.getFile(gcsFile, ocrFile);
     }
 
+    // image is required as well
+    await this.downloadImage(this.segment.imageUrl, this.segment.filename);
+
     let {stdout, stderr} = await this.exec(
       `Rscript run_wine_price_tables.R FILESET=${ROOT_DIR}/input OUTPUT.DIR=${ROOT_DIR}/output DATA.INPUT.DIR=${ROOT_DIR}/output`
     );
@@ -119,6 +122,8 @@ class WorkerImpl extends Worker {
 
   downloadImage(url, filename) {
     let file = path.join(ROOT_DIR, 'input', filename);
+    if( fs.existsSync(file) ) return;
+
     return new Promise((resolve, reject) => {
       let ws = fs.createWriteStream(file);
       ws.on('close', () => resolve(file));
