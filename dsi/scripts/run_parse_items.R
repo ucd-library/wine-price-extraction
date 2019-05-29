@@ -74,7 +74,8 @@ varieties = read.csv(file.path(DICTIONARY.DIR,"varieties.csv")) %>% select(Varie
 
 # 4. Run ####
 
-source("/opt/dsi/R/parse_items_data.R")
+
+source(file.path(thisdir, "../R/parse_items_data.R"), echo = FALSE)
 
 # parse all pages in the folder
 parse_folder = parseFolder(NAME.INPUT.DIR, PATTERN_THRESHOLD, SIMILARITY_THRESHOLD);
