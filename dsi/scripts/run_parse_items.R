@@ -28,6 +28,21 @@ print(args)
 # Use command line args if running from terminal:
 if (length(args) >= 1) {
 
+ thisFile <- function() {
+    cmdArgs <- commandArgs(trailingOnly = FALSE)
+    needle <- "--file="
+    match <- grep(needle, cmdArgs)
+    if (length(match) > 0) {
+      # Rscript
+      return(dirname(sub(needle, "", cmdArgs[match])))
+    } else {
+      # 'source'd via R console
+      return(dirname(sys.frames()[[1]]$ofile))
+    }
+  }
+
+  thisdir <- thisFile()
+
   argnames = toupper(sapply(args, function(x) strsplit(x, "=")[[1]][1])) # For command line args, case doesn't matter
   argnums = sapply(possible.args, match, argnames)
   argvals = rep(NA, length(possible.args))
@@ -73,7 +88,6 @@ designations = read.csv(file.path(DICTIONARY.DIR, "designations.csv")) %>% selec
 varieties = read.csv(file.path(DICTIONARY.DIR,"varieties.csv")) %>% select(Variety)
 
 # 4. Run ####
-
 
 source(file.path(thisdir, "../R/parse_items_data.R"), echo = FALSE)
 
