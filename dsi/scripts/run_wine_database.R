@@ -40,6 +40,7 @@ source("wine-price-extraction/dsi/R/parse_items_data.R")
 
 # Evaluation 
 source("wine-price-extraction/dsi/R/wine_evaluate.R")
+
 # Functions to summarize name hit success and add flags to ENTRY_PRICE
 source("wine-price-extraction/dsi/R/wine_flag_and_summarize.R")
 
@@ -268,7 +269,7 @@ write.csv(ENTRY_PAGE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PAGE.csv"), row.names =
 # see https://github.com/ucd-library/wine-price-extraction/issues/9 for discussion of vars
 text_vars_to_include = c("text", "text_raw", "name", "id", "name_id", "file_id") #remember this id is the id in the catalog
 wine_vars_to_include = c("country", "year", "color", "variety", "region", "province", "designation")
-price_vars_to_include = c("price_raw", "confidence", "type", "price_new", "cluster", "table","row", "entry_id", "name_id", "text.true", "truth_entered_by", "col.header")
+price_vars_to_include = c("price_raw", "confidence", "type_new", "price_new", "cluster", "table","row", "entry_id", "name_id", "text.true", "truth_entered_by", "col.header")
 
 PRICE_NAME = left_join(ENTRY_PRICE[,price_vars_to_include],
                         ENTRY_NAME[,c(text_vars_to_include, wine_vars_to_include)], 
