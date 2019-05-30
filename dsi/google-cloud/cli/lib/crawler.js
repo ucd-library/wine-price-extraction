@@ -64,6 +64,7 @@ class Crawler {
         imageUrl: node['@id'],
         filename : this._getPropertyString(node, FILENAME),
         pathId : node['@id'].replace(new RegExp('.*collection/'+this.collection), '')
+                            .replace(/\.[a-z]*$/i, '')
       });
     }
   }
