@@ -6,7 +6,7 @@
 ##################################################################################################################
 
 library(reshape2, quietly = TRUE)
-library(ggplot2, quietly = TRUE)
+#library(ggplot2, quietly = TRUE)
 library(dplyr, quietly = TRUE)
 library(RecordLinkage, quietly = TRUE)
 
@@ -56,7 +56,7 @@ if (!file.exists (EVAL.OUTPUT.DIR) ) {
 # A. Basic stats for all files ####
 
     # internal check ----
-fileset1 = list.files(EVAL.INPUT.DIR, pattern = ".RDS", full.names = TRUE, recursive = FALSE)
+fileset1 = list.files(EVAL.INPUT.DIR, pattern = "*-[0-9][0-9][0-9].RDS", full.names = TRUE, recursive = FALSE)
 
 evaluate.output = vector("list", length(fileset1)) #returns list
 for (i in 1:length(fileset1)) {
@@ -82,12 +82,12 @@ output_summary_internal = data.frame(t(sapply(evaluate.output, function(eval) {
 write.csv(output_summary_internal, file.path(EVAL.OUTPUT.DIR, "output_summary_internal.csv"))
 
     # plot that ----
-output_summary_internal_singlestat = ggplot( melt(output_summary_internal %>%
-                                                    dplyr::select(c("n.tables", "n.columns.total", "n.entries.total")), id.vars = NULL) %>%
-                                               mutate(value = as.numeric(value))) +
-  geom_histogram(aes(x = value, group = variable)) + facet_grid(~variable, scales = "free_x")
+#output_summary_internal_singlestat = ggplot( melt(output_summary_internal %>%
+#                                                    dplyr::select(c("n.tables", "n.columns.total", "n.entries.total")), id.vars = NULL) %>%
+#                                               mutate(value = as.numeric(value))) +
+#  geom_histogram(aes(x = value, group = variable)) + facet_grid(~variable, scales = "free_x")
 
-ggsave(output_summary_internal_singlestat, filename = file.path(NAME.OUTPUT.DIR, "output_summary_internal_singlestat.png"))
+#ggsave(output_summary_internal_singlestat, filename = file.path(NAME.OUTPUT.DIR, "output_summary_internal_singlestat.png"))
 
 # B. Compare to truth For files we have truth for ####
 
@@ -95,7 +95,6 @@ ggsave(output_summary_internal_singlestat, filename = file.path(NAME.OUTPUT.DIR,
 truth.subdir = list.dirs(TRUTH.DIR, full.names = T, recursive = T)
 
 summary.output = lapply(truth.subdir, function(elem) {
-
   fileset.truth = list.files(elem, pattern = ".RDS", full.names = TRUE)
 
   if (length(fileset.truth) > 0) {

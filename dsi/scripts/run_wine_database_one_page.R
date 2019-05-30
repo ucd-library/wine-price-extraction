@@ -82,7 +82,7 @@ source(file.path(thisdir,"../R/helper.R"), echo = F) #redundant
 source(file.path(thisdir,"../R/wine_price_tables.R"), echo = F)
 
 # Evaluation
-source(file.path(thisdir,"../R/wine_evaluate.R"))
+#source(file.path(thisdir,"../R/wine_evaluate.R"))
 # Functions to summarize name hit success and add flags to ENTRY_PRICE
 source(file.path(thisdir,"../R/wine_flag_and_summarize.R"))
 
@@ -94,10 +94,11 @@ parsed_folder = readRDS(IN);
 # THESE ARE THE GLOBALS FOR THE run_wine_evaluate SCRIPT
 EVAL.INPUT.DIR=OUTPUT.DIR;
 EVAL.OUTPUT.DIR=OUTPUT.DIR;
+NAME.OUTPUT.DIR=OUTPUT.DIR;
 #TRUTH.DIR=TRUTH.DIR
 
 # Wait for now
-source(file.path(thisdir,"../scripts/run_wine_evaluate.R"))
+# source(file.path(thisdir,"../scripts/run_wine_evaluate.R"))
 # after running, we have data in output_summary_internal.csv, summary_vs_truth.csv,truth_all.csv
 
 
@@ -465,12 +466,12 @@ ENTRY_PRICE = do.call("rbind", price_output) #n_distinct(ENTRY_PRICE$name_id)
 
 
 #     - Add in truth if accurate enough ----
-summary_vs_truth = read.csv(file.path(OUTPUT.DIR, "summary_vs_truth.csv"), stringsAsFactors = FALSE)
+#summary_vs_truth = read.csv(file.path(OUTPUT.DIR, "summary_vs_truth.csv"), stringsAsFactors = FALSE)
 # Only report where number of extracted tables matches number of truth tables
-accurate_file = str_extract((summary_vs_truth %>% filter(diff.in.tables == 0))$X, "UCD_Lehmann_[0-9]{4}")
-truth_all = read.csv(file.path(OUTPUT.DIR, "truth_all.csv"), stringsAsFactors = FALSE)
+#accurate_file = str_extract((summary_vs_truth %>% filter(diff.in.tables == 0))$X, "UCD_Lehmann_[0-9]{4}")
+truth_all = read.csv(file.path(TRUTH.DIR, "truth_all.csv"), stringsAsFactors = FALSE)
 truth_all = filter(truth_all, file_id %in% accurate_file) #removes about 20%
-truth_all
+#truth_all
 
 #     - Add truth to table ----
 ENTRY_PRICE = left_join(ENTRY_PRICE, truth_all[,c("text.true", "truth_entered_by", "file_id",
