@@ -47,14 +47,6 @@
 # -parse section titles and item details
 ####################
 
-# 0. Setup -------------------------------------------------------------------
-# load libraries
-library(dplyr)
-library(tidyverse)
-library(RODBC)
-library(RecordLinkage)
-library(gsubfn) #for cat0
-
 # See stan_run_parse_items for additional setup steps, e.g. setting SIMILARITY_THRESHOLD and PATTERN_THRESHOLD values
 # and loading dictionaries
 

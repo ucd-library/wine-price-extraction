@@ -45,14 +45,6 @@
 # -parse section titles and item details
 ####################
 
-
-# load libraries
-library(dplyr)
-library(tidyverse)
-library(RODBC)
-library(RecordLinkage)
-library(gsubfn) #for cat0
-
 # See stan_run_parse_items for additional setup steps, e.g. setting SIMILARITY_THRESHOLD and PATTERN_THRESHOLD values
 # and loading dictionaries
 
@@ -396,7 +388,7 @@ dictionary_submatches = function(result_object, text_part, attribute, dictionary
       
       #print(submatch);
       #print(class(submatch));
-      #cat0("\n", attribute, ":", paste0(submatch, collapse = "/"), "/end");
+      #cat("\n", attribute, ":", paste0(submatch, collapse = "/"), "/end"), sep = "");
       
       # sometimes str_extract gives strange results that are not full match from dictionary
       # make sure our value is not empty
@@ -913,7 +905,7 @@ pick_better_result = function(result1, result2) {
     points2 = points2 + (3 / match_type);
   }
   
-  cat0("\npoints re-ocr: ", points1, "; points first ocr: ", points2);
+  cat("\npoints re-ocr: ", points1, "; points first ocr: ", points2, sep ="");
   
   if (points1 >= points2) {
     return(result1)
@@ -1051,13 +1043,13 @@ find_patterns = function(page_results, page_stats) {
     if (!is.null(pattern_upper) & !is.null(i$upper_text)) {
       if (is.null(i[[paste0(pattern_upper, "_sim")]])) {
         # not recognized, add to dictionary??
-        cat0("\nU not recognized: ", i$upper_text, " (", i$text, ")");
+        cat("\nU not recognized: ", i$upper_text, " (", i$text, ")", sep = "");
       } else if (i[[paste0(pattern_upper, "_sim")]] <= SIMILARITY_THRESHOLD) {
         # submatch, remove from 'inspect'?
-        cat0("\nU submatch: ", i[[pattern_upper]]);
+        cat("\nU submatch: ", i[[pattern_upper]], sep = "");
       } else if (i[[paste0(pattern_upper, "_sim")]] < 1) {
         # decent, remove from 'inspect' ?
-        cat0("\nU decent: ", paste(i[[pattern_upper]], collapse = " / "));
+        cat("\nU decent: ", paste(i[[pattern_upper]], collapse = " / "), sep = "");
       }
     }
     
@@ -1065,13 +1057,13 @@ find_patterns = function(page_results, page_stats) {
     if (!is.null(pattern_lower) & !is.null(i$lower_text)) {
       if (is.null(i[[paste0(pattern_lower, "_sim")]])) {
         # not recognized, add to dictionary??
-        cat0("\nL not recognized: ", i$lower_text, " (", i$text, ")");
+        cat("\nL not recognized: ", i$lower_text, " (", i$text, ")", sep = "");
       } else if (i[[paste0(pattern_lower, "_sim")]] <= SIMILARITY_THRESHOLD) {
         # submatch, remove from 'inspect'?
-        cat0("\nL submatch: ", i[[pattern_lower]]);
+        cat("\nL submatch: ", i[[pattern_lower]], sep = "");
       } else if (i[[paste0(pattern_lower, "_sim")]] < 1) {
         # decent, remove from 'inspect' ?
-        cat0("\nL decent: ", paste(i[[pattern_lower]], collapse = " / "));
+        cat("\nL decent: ", paste(i[[pattern_lower]], collapse = " / "), sep = "");
       }
     }
     
@@ -1079,13 +1071,13 @@ find_patterns = function(page_results, page_stats) {
     if (!is.null(pattern_brackets) & !is.null(i$brackets_text)) {
       if (is.null(i[[paste0(pattern_brackets, "_sim")]])) {
         # not recognized, add to dictionary??
-        cat0("\nB not recognized: ", i$brackets_text, " (", i$text, ")");
+        cat("\nB not recognized: ", i$brackets_text, " (", i$text, ")", sep = "");
       } else if (i[[paste0(pattern_brackets, "_sim")]] <= SIMILARITY_THRESHOLD) {
         # submatch, remove from 'inspect'?
-        cat0("\nB submatch: ", i[[pattern_brackets]]);
+        cat("\nB submatch: ", i[[pattern_brackets]], sep = "");
       } else if (i[[paste0(pattern_brackets, "_sim")]] < 1) {
         # decent, remove from 'inspect' ?
-        cat0("\nB decent: ", paste(i[[pattern_brackets]], collapse = " / "));
+        cat("\nB decent: ", paste(i[[pattern_brackets]], collapse = " / "), sep ="");
       }
     }
   }

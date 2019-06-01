@@ -28,22 +28,11 @@
 # Setup ####
 ####################################################################################################
 
-library(Rtesseract, warn.conflicts = FALSE)
-library(tidyverse, warn.conflicts = FALSE)
-library(jpeg, warn.conflicts = FALSE)
-library(cluster, warn.conflicts = FALSE)
-library(stringr, warn.conflicts = FALSE)
-library(changepoint, warn.conflicts = FALSE)
-library(RecordLinkage, warn.conflicts = FALSE)
-
-#source("R/wine_price_pageCols.R")
-#source("R/wine_price_tables_functions.R")
-#source("R/wine_price_nameBoxes.R")
-#source("R/helper.R") 
-
 # MAIN FUNCTION, encompassing all numbered steps below ----
 # for examples of this code being run see run_wine_price_tables.R in the adjacent scripts folder
-
+#'@param file1 path to image to extract pricetables from
+#'@param data1 pre-run output of GetBoxes can be used instead of re-OCRing the whole image
+#'@output.dir path to store output of function, including two images and one RDS object
 price_table_extraction <- function(file1,
                                    data1 = NULL,
                                    output.dir = ".",
@@ -56,7 +45,7 @@ price_table_extraction <- function(file1,
                                    column.header = c("bottle", "case", "quart", "fifth", "half", "of", "24"),
                                    res1 = 600,
                                    image.check = FALSE, 
-                                   show.ggplot = TRUE) {
+                                   show.ggplot = FALSE) {
   # res1 is default resolution which is 600 for wine images. Only set if img resolution is missing.
   # column.header is convered to lower for comparison
   # save.data will save the output of GetBoxes to the data.output.dir
@@ -81,7 +70,7 @@ price_table_extraction <- function(file1,
     stop("Image does not exist. Must supply valid path to image as as file1 argument.")
   }
   
-  image.dims = attributes(readJPEG(img1))$dim #note we hope to use Rtesseract attribute here later so we can skip this
+  image.dims = attributes(jpeg::readJPEG(img1))$dim #note we hope to use Rtesseract attribute here later so we can skip this
   height1 = image.dims[1]
   width1 = image.dims[2]
   
@@ -91,7 +80,7 @@ price_table_extraction <- function(file1,
   if(image.check) {
     gb1 = GetBoxes(api0)
     prices1 = gb1[isPrice(gb1$text),] 
-    plot(api0, cropToBoxes = F, bbox = prices1)
+    Rtesseract::plot(api0, cropToBoxes = F, bbox = prices1)
   }
   # tried removing low-confidence prices -- removed real prices, so don't do that
   
@@ -158,8 +147,8 @@ price_table_extraction <- function(file1,
   }
   
   ############# img check 2 ####
-  if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1)
-  if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1)
+  if(image.check) Rtesseract::plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1)
+  if(image.check & !is.null(page.cols$ids)) Rtesseract::plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1)
   
   # 3 ####
   cat("\n******* add prices and ids (3) **********\n")
@@ -170,8 +159,8 @@ price_table_extraction <- function(file1,
   if (!is.null(page.cols$ids)) { page.cols = addIds(page.cols, px1) }
   
   ############# img check 3 ####
-  if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
-  if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
+  if(image.check) Rtesseract::plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
+  if(image.check & !is.null(page.cols$ids)) Rtesseract::plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
   
   ############# table check 1 ####
   if (!is.null(page.cols$ids)) {
@@ -228,8 +217,8 @@ price_table_extraction <- function(file1,
   page.cols$width_orig = width1
   
   ############# img check 4 ####
-  if(image.check) plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
-  if(image.check & !is.null(page.cols$ids)) plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
+  if(image.check) Rtesseract::plot(tesseract(px1), cropToBoxes = F, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
+  if(image.check & !is.null(page.cols$ids)) Rtesseract::plot(tesseract(px1), cropToBoxes = F, bbox = page.cols$ids, img = px1, confidence = FALSE)
   
   # 6 (this will fail if no words in the name) #### 
   cat("************** get names (6) *************\n")
@@ -252,11 +241,11 @@ price_table_extraction <- function(file1,
     
     final.prices[[x]] = list(
       ids = ifelse(!is.null(page.cols$ids) && sum(page.cols$ids$table == x) > 0,
-                   list(page.cols$ids %>% filter(table == x) %>% dplyr::select(row, text)),
+                   list(page.cols$ids %>% dplyr::filter(table == x) %>% dplyr::select(row, text)),
                    list(NULL)) ,
       prices = lapply(table.prices, dplyr::select, row, text.new))
     
-    names(final.prices[[x]]$prices) = (filter(page.cols$price_cols, table == x) %>% 
+    names(final.prices[[x]]$prices) = (dplyr::filter(page.cols$price_cols, table == x) %>% 
                                          arrange(col.left))[["col.header"]]
     final.prices[[x]]
   })
@@ -270,7 +259,7 @@ price_table_extraction <- function(file1,
     #### save name box image ####
     tmp.boxes = do.call("rbind", name.boxes[[1]])
     png(file.path(output.dir, paste0(file1, "_name_boxes.png")), width = 1000, height = 1500)
-    plot(tesseract(px1), cropToBoxes = F, bbox = tmp.boxes, img = px1, confidence = FALSE)
+    Rtesseract::plot(tesseract(px1), cropToBoxes = F, bbox = tmp.boxes, img = px1, confidence = FALSE)
     dev.off()
     
   } else {
@@ -282,7 +271,7 @@ price_table_extraction <- function(file1,
   #### save price image ####
   png(file.path(output.dir, paste0(file1, "_price_boxes.png")), width = 1000, height = 1500)
   #page.cols$prices entries should only have class data.frame, not also tbl_df or other
-  plot(tesseract(px1), cropToBoxes = FALSE, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
+  Rtesseract::plot(tesseract(px1), cropToBoxes = FALSE, bbox = do.call("rbind", page.cols$prices), img = px1, confidence = FALSE)
   dev.off()
   
   return(list(final.data = final.data, page.cols = page.cols))

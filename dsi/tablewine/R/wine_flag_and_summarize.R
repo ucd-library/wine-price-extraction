@@ -169,20 +169,8 @@ amount_flag = function(prices_to_check, min_price = 0.1, max_price = 2000) {
 # If bottle, case, use global criteria
 # Otherwise, use local ratio
 ratio_flag = function(TABLE) {
-  TABLE2 = TABLE %>% group_by(file_id, table) %>% 
-    select(c("price_new", "col.header", "table", "cluster", "row")) %>% head(300) %>%
-    right_join(data.frame(row = unique(row)))
-     
-     
-     %>% 
-       filter(n_cluster == 2) 
-    
-  
-  {
-    
+  #tbd
   }
-  
-}
   
 # David's functin:
 # check for nonincreasing values in table price column.

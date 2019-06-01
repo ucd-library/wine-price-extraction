@@ -61,7 +61,7 @@ isPrice = #Jane's version - different than Duncan's isPrice
         if (length(years) == 2) {
           first.dig.low = strtrim(years[1], 1)
           first.dig.high = strtrim(years[2], 1)
-          year = as.numeric(str_extract(x, paste0("[", first.dig.low, "|", first.dig.high,"]", "[0-9]{3}")))
+          year = as.numeric(stringr::str_extract(x, paste0("[", first.dig.low, "|", first.dig.high,"]", "[0-9]{3}")))
           ifelse (!is.na(year) & (year >= years[1] & year <= years[2]), "year", "number")
         } else {"number"}
       }
@@ -81,22 +81,22 @@ numToPrice = function(numAsChar, dollar = FALSE) {
   #order of options is important (don't reorder)
   
   #option 1, just have to remove extra stuff at end, e.g. a period -- at most two
-  if( grepl("^([0-9]+)\\.[0-9]{2}.{0,2}$", numAsChar)) return(str_extract(numAsChar, "^([0-9]+)\\.[0-9]{2}"))
+  if( grepl("^([0-9]+)\\.[0-9]{2}.{0,2}$", numAsChar)) return(stringr::str_extract(numAsChar, "^([0-9]+)\\.[0-9]{2}"))
   
   #option 2, 4+ digit price with comma -- remove comma, allow at most 9,999.99
   if (grepl("^[0-9]{1},[0-9]{3}\\.[0-9]{2}", numAsChar)) { return(gsub(",","",numAsChar))}
   
   #option 3, number with wrong puncuation
   if( grepl("^([0-9]+)[\\ |,][0-9]{2}", numAsChar)) {
-    return(gsub("[\\ |,]", "\\.", str_extract(numAsChar, "^([0-9]+)[\\ |,][0-9]{2}")))
+    return(gsub("[\\ |,]", "\\.", stringr::str_extract(numAsChar, "^([0-9]+)[\\ |,][0-9]{2}")))
   }
 
   #option 4, number with stuff before -- allow at most lots
-  if (dollar & grepl("^.([0-9]+)\\.[0-9]{2}", numAsChar)) return(str_extract(numAsChar, "([0-9]+)\\.[0-9]{2}"))
+  if (dollar & grepl("^.([0-9]+)\\.[0-9]{2}", numAsChar)) return(stringr::str_extract(numAsChar, "([0-9]+)\\.[0-9]{2}"))
 
   if (!dollar) {
     if ( grepl("\\$[0-9]+", numAsChar)) return(FALSE)
-    if ( grepl("([0-9]+)\\.[0-9]{2}", numAsChar)) return(str_extract(numAsChar, "([0-9]+)\\.[0-9]{2}"))
+    if ( grepl("([0-9]+)\\.[0-9]{2}", numAsChar)) return(stringr::str_extract(numAsChar, "([0-9]+)\\.[0-9]{2}"))
   }
   
   #option 5, number with no leading 0 -- add the 0
@@ -104,7 +104,7 @@ numToPrice = function(numAsChar, dollar = FALSE) {
   
   #option 6 number without punctuation (remove any puncuation at end -- allow at most 2 after)
   if (grepl("[0-9]{3,10}.{0,2}$", numAsChar)) {
-    numAsChar = str_extract(numAsChar, "[0-9]{3,10}")     
+    numAsChar = stringr::str_extract(numAsChar, "[0-9]{3,10}")     
     num = strsplit(numAsChar, split="")[[1]]
     if (!tail(num,1) %in% c("0","5","9") & paste0(head(num,2), collapse = "") %in% c("18","19")) {
       warning(paste0(numAsChar, " is probably a year, excluded"))
@@ -132,7 +132,7 @@ charWidth <- function(boxes) {
 # Types of text by character width
 charTypes <- function(boxes, types = 2, conf.min = 50) { #using k-means
   boxes$charwidth = charWidth(boxes)
-  boxes.use = filter(boxes, confidence >= conf.min) # only use somewhat high conf boxes for finding char types
+  boxes.use = dplyr::filter(boxes, confidence >= conf.min) # only use somewhat high conf boxes for finding char types
   boxes.kmeans = kmeans(boxes.use$charwidth, centers = max(1, min(nrow(boxes.use)-1, types)))
   cluster = sapply(boxes$charwidth, function(x){
     which.min(abs(x - boxes.kmeans$centers))})
@@ -233,12 +233,12 @@ checkMissingBoxes <- function(boxes, missing.boxes, type = "price", cluster = co
   lapply(1:length(boxes), function(i) {
     box = boxes[[i]]
     if (!is.null(boxes[[i]])) {
-      box$text.new = str_extract(box$text, pattern)
+      box$text.new = stringr::str_extract(box$text, pattern)
       box$price = isPrice(box$text.new, dollar = FALSE, maybe = FALSE)
       box$type = isPrice(box$text.new, maybe = T, dollar = F)
       box$cluster = cluster
       box$table = table
-      box = filter(box, type!="FALSE")
+      box = dplyr::filter(box, type!="FALSE")
       if (nrow(box) > 1) {
         box = arrange(box, type=="FALSE")
         box = box[1,]; cat("Two prices where one should be? ", box$text.new)
@@ -271,7 +271,7 @@ removeDuplicates <- function(table, buffer = 10, justify = "right") { #price or 
     look.for.duplicates = apply(table[, look.columns], 1, 
                               function(x) {apply(table[, look.columns], 1, 
                                   function(y) {max(abs(y-x))})})
-    look.for.duplicates = data.frame(which(apply(look.for.duplicates, 1, "<",  buffer), arr.ind = T)) %>%  filter(., row > col)
+    look.for.duplicates = data.frame(which(apply(look.for.duplicates, 1, "<",  buffer), arr.ind = T)) %>%  dplyr::filter(., row > col)
     if(nrow(look.for.duplicates) > 0) {
       remove = apply(look.for.duplicates, 1, function(x) {
         x[which.min(unlist(table[unlist(x),"confidence"]))]
@@ -286,12 +286,12 @@ removeDuplicates <- function(table, buffer = 10, justify = "right") { #price or 
 extractPrice <- function(x, dollar = FALSE) 
   {
     if (dollar == FALSE) {
-      extraction = str_replace(x, ",", "\\.") #first replace commas with periods
-      extraction = str_extract(extraction, "[0-9|,]+\\.{0,1}[0-9]+.{0,1}$") #(?![0-9])
-      if (length(extraction)==0) {extraction = str_extract(extraction, "[0-9]+\\.[0-9]{2}$")}
+      extraction = stringr::str_replace(x, ",", "\\.") #first replace commas with periods
+      extraction = stringr::str_extract(extraction, "[0-9|,]+\\.{0,1}[0-9]+.{0,1}$") #(?![0-9])
+      if (length(extraction)==0) {extraction = stringr::str_extract(extraction, "[0-9]+\\.[0-9]{2}$")}
       if (length(extraction)==0) {return(FALSE)} else {return(extraction)}
     } else {
-      extraction = str_extract(x, "\\$[0-9]+[.,][0-9]{2}")
+      extraction = stringr::str_extract(x, "\\$[0-9]+[.,][0-9]{2}")
       if (is.na(extraction)) {return(FALSE)} else {return(extraction)}
     }
     
@@ -307,7 +307,7 @@ addRows <- function(page.cols, buffer = page.cols$charheight/2, type = "price") 
     n.tables = n_distinct(page.cols$price_cols$table)
   
     all.prices = lapply(1:n.tables, function(i) {
-      table.prices = filter(all.prices, table == i) %>% arrange(top, bottom)
+      table.prices = dplyr::filter(all.prices, table == i) %>% arrange(top, bottom)
       buffer = page.cols$charheight/2
       table.prices$row = c(1, cumsum(diff(sort(table.prices$bottom))>buffer | diff(sort(table.prices$bottom))>buffer)+1)
       table.prices
@@ -321,11 +321,11 @@ addRows <- function(page.cols, buffer = page.cols$charheight/2, type = "price") 
     list.table.ids = lapply(unique(page.cols$ids$table), function(i) {
       
       if (is.na(i)) {
-        table.ids = filter(page.cols$ids, is.na(table))
+        table.ids = dplyr::filter(page.cols$ids, is.na(table))
       } else {
-        table.ids = filter(page.cols$ids, table == i)
+        table.ids = dplyr::filter(page.cols$ids, table == i)
       }
-      tmp.prices = filter(all.prices, table == as.numeric(i)) %>% arrange(top, left)
+      tmp.prices = dplyr::filter(all.prices, table == as.numeric(i)) %>% arrange(top, left)
       # price with midpoint (top + bottom)/2 that's closest to and below id bottom
       row.mids = tmp.prices %>% group_by(row) %>% summarize(mid = mean(top + bottom)/2)
       # find the closest lower-than row.mid for any id bottom and assign id row accordingly
@@ -363,14 +363,14 @@ findHeader <- function(colData, data1, column.header, buffer) {
     b = as.numeric(x[which(names(colData) == c("col.bottom"))])
     
     # larger bottom buffer in case top line(s) of table missing
-    text1 = filter(data1, left > l - 2*buffer, left < r, bottom < b, top > b - 6*buffer)
+    text1 = dplyr::filter(data1, left > l - 2*buffer, left < r, bottom < b, top > b - 6*buffer)
     
     if (nrow(text1) > 0) {
       # filter by levenshtein distance one or zero
-      text1 = filter(text1, sapply(tolower(text1$text), function(x) {min(levenshteinDist(x, tolower(column.header)))}) <= 1)
+      text1 = dplyr::filter(text1, sapply(tolower(text1$text), function(x) {min(RecordLinkage::levenshteinDist(x, tolower(column.header)))}) <= 1)
       # if the match is for a number is should be exact
       if (nrow(text1) > 0) {
-        text1 = filter(text1, ! (grepl(text, pattern = "^[0-9]+") & ! ( text %in% column.header ) ) )
+        text1 = dplyr::filter(text1, ! (grepl(text, pattern = "^[0-9]+") & ! ( text %in% column.header ) ) )
       }
       # paste together if several (if bottle and case are both words we shoudl be able to figure out which is right using the prices)
       if (nrow(text1) > 0) {
