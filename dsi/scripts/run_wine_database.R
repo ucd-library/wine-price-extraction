@@ -21,28 +21,9 @@
 
 # 0. Setup ----
 
-library(dplyr)
-library(stringr)
+library(tablewine)
 
 setwd("~/Documents/DSI")
-
-# Source function files ----
-
-# Table extraction
-source("wine-price-extraction/dsi/R/wine_price_pageCols.R", echo = F) #redundant
-source("wine-price-extraction/dsi/R/wine_price_tables_functions.R", echo = F) #redundant
-source("wine-price-extraction/dsi/R/wine_price_nameBoxes.R", echo = F) #redundant
-source("wine-price-extraction/dsi/R/helper.R", echo = F) #redundant
-source("wine-price-extraction/dsi/R/wine_price_tables.R", echo = F)
-
-# Name parsing 
-source("wine-price-extraction/dsi/R/parse_items_data.R")
-
-# Evaluation 
-source("wine-price-extraction/dsi/R/wine_evaluate.R")
-
-# Functions to summarize name hit success and add flags to ENTRY_PRICE
-source("wine-price-extraction/dsi/R/wine_flag_and_summarize.R")
 
 # flip.y argument for back-rotating image points, accounts for plotting images with y = 0 at top left instead of bottom left
 FLIP.Y = FALSE
@@ -56,9 +37,10 @@ FLIP.Y = FALSE
 
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/test_image"
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/MoreTruthPages/"
-FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< has both now
-#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_3291.jpg"#<- single file
-OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
+#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< has both now
+FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_3291.jpg"#<- single file
+DATA1 = readRDS("/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/UCD_Lehmann_3291_data1.RDS")
+OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/sample_output/"
 DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 SAVE.DATA = FALSE

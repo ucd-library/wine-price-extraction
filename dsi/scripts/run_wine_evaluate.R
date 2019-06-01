@@ -5,12 +5,7 @@
 # 0. Setup
 ##################################################################################################################
 
-library(reshape2, quietly = TRUE)
-library(ggplot2, quietly = TRUE)
-library(dplyr, quietly = TRUE)
-library(RecordLinkage, quietly = TRUE)
-
-#source("~/Documents/DSI/wine-price-extraction/dsi/R/wine_evaluate.R")
+library(tablewine)
 
 #EVAL.INPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output"
 #TRUTH.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth"
