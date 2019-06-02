@@ -11,19 +11,19 @@ library(tablewine)
 # Get args (defaults and process from command line) ----
 
 # IF running from this script, set args like...: 
-#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"
-FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_0008.jpg"
-DATA1 = readRDS("/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/UCD_Lehmann_0008_data1.RDS")
-OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
-DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
-DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
-SAVE.DATA = FALSE
-
-#DEFAULTS 
-OCR.ONLY = FALSE
-SAVE.DATA = TRUE
-DATA1 = NULL
-SAVE.DESKEWED = FALSE
+# FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"
+# FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_0008.jpg"
+# DATA1 = readRDS("/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/UCD_Lehmann_0008_data1.RDS")
+# OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
+# DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
+# DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
+# SAVE.DATA = FALSE
+# 
+# #DEFAULTS
+# OCR.ONLY = FALSE
+# SAVE.DATA = TRUE
+# DATA1 = NULL
+# SAVE.DESKEWED = FALSE
 
 # For command line args, case doesn't matter (they'll be converted to upper either way)
 possible.args = c("FILESET", "OUTPUT.DIR", "DATA.OUTPUT.DIR", "DATA.INPUT.DIR",
@@ -105,7 +105,7 @@ if (!exists("SAVE.DESKEWED") || is.na(SAVE.DESKEWED)) {
   if (SAVE.DESKEWED!=TRUE) {SAVE.DESKEWED = FALSE}
 }
 
-if ( !exists("PIX.THRESHOLD") || is.na(PIX.THRESHOLD) || is.na(as.numeric(PIX.THRESHOLD)) ) {
+if ( !exists("PIX.THRESHOLD") || is.null(PIX.THRESHOLD) || is.na(PIX.THRESHOLD) || is.na(as.numeric(PIX.THRESHOLD)) ) {
   PIX.THRESHOLD = NULL
   PIX.NEWVALUE = NULL
 } else if (is.numeric(PIX.THRESHOLD) && (PIX.THRESHOLD <=1 || PIX.THRESHOLD >= 256)) {

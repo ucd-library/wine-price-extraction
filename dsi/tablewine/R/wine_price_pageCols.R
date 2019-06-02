@@ -396,9 +396,10 @@ pageCols.initialize <- function(data1, img = NULL, img.height = NULL, show.initi
   
   data1$price = isPrice(data1$text)
   data1$type = isPrice(data1$text, maybe = TRUE)
-  print(dplyr::filter(data1, type != "FALSE") %>% 
+  
+  if (show.initial.plot) {try({print(dplyr::filter(data1, type != "FALSE") %>% 
           ggplot2::ggplot(aes(x = left, y = bottom, color = type)) + geom_point() + ylim(img.height,0) +
-          ggtitle("pageCols.inititalize 1: Numeric data by type") )
+          ggtitle("pageCols.inititalize 1: Numeric data by type") )})}
   data1$center = (data1$left + data1$right)/2
   charheight = median((dplyr::filter(data1, price | type == "*price") %>% mutate(diff = top - bottom))$diff)
   data1 = dplyr::filter(data1, !(left <  2*charheight)) #margin: don't catch prices from previous page

@@ -204,7 +204,7 @@ splitCol <- function(prices, type = "h", px = px1, buffer = 13, height = height1
     #see if character size clusters match location clusters
     if (max.possible.vclusters > 1) {
       cluster.purity = sapply(2:max.possible.vclusters, function(x) {
-        charsize.cluster = pam(pricewidths, k = x) #switched to mediod clustering so more robust, less randomness
+        charsize.cluster = cluster::pam(pricewidths, k = x) #switched to mediod clustering so more robust, less randomness
         if (min(charsize.cluster$clusinfo[,1]) <= min.postsplit) {return(0)} else { #min(charsize.cluster$clusinfo[,1]) is cluster sizes
             charsize.order = rank(sapply(1:x, function(x) min(which(charsize.cluster$cluster == x))))
             perfect.cluster = rep(charsize.order, times = charsize.cluster$clusinfo[,1])
