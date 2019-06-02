@@ -69,6 +69,12 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       
       l = pmax(0, tmp.ids$left - buffer) # in case buffer drags off page
       r = rep(min(dplyr::filter(page.cols$price_cols, table == i)$col.left), length(l)) + buffer
+      if (sum (l > r) > 0) {
+        # Something is wrong if left is greater than right. Fix so code can continue, but warn used.
+        # This may be due to a price column being incorrectly detected as IDs, e.g. 2012.
+        print(paste("No space in ", sum (l > r) ," names of Table ", i, ". Left edge is probably wrong.\n", sep = ""))
+        l[l > r] = r - buffer
+      }
       b = tmp.ids$bottom - buffer
       t = tmp.ids$top + buffer
       # try getting a better top if the rows in ids and prices match -- then take further down of both
@@ -88,31 +94,34 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       
       # only use somewhat high-conf examples with at least 3 chars (minimize diacritics) for finding char types:
       table.words = do.call("rbind", table.boxes.words[[i]]) %>% dplyr::filter(nchar(text) > 2)
-      char.types = charTypes(table.words, types = 2, conf.min = min(90, quantile(table.words$confidence, .5)))
-      char.sizes = char.types$means
-      
-      # Adjust name boxes for prices that didn't have IDs
-      rows.missing.names = which(sapply(table.boxes.words[[i]], nrow)==0)
-      rows.missing.something = unique(c(rows.missing.names, rows.missing.ids))
-      if (length(rows.missing.something) > 0) {
-        
-        # in this case tmp.boxes has a minimum for left
-        tmp.boxes = dplyr::filter(data1,
-                           left > max(min(l) - 2*buffer, 2*page.cols$charheight), #id left with buffer or small page left margin
-                           left <= r - 2*buffer, top < max(t) + buffer*8, bottom > min(b) - buffer*8)
-        tmp.boxes$char.sizes = char.sizes[apply(abs(outer(charWidth(tmp.boxes), char.sizes, "-")), 1,  which.min)]
-        
-        # detect nameBox 
-        for (j in rows.missing.something) {
-          table.boxes.words[[i]][[j]] = nameBox(j, tmp.boxes, l, r, b, t, buffer = buffer, char.sizes, 
-                                                look.left = FALSE, look.above = TRUE, min.words = 3) #note 3 words cutoff for looking
+      if (nrow(table.words) > 0) {
+        char.types = charTypes(table.words, types = 2, conf.min = min(90, quantile(table.words$confidence, .5)))
+        char.sizes = char.types$means
+        rows.missing.names = which(sapply(table.boxes.words[[i]], nrow)==0)
+        rows.missing.something = unique(c(rows.missing.names, rows.missing.ids))
+        if (length(rows.missing.something) > 0) {
+          
+          # in this case tmp.boxes has a minimum for left
+          tmp.boxes = dplyr::filter(data1,
+                                    left > max(min(l) - 2*buffer, 2*page.cols$charheight), #id left with buffer or small page left margin
+                                    left <= r - 2*buffer, top < max(t) + buffer*8, bottom > min(b) - buffer*8)
+          tmp.boxes$char.sizes = char.sizes[apply(abs(outer(charWidth(tmp.boxes), char.sizes, "-")), 1,  which.min)]
+          
+          # detect nameBox 
+          for (j in rows.missing.something) {
+            table.boxes.words[[i]][[j]] = nameBox(j, tmp.boxes, l, r, b, t, buffer = buffer, char.sizes, 
+                                                  look.left = FALSE, look.above = TRUE, min.words = 3) #note 3 words cutoff for looking
+          }
         }
+        # Adjust name boxes for prices that didn't have IDs 
+        t = sapply(table.boxes.words[[i]], function(x) {max(x$top)})
+        b = sapply(table.boxes.words[[i]], function(x) {min(x$bottom)})
+        t[t<b] = b[t<b] + 2*page.cols$charheight # something went wrong (top below bottom) use default height
+      } else {
+        print(paste("No words in any names of Table ", i, ". Left edge is probably wrong.\n", sep = ""))
       }
 
-      t = sapply(table.boxes.words[[i]], function(x) {max(x$top)})
-      b = sapply(table.boxes.words[[i]], function(x) {min(x$bottom)})
-      t[t<b] = b[t<b] + 2*page.cols$charheight # something went wrong (top below bottom) use default height
-      table.boxes[[i]] = data.frame(l, b, r, t) #update r
+      table.boxes[[i]] = data.frame(l, b, r, t) 
       
       rownames(table.boxes[[i]]) = tmp.ids$row #for later sorting
       
