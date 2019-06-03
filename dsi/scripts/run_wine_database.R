@@ -37,21 +37,21 @@ FLIP.Y = FALSE
 
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/test_image"
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/MoreTruthPages/"
-#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< has both now
-FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_3291.jpg"#<- single file
-DATA1 = readRDS("/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/UCD_Lehmann_3291_data1.RDS")
-OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/sample_output/"
+FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< has both now
+#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_2535.jpg"#<- single file
+#DATA1 = readRDS("/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/UCD_Lehmann_0190_data1.RDS")
+OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output//"
 DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 SAVE.DATA = FALSE
 SAVE.DESKEWED = FALSE
 OCR.ONLY = FALSE
 BINARY.THRESHOLD = 150
-#PIX.THRESHOLD
+#PIX.THRESHOLD = 100; PIX.NEWVALUE = 0
 
 source("wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
 
-#Check that files ran -- ones that didn't should have bad color or no tables
+#Check that files ran -- ones that didn't should have bad color or no tabless
 list.files(FILESET, pattern = ".jpg")[! sapply(str_split(list.files(FILESET, pattern = ".jpg"), "\\."), first) %in% sapply(str_split(list.files(OUTPUT.DIR, pattern = ".RDS"), "\\."), first) ]
 
 # TO DO -- rerun files that didn't run with a dynamically detected value for PIX.THRESHOLD
@@ -66,7 +66,7 @@ source("~/Documents/DSI/wine-price-extraction/dsi/scripts/run_parse_items.R")
 
 parsed_folder = readRDS(file.path(NAME.OUTPUT.DIR, "parse_folder_sample.RDS")) # done in run_parse_items - can source
 
-# 3. Run evaluation code ----
+# 3. Current evaluation code (Optional. Will be changed to work on TABLES, not .RDS) ----
 
 #uses OUTPUT.DIR again
 EVAL.INPUT.DIR = OUTPUT.DIR
@@ -136,7 +136,7 @@ ENTRY_NAME = left_join(ENTRY_NAME,
 
 write.csv(ENTRY_NAME, file.path(TABLE.OUTPUT.DIR, "ENTRY_NAME.csv"), row.names = FALSE)
 
-#     Dictionary hit stat summary
+#     Dictionary hit stat summary (optional)
 
 write.csv(name_summary_global_stats(ENTRY_NAME),  file.path(TABLE.OUTPUT.DIR, "name_summary_global_stats.csv"), row.names = TRUE)
 
@@ -192,11 +192,26 @@ price_output = lapply(price_RDS_files, function(x) {
 })
 ENTRY_PRICE = do.call("rbind", price_output) #n_distinct(ENTRY_PRICE$name_id)
 
+#     - make ENTRY_TRUTH ####
+
+#set above
+#TRUTH.DIR = "~/Documents/DSI/wine-price-extraction/dsi/Data/price_id_truth"
+#EVAL.OUTPUT.DIR = NAME.OUTPUT.DIR
+
+source("~/Documents/DSI/wine-price-extraction/dsi/scripts/run_make_truth_table.R")
+
 #     - Add in truth if accurate enough ----
-truth_all = read.csv(file.path(EVAL.OUTPUT.DIR, "truth_all.csv"), stringsAsFactors = FALSE)
+
+ENTRY_TRUTH = read.csv(file.path(EVAL.OUTPUT.DIR, "ENTRY_TRUTH.csv"), stringsAsFactors = FALSE)
+
+accurate_file = inner_join(ENTRY_PRICE %>% group_by(file_id) %>% summarize(n_table = n_distinct(table)),
+                          ENTRY_TRUTH %>% group_by(file_id) %>% summarize(n_table = n_distinct(table)), by = c("file_id", "n_table")) %>% 
+                select(file_id)
+
+ENTRY_TRUTH$accurate_file = ENTRY_TRUTH$file_id %in% accurate_file$file_id
 
 #     - Add truth to table ----
-ENTRY_PRICE = left_join(ENTRY_PRICE, truth_all[truth_all$accurate_file,c("text.true", "truth_entered_by", "file_id",
+ENTRY_PRICE = left_join(ENTRY_PRICE, ENTRY_TRUTH[ENTRY_TRUTH$accurate_file,c("text.true", "truth_entered_by", "file_id",
                                                   "table", "row", "cluster")], 
                 by = c("file_id" = "file_id", "table" = "table", "row" = "row", "cluster" = "cluster"))
 

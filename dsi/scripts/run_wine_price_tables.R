@@ -78,7 +78,7 @@ if ( (!exists("OUTPUT.DIR") || is.na(OUTPUT.DIR) || !file.exists(OUTPUT.DIR)) &&
 
 # Check for valid directory to store data (getBoxes) output.
 # If none, data won't be stored. SAVE.DATA will be false.
-if ( !exists("DATA.OUTPUT.DIR") || is.na(DATA.OUTPUT.DIR) || !file.exists(DATA.OUTPUT.DIR) ) {
+if ( !exists("DATA.OUTPUT.DIR") || is.null(DATA.OUTPUT.DIR) || is.na(DATA.OUTPUT.DIR) || !file.exists(DATA.OUTPUT.DIR) ) {
   DATA.OUTPUT.DIR = NULL
   SAVE.DATA = FALSE
   ifelse(OCR.ONLY, stop(call. = FALSE, "OCR.ONLY is set to TRUE but no valid path to store data was supplied."),
@@ -92,7 +92,7 @@ if ( !exists("DATA.OUTPUT.DIR") || is.na(DATA.OUTPUT.DIR) || !file.exists(DATA.O
 }
 
 # Check for valid directory for input data. If given, function will attempt to use it
-if (!exists("DATA.INPUT.DIR") || is.na(DATA.INPUT.DIR) || !file.exists (DATA.INPUT.DIR) ) {
+if (!exists("DATA.INPUT.DIR") || is.null(DATA.INPUT.DIR) || is.na(DATA.INPUT.DIR) || !file.exists (DATA.INPUT.DIR) ) {
   DATA.INPUT.DIR = NULL
   DATA1 = NULL
   if (!OCR.ONLY) print("No valid path to load existing data (output of GetBoxes). Will OCR images instead.")
