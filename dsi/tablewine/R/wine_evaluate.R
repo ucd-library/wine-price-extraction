@@ -13,22 +13,11 @@
 # 
 # TO DO: 
 #  Ratios for tables with two columns (presumably bottle and case)
-#
-##################################################################################################################
-# 0. Setup
-##################################################################################################################
-
-library(reshape2, quietly = TRUE)
-library(ggplot2, quietly = TRUE)
-library(stringr, quietly = TRUE)
-library(dplyr, quietly = TRUE)
-library(RecordLinkage, quietly = TRUE)
 
 ##################################################################################################################
 # 1. Evaluation and comparison functions
 ################################################################################################################
 
-##
 wine.evaluate <- function(test.prices) {
   list(n.tables = length(test.prices),
        n.columns.per.table = sapply(test.prices, function(x) {length(x$prices)}),
@@ -119,7 +108,7 @@ wine.compare <- function(test.prices, truth.prices) {
                 dollar.diff = as.numeric(text.new.truth)-as.numeric(text.new.test),
               
                 #levenshtein distances       
-                lev.diff = levenshteinDist(text.new.truth, text.new.test),
+                lev.diff = RecordLinkage::levenshteinDist(text.new.truth, text.new.test),
               
                 missing.digit = nchar(text.new.truth) > nchar(text.new.test),
               

@@ -1,5 +1,3 @@
-# Jane's version of item parse
-# Stores output to data objects instead of text
 #
 # Parser approach for wine catalogs, v 0.7
 #
@@ -47,18 +45,9 @@
 # -parse section titles and item details
 ####################
 
-# 0. Setup -------------------------------------------------------------------
-# load libraries
-library(dplyr)
-library(tidyverse)
-library(RODBC)
-library(RecordLinkage)
-library(gsubfn) #for cat0
-
 # See stan_run_parse_items for additional setup steps, e.g. setting SIMILARITY_THRESHOLD and PATTERN_THRESHOLD values
 # and loading dictionaries
 
-# 1. Helper functions ------------------------------------------------------------------- ####
 # Initializes result object. 
 # Returns empty result object.
 init_result = function() {
@@ -104,7 +93,7 @@ init_result = function() {
     lower_text_hit = NULL,    # flag telling if this part of text had a match in dictionary
     brackets_text_hit = NULL, # flag telling if this part of text had a match in dictionary
     file_name = NULL,         # page being processed, e.g. UCD_Lehmann_0011
-    confidence = NULL,        # how reliable results are: 100% means all hits were in the dictionaries
+    confidence = NULL,        # how reliable results are: 100% means all hits were in the dictionaries (ignored)
     inspect = NULL,           # tells which fields should be inspected (cause they were not a full hit or had other issues)
     dictionary_hit = FALSE,   # tells if there was any dictionary hit
     any_hit = FALSE           # tells if there was any hit at all (e.g. id, year, color, dictionary hits, etc.)
@@ -139,7 +128,7 @@ clean_text = function(text) {
 
 
 # Looks for and trims id.
-# TODO: handle more than one number in text (not ids don't always have to be numbers)
+# TODO: handle more than one number in text
 find_id = function(result_object) {
   # look for a number at the beggining of the text (or number and max 3 characters, e.g. N-4)
   id = str_extract(result_object$text, "^[0-9]+\\S{0,3}\\b|^\\S{0,3}[0-9]+\\b");
@@ -147,8 +136,8 @@ find_id = function(result_object) {
   # if found trim from text and look for confidence
   if (!is.na(id)) {
     result_object$id = id;
-    result_object$id_conf = result_object$text_conf$confidence[grep(id, result_object$text_conf$text, fixed = TRUE)];
-    result_object$text = gsub(id, "", result_object$text, fixed = TRUE);
+    result_object$id_conf = as.numeric(result_object$text_conf$confidence[grep(id, result_object$text_conf$text)]);
+    result_object$text = gsub(id, "", result_object$text);
   }
   
   return(result_object);
@@ -276,7 +265,7 @@ divide_upper_lower = function(result_object) {
 # Returns list of matches (one or more) and their similarity with string_to_match 
 closest_match = function(string_to_match, string_vector){
   # get similarities to all values in vector
-  similarity = levenshteinSim(str1 = tolower(string_to_match), str2 = tolower(string_vector));
+  similarity = RecordLinkage::levenshteinSim(str1 = tolower(string_to_match), str2 = tolower(string_vector));
   # return best match and it's similarity
   return(list("phrase" = string_vector[similarity == max(similarity)], "similarity" = max(similarity)));
 }
@@ -399,7 +388,7 @@ dictionary_submatches = function(result_object, text_part, attribute, dictionary
       
       #print(submatch);
       #print(class(submatch));
-      #cat0("\n", attribute, ":", paste0(submatch, collapse = "/"), "/end");
+      #cat("\n", attribute, ":", paste0(submatch, collapse = "/"), "/end"), sep = "");
       
       # sometimes str_extract gives strange results that are not full match from dictionary
       # make sure our value is not empty
@@ -408,7 +397,7 @@ dictionary_submatches = function(result_object, text_part, attribute, dictionary
         # set attribute
         result_object[[attribute]] = submatch;
         # and its similarity
-        result_object[[paste0(attribute, "_sim")]] = levenshteinSim(str1 = tolower(submatch), str2 = tolower(result_object[[text_part]]));
+        result_object[[paste0(attribute, "_sim")]] = RecordLinkage::levenshteinSim(str1 = tolower(submatch), str2 = tolower(result_object[[text_part]]));
         # keep note that this part was a match (for statistics)
         result_object[[paste0(text_part, "_hit")]] =  attribute;
         # append attribute to 'inspect' field
@@ -553,7 +542,7 @@ format_result = function(result) {
   if (is.null(result$brackets_text)) {
     text = paste0(text, "\n    brackets:  ");
   } else {
-    text = paste0(text, "\n    brackets:  ", result$brackets_text); #" (", round(mean(result$brackets_conf$confidence), 0), "%)");
+    text = paste0(text, "\n    brackets:  ", result$brackets_text, " (", round(mean(result$brackets_conf$confidence), 0), "%)");
   }
   if (is.null(result$keywords)) {
     text = paste0(text, "\n    keywords:  ");
@@ -743,6 +732,81 @@ type_of_match = function(similarity) {
 }
 
 
+# Computes stats for a single page. Uses result_object.
+update_page_stats = function(stats, result) {
+  
+  # count non-dictionary fields
+  if (!is.null(result$id)) {
+    stats$id = stats$id + 1;
+  }
+  if (!is.null(result$year)) {
+    stats$year = stats$year + 1;
+  }
+  if (!is.null(result$color)) {
+    stats$color = stats$color + 1;
+  }
+  if (!is.null(result$country)) {
+    stats$country = stats$country + 1;
+    # add to list
+    stats$top_countries = append(stats$top_countries, result$country);
+  }
+  
+  
+  # count types of matches
+  if (!is.null(result$province)) {
+    match_type = type_of_match(result$province_sim);
+    stats$matches_matrix["province", match_type] = stats$matches_matrix["province", match_type] + 1;
+  }
+  if (!is.null(result$region)) {
+    match_type = type_of_match(result$region_sim);
+    stats$matches_matrix["region", match_type] = stats$matches_matrix["region", match_type] + 1;
+  }
+  if (!is.null(result$producer)) {
+    match_type = type_of_match(result$producer_sim);
+    stats$matches_matrix["producer", match_type] = stats$matches_matrix["producer", match_type] + 1;
+  }
+  if (!is.null(result$designation)) {
+    match_type = type_of_match(result$designation_sim);
+    stats$matches_matrix["designation", match_type] = stats$matches_matrix["designation", match_type] + 1;
+  }
+  if (!is.null(result$variety)) {
+    match_type = type_of_match(result$variety_sim);
+    stats$matches_matrix["variety", match_type] = stats$matches_matrix["variety", match_type] + 1;
+  }
+  
+  
+  # count hits in particular text types
+  # FIXME: when text part produces more than one hit, we count it only once (this happens in sub-matching)
+  if (!is.null(result$upper_text_hit)) {
+    stats$hits_matrix[result$upper_text_hit, 1] = stats$hits_matrix[result$upper_text_hit, 1] + 1;
+  }
+  if (!is.null(result$lower_text_hit)) {
+    stats$hits_matrix[result$lower_text_hit, 2] = stats$hits_matrix[result$lower_text_hit, 2] + 1;
+  }
+  if (!is.null(result$brackets_text_hit)) {
+    stats$hits_matrix[result$brackets_text_hit, 3] = stats$hits_matrix[result$brackets_text_hit, 3] + 1;
+  }
+  
+
+  # total dictionary hits
+  stats$dictionary_hits = sum(stats$matches_matrix);
+  # items without a dictionary hit
+  if (result$dictionary_hit == FALSE) {
+    stats$items_no_dict_hits = stats$items_no_dict_hits + 1;
+  }
+  # items without any hit at all
+  if (result$any_hit == FALSE) {
+    stats$items_no_hits = stats$items_no_hits + 1;
+  }
+  # inspect
+  if (!is.null(result$inspect)) {
+    stats$inspect = stats$inspect + 1;
+  }
+  
+  return(stats);
+}
+
+
 # Returns well formated text, ready to be printed or stored in output file.
 format_page_stats = function(stats) {
   
@@ -767,6 +831,7 @@ format_page_stats = function(stats) {
   return(text);
 }
 
+
 # Picks better result among two provided results.
 # The function will give:
 # 1 point for each non-empty attribute from: id, year, color
@@ -775,7 +840,7 @@ format_page_stats = function(stats) {
 # 1 point for each sub-match
 # Winner is selected based on the total number of point.
 # TODO: refactor!
-pick_better_result = function(result1, result2, verbose = FALSE) {
+pick_better_result = function(result1, result2) {
   points1 = 0;
   points2 = 0;
   
@@ -840,7 +905,7 @@ pick_better_result = function(result1, result2, verbose = FALSE) {
     points2 = points2 + (3 / match_type);
   }
   
-  if (verbose) cat0("\npoints re-ocr: ", points1, "; points first ocr: ", points2);
+  cat("\npoints re-ocr: ", points1, "; points first ocr: ", points2, sep ="");
   
   if (points1 >= points2) {
     return(result1)
@@ -849,133 +914,100 @@ pick_better_result = function(result1, result2, verbose = FALSE) {
   }
 }
 
-# Computes stats for a single page (jane's version).
-calc_page_stats = function(page_results) {
-  
-  stats = init_page_stats()
-  page_unlist = apply(page_results, 2, unlist)
-  
-  stats$items = as.vector(table(page_unlist$table))
-  
-  # count non-dictionary fields
-  stats$id = length(page_unlist$id)
-  
-  stats$year = length(page_unlist$year) 
-  
-  stats$color = length(page_unlist$color) 
-  
-  stats$country = length(page_unlist$country) 
-  
-  if (stats$country > 0) {
-    stats$top_countries = page_unlist$country;
-  }
-  
-  # count types of matches
-  for (category in c("province", "region", "producer", "designation", "variety")) {
-    if (!is.null(page_unlist[[paste0(category,"_sim")]])) {
-      match_type = sapply(page_unlist[[paste0(category,"_sim")]], type_of_match);
-      stats$matches_matrix[category, as.numeric(names(table(match_type)))] = table(match_type)
-    }
-  }
-  
-  # count hits in particular text types
-  # ?? FIXME: when text part produces more than one hit, we count it only once (this happens in sub-matching)
-  for (hit_type in c("upper_text", "lower_text", "brackets_text")) {
-    if (!is.null(page_unlist[[paste0(hit_type,"_hit")]])) {
-      stats$hits_matrix[names(table(page_unlist[[paste0(hit_type,"_hit")]])), hit_type] = 
-        as.vector(table(page_unlist[[paste0(hit_type,"_hit")]]))
-    }
-  }
-  
-  
-  # total dictionary hits
-  stats$dictionary_hits = sum(stats$matches_matrix);
-  
-  # items without a dictionary hit
-  stats$items_no_dict_hits = sum(!page_unlist$dictionary_hit)
-  
-  # items without any hit at all
-  stats$items_no_hits = sum(!page_unlist$any_hit)
-  
-  # inspect
-  stats$inspect = length(page_unlist$inspect)
-  
-  return(stats);
-}
-
-# 2. Parse given page. -------------------------------------------------------------------
+# Parse given page.
 # As an input requires Jane's RDS file.
-pageResults = function(RDS_path, pattern_threshold = 0.5, similarity_threshold = 0.8) {
+parse_page = function(RDS_path) {
   
   print(paste("Parsing output", RDS_path))
   # read items
   items = readRDS(RDS_path);
   
-  # outputs a matrix with several element types -> call columns by index not name
-  page_list = lapply(1:length(items$name.words), function(i) {
+  # count items
+  items_no = 0;
+  for (i in items$name.words) {
+    items_no = items_no + length(i);
+  }
+  
+  # keep results in the list
+  page_results = vector(mode ="list", items_no);
+  
+  # init stats object
+  page_stats = init_page_stats();
+  page_stats$items = items_no;
+  
+
+  # keep track which table we are processing (for confidence tables)
+  table_no = 0;
+  item_no = 0;
+  
+  # gather all results to store them in .txt file
+  page_output = "";
+  
+  # iterate over each item
+  for (i in items$name.words) {
     
-    page_result = lapply(1:length(items$name.words[[i]]), function(item_no) {
+    table_no = table_no + 1;
+    item_no = 0;
+    
+    for (j in i) {
       
-      # parse single item using re-ocr'ed text...
+      item_no = item_no + 1;
       
-      #  (if no text)
-      if(length(items$name.words[[i]][[item_no]]$text) == 0) {
-        result_reocr = parse_item(items$name.words[[i]][[item_no]]$text, "")
-      } else {
-        result_reocr = parse_item(items$name.words[[i]][[item_no]]$text,
-               items$name.words[[i]][[item_no]][,c("text", "confidence")]);
-      }
+      # get table name (for confidence tables)
+      tab_name = names(items$name.words)[table_no];
+      
+      # parse single item using re-ocr'ed text
+      result_reocr = parse_item(j$text, items$name.words.old[[tab_name]][[item_no]][,c("text", "confidence")]);
       
       # and using first ocr result
-      text = paste(items$name.words.old[[i]][[item_no]][,c("text")], collapse = " ");
-
-      if (text == "") {
-        item_result = result_reocr
-      } else {
-        result_first_ocr = parse_item(text, items$name.words.old[[i]][[item_no]][,c("text", "confidence")]);
+      text = paste(items$name.words.old[[tab_name]][[item_no]][,c("text")], collapse = " ");
+      result_first_ocr = parse_item(text, items$name.words.old[[tab_name]][[item_no]][,c("text", "confidence")]);
       
-        # pick better result
-        item_result = pick_better_result(result_reocr, result_first_ocr);
-      }
+      # pick better result
+      item_result = pick_better_result(result_reocr, result_first_ocr);
       
-      item_result$table = i
-      item_result$file = gsub(RDS_path, pattern = "\\.RDS", replacement = "")
-      item_result
-    })
-    
-    page_result = do.call("rbind", page_result)
-    page_result
-  })
+      # print results, and append them to output file
+      result_text = format_result(item_result);
+      cat(result_text);
+      page_output = paste0(page_output, result_text);
+      
+      # add to page results
+      page_results[[length(page_results) - items_no + 1]] = item_result;
+      items_no = items_no - 1;
+      
+      # update page stats
+      page_stats = update_page_stats(page_stats, item_result);
+    }
+  }
   
-  page_results = do.call("rbind", page_list)
+  # show stats and store them in file
+  stats_text = format_page_stats(page_stats);
+  cat(stats_text);
+  prmatrix(page_stats$hits_matrix); #TODO: include that in format_page_stats
+  prmatrix(page_stats$matches_matrix); #TODO: include that in format_page_stats
+  page_output = paste0(stats_text, page_output);
   
-  return(page_results)
-}
-
-pageStats <- function(page_results, pattern_threshold = 0.5, similarity_threshold = 0.8, verbose = FALSE) {
   
-  # calc all instead of updating one by one
-  page_stats = calc_page_stats(page_results)
-  
-  if(verbose) cat("PAGE STATS by column:\n", format_page_stats(page_stats))
   # look for patterns based on stats
-  page_patterns = findPatterns(page_results, page_stats, pattern_threshold, similarity_threshold);
-
+  find_patterns(page_results, page_stats);
+  
+  # save readable output to file
+  writeLines(page_output, paste0("output/", gsub(".*/|\\..*", "", RDS_path), ".txt"));
+  
   return(page_stats);
 }
 
+
 # Looks for patterns in stats.
-findPatterns = function(page_results, page_stats, pattern_threshold = 0.5, similarity_threshold = 0.8, verbose = FALSE) {
+find_patterns = function(page_results, page_stats) {
   
   hits = page_stats$hits_matrix;
   
   # upper_text
   pattern_upper = NULL;
-  # if more than pattern_threshold% matches in upper_text belongs to one category, assume that's the pattern
-  # TODO: to discuss: > pattern_threshold% of upper_text hits or > pattern_threshold% of items' number?
-  # I lowered the pattern_threshold to 50% but used the total number of items
-  
-  if (max(hits[,1]) > pattern_threshold * sum(page_stats$items)) {
+  # if more than 70% matches in upper_text belongs to one category, assume that's the pattern
+  # TODO: to discuss: > 70% of upper_text hits or > 70% of items' number?
+  if (max(hits[,1]) > PATTERN_THRESHOLD * page_stats$items) {
     # we have a pattern!
     row_id = which.max(hits[,1]);
     pattern_upper = rownames(hits)[row_id];
@@ -985,7 +1017,7 @@ findPatterns = function(page_results, page_stats, pattern_threshold = 0.5, simil
   
   # lower_text
   pattern_lower = NULL;
-  if (max(hits[,2]) > pattern_threshold * sum(page_stats$items)) {
+  if (max(hits[,2]) > PATTERN_THRESHOLD * page_stats$items) {
     # we have a pattern!
     row_id = which.max(hits[,2]);
     pattern_lower = rownames(hits)[row_id];
@@ -995,7 +1027,7 @@ findPatterns = function(page_results, page_stats, pattern_threshold = 0.5, simil
   
   # brackets_text
   pattern_brackets = NULL;
-  if (max(hits[,3]) > pattern_threshold * sum(page_stats$items)) {
+  if (max(hits[,3]) > PATTERN_THRESHOLD * page_stats$items) {
     # we have a pattern!
     row_id = which.max(hits[,3]);
     pattern_brackets = rownames(hits)[row_id];
@@ -1005,21 +1037,19 @@ findPatterns = function(page_results, page_stats, pattern_threshold = 0.5, simil
   
     
   # check what we can improve
-  for (i in 1:nrow(page_results)) {
-    
-    i = page_results[i,]
+  for (i in page_results) {
     
     # upper
     if (!is.null(pattern_upper) & !is.null(i$upper_text)) {
       if (is.null(i[[paste0(pattern_upper, "_sim")]])) {
         # not recognized, add to dictionary??
-        if (verbose) cat0("\nU not recognized: ", i$upper_text, " (", i$text, ")");
-      } else if (i[[paste0(pattern_upper, "_sim")]] <= similarity_threshold) {
+        cat("\nU not recognized: ", i$upper_text, " (", i$text, ")", sep = "");
+      } else if (i[[paste0(pattern_upper, "_sim")]] <= SIMILARITY_THRESHOLD) {
         # submatch, remove from 'inspect'?
-        if (verbose) cat0("\nU submatch: ", i[[pattern_upper]]);
+        cat("\nU submatch: ", i[[pattern_upper]], sep = "");
       } else if (i[[paste0(pattern_upper, "_sim")]] < 1) {
         # decent, remove from 'inspect' ?
-        if (verbose) cat0("\nU decent: ", paste(i[[pattern_upper]], collapse = " / "));
+        cat("\nU decent: ", paste(i[[pattern_upper]], collapse = " / "), sep = "");
       }
     }
     
@@ -1027,13 +1057,13 @@ findPatterns = function(page_results, page_stats, pattern_threshold = 0.5, simil
     if (!is.null(pattern_lower) & !is.null(i$lower_text)) {
       if (is.null(i[[paste0(pattern_lower, "_sim")]])) {
         # not recognized, add to dictionary??
-        if (verbose) cat0("\nL not recognized: ", i$lower_text, " (", i$text, ")");
-      } else if (i[[paste0(pattern_lower, "_sim")]] <= similarity_threshold) {
+        cat("\nL not recognized: ", i$lower_text, " (", i$text, ")", sep = "");
+      } else if (i[[paste0(pattern_lower, "_sim")]] <= SIMILARITY_THRESHOLD) {
         # submatch, remove from 'inspect'?
-        if (verbose) cat0("\nL submatch: ", i[[pattern_lower]]);
+        cat("\nL submatch: ", i[[pattern_lower]], sep = "");
       } else if (i[[paste0(pattern_lower, "_sim")]] < 1) {
         # decent, remove from 'inspect' ?
-        if (verbose) cat0("\nL decent: ", paste(i[[pattern_lower]], collapse = " / "));
+        cat("\nL decent: ", paste(i[[pattern_lower]], collapse = " / "), sep = "");
       }
     }
     
@@ -1041,19 +1071,18 @@ findPatterns = function(page_results, page_stats, pattern_threshold = 0.5, simil
     if (!is.null(pattern_brackets) & !is.null(i$brackets_text)) {
       if (is.null(i[[paste0(pattern_brackets, "_sim")]])) {
         # not recognized, add to dictionary??
-        if (verbose) cat0("\nB not recognized: ", i$brackets_text, " (", i$text, ")");
-      } else if (i[[paste0(pattern_brackets, "_sim")]] <= similarity_threshold) {
+        cat("\nB not recognized: ", i$brackets_text, " (", i$text, ")", sep = "");
+      } else if (i[[paste0(pattern_brackets, "_sim")]] <= SIMILARITY_THRESHOLD) {
         # submatch, remove from 'inspect'?
-        if (verbose) cat0("\nB submatch: ", i[[pattern_brackets]]);
+        cat("\nB submatch: ", i[[pattern_brackets]], sep = "");
       } else if (i[[paste0(pattern_brackets, "_sim")]] < 1) {
         # decent, remove from 'inspect' ?
-        if (verbose) cat0("\nB decent: ", paste(i[[pattern_brackets]], collapse = " / "));
+        cat("\nB decent: ", paste(i[[pattern_brackets]], collapse = " / "), sep ="");
       }
     }
   }
-  
-  return(patterns = list(upper = pattern_upper, lower = pattern_lower, brackets = pattern_brackets))
 }
+
 
 # Initializes global_stats object. 
 # Returns empty global stats object.
@@ -1082,6 +1111,7 @@ init_global_stats = function() {
   
   return(global_stats);
 }
+
 
 # COmpute global stats from the list of page stats
 compute_global_stats = function(page_stats_list) {
@@ -1112,26 +1142,17 @@ compute_global_stats = function(page_stats_list) {
   return(stats);
 }
 
+
 # Parse all pages in a given folder.
-parseFolder = function(folder_path, pattern_threshold = 0.5, similarity_threshold = 0.8) {
-  
+parse_folder = function(folder_path) {
   files = list.files(path=folder_path, pattern="*.RDS", full.names=TRUE, recursive=FALSE);
+  page_stats_list = lapply(files, parse_page);
   
-  page_results_list = lapply(files, function(x) {
-    try({pageResults(x, pattern_threshold, similarity_threshold)})
-  });
-    
-  page_stats_list = lapply(page_results_list, function(x) {
-    try({pageStats(x, pattern_threshold, similarity_threshold)})
-  });
-  #do.call("rbind", page_stats_list)
+  global_stats = compute_global_stats(page_stats_list);
   
-  #fix and make some of these percentage-wise
-  #global_stats = compute_global_stats(page_stats_list);
-  
-  return(list(page_results = page_results_list, 
-         page_stats = page_stats_list));
+  return(global_stats);
 }
+
 
 # Returns well formated text, ready to be printed or stored in output file.
 format_global_stats = function(stats) {

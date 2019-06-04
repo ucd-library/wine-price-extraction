@@ -107,7 +107,7 @@ digit_flag = function(prices_to_check, ratio = .04){
   #convert output to data frame
   flag_df = as.data.frame(table(flag_train))
   #start trainning with the ratio input
-  flag_digit = lapply(1:10,function(i){
+  flag_digit = lapply(1:nrow(flag_df),function(i){
     if (flag_df[i,2]/length(flag_train) >= ratio){
       return(as.numeric(as.character(flag_df[i,1])))
     }
@@ -165,6 +165,13 @@ amount_flag = function(prices_to_check, min_price = 0.1, max_price = 2000) {
   })
 }
 
+# One more jane added (Hangshi made one but for the old output form)
+# If bottle, case, use global criteria
+# Otherwise, use local ratio
+ratio_flag = function(TABLE) {
+  #tbd
+  }
+  
 # David's functin:
 # check for nonincreasing values in table price column.
 # Takes a table, mostly likely ENTRY_PRICE, as input

@@ -3,10 +3,7 @@
 
 # 0. Setup ####
 
-library(dplyr)
-library(tidyverse)
-library(RecordLinkage)
-library(gsubfn) #for cat0
+library(tablewine)
 if("package:MASS" %in% search()) detach("package:MASS")
 
 # 1. Args ####
@@ -21,7 +18,7 @@ if("package:MASS" %in% search()) detach("package:MASS")
 # output.directory = "~/Documents/DSI/wine-price-extraction/dsi/Data/sample_output/"
 
 # For command line args, case doesn't matter (they'll be converted to upper either way)
-possible.args = c("NAME.INPUT.DIR", "DICTIONARY.DIR", "NAME.OUTPUT.DIR")
+possible.args = c("NAME.INPUT.DIR", "NAME.OUTPUT.DIR")
 args = commandArgs(trailingOnly = TRUE)
 print(args)
 
@@ -35,18 +32,13 @@ if (length(args) >= 1) {
     sapply(args, function(x) trimws(last(strsplit(x, "=")[[1]])) )[argnums[!is.na(argnums)]]
   
   NAME.INPUT.DIR = argvals[1]
-  DICTIONARY.DIR = argvals[2]
-  NAME.OUTPUT.DIR = argvals[3]
+  NAME.OUTPUT.DIR = argvals[2]
 }
 
 # 2. Arg Checks ####
 
 if (!file.exists (NAME.INPUT.DIR) ) {
   stop(call. = FALSE, "Path to input data (price table output RDS files) not valid.")
-} 
-
-if (!file.exists (DICTIONARY.DIR) ) {
-  stop(call. = FALSE, "Path to folder containing dictionairies not valid.")
 } 
 
 if (!file.exists (NAME.OUTPUT.DIR) ) {
@@ -60,17 +52,13 @@ SIMILARITY_THRESHOLD = 0.8;
 # pattern threshold - percentage of items that have to meet criteria to accept considered rule as a general pattern
 PATTERN_THRESHOLD = 0.5;
 
-# load dictionaries LOCALLY
+# dictionaries now part of package
 # get provinces
-provinces = read.csv(file.path(DICTIONARY.DIR, "provinces.csv"))[,-1]
-# get regions
-regions = read.csv(file.path(DICTIONARY.DIR, "regions.csv"))[,-1]
-# get producers
-producers = read.csv(file.path(DICTIONARY.DIR, "producers.csv"))[,-1]
-# get designations
-designations = read.csv(file.path(DICTIONARY.DIR, "designations.csv")) %>% select(Designation) #only one variable, want to keep data frame
- # get varieties
-varieties = read.csv(file.path(DICTIONARY.DIR,"varieties.csv")) %>% select(Variety)
+data("provinces")
+data("regions")
+data("producers")
+data("designations")
+data("varieties")
 
 # 4. Run ####
 
