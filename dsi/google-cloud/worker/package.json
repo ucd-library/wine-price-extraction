@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@ucd-lib/job-autoscaler-commons": "0.0.5",
+    "@ucd-lib/job-autoscaler-commons": "0.0.11",
     "fs-extra": "^8.0.1",
     "request": "^2.88.0"
   },

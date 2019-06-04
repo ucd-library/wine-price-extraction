@@ -82,6 +82,7 @@ class Crawler {
   }
 
   async get(path) {
+    let t  = Date.now();
     path = path.replace(/\/$/, '');
 
     let isBinary = false;
@@ -96,6 +97,8 @@ class Crawler {
         accept : api.RDF_FORMATS.JSON_LD
       }
     });
+
+    console.log((Date.now()-t)+'ms '+path);
 
     if( response.last.statusCode !== 200 ) {
       throw new Error(`Error fetching ${path} (${response.last.statusCode}):`+response.last.body);

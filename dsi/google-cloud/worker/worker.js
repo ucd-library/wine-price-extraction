@@ -11,10 +11,12 @@ class WorkerImpl extends Worker {
   constructor(name) {
     super(name);
     this.processed = 0;
+    this.exitOnComplete = true;
   }
   
   async run() {
     logger.info('starting segment', this.segment);
+    logger.info('exitOnComplete', this.exitOnComplete);
 
     await fs.emptyDir(ROOT_DIR);
     await fs.mkdirp(path.join(ROOT_DIR,'input'));
@@ -38,7 +40,7 @@ class WorkerImpl extends Worker {
 
 
   async runOCR() {
-    if( !this.segment.force ) {
+    if( !this.segment.force && !this.segment.forceOcr ) {
       let ocrCloudFile = path.join(this.segment.pathId, path.parse(this.segment.filename).name+'_data1.RDS');
       let exists = await this._gcsFileExists(ocrCloudFile);
       if( exists ) {
@@ -58,7 +60,7 @@ class WorkerImpl extends Worker {
   }
 
   async processOCR() {
-    if( !this.segment.force ) {
+    if( !this.segment.force && !this.segment.forceProcessOCR ) {
       let ocrCloudFile = path.join(this.segment.pathId, path.parse(this.segment.filename).name+'.RDS');
       if( await this._gcsFileExists(ocrCloudFile) ) {
         logger.info('Ignoring OCR PROCESSING, product exists and no force flag set', this.segment.imageUrl);

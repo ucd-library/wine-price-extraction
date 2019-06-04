@@ -10,6 +10,6 @@
   "license": "MIT",
   "dependencies": {
     "@ucd-lib/fin-node-api": "^0.10.12",
-    "@ucd-lib/job-autoscaler-commons": "0.0.5"
+    "@ucd-lib/job-autoscaler-commons": "0.0.9"
   }
 }
