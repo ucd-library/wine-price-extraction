@@ -268,7 +268,7 @@ divide_upper_lower = function(result_object) {
 # Returns list of matches (one or more) and their similarity with string_to_match 
 closest_match = function(string_to_match, string_vector){
   # get similarities to all values in vector
-  similarity = levenshteinSim(str1 = tolower(string_to_match), str2 = tolower(string_vector));
+  similarity = RecordLinkage::levenshteinSim(str1 = tolower(string_to_match), str2 = tolower(string_vector));
   # return best match and it's similarity
   return(list("phrase" = string_vector[similarity == max(similarity)], "similarity" = max(similarity)));
 }
@@ -400,7 +400,7 @@ dictionary_submatches = function(result_object, text_part, attribute, dictionary
         # set attribute
         result_object[[attribute]] = submatch;
         # and its similarity
-        result_object[[paste0(attribute, "_sim")]] = levenshteinSim(str1 = tolower(submatch), str2 = tolower(result_object[[text_part]]));
+        result_object[[paste0(attribute, "_sim")]] = RecordLinkage::levenshteinSim(str1 = tolower(submatch), str2 = tolower(result_object[[text_part]]));
         # keep note that this part was a match (for statistics)
         result_object[[paste0(text_part, "_hit")]] =  attribute;
         # append attribute to 'inspect' field

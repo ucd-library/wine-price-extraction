@@ -7,21 +7,23 @@
 #
 # Tables
 # ENTRY_PRICE
-  # key is entry_id = 0923_1_23 is file number, table number, entry number
+#   key is entry_id = 0923_1_23 is file number, table number, entry number
 # ENTRY_NAME 
-  # key is name_id = 0923_1_23 is file number, table number, row number
+#   key is name_id = 0923_1_23 is file number, table number, row number
 # PRICE_NAME 
-  # key is entry_id. is a join of ENTRY_PRICE and ENTRY_NAME by name_id with reduced fields.
+#   key is entry_id. is a join of ENTRY_PRICE and ENTRY_NAME by name_id with reduced fields.
 # NAME_MATCH 
-  # **key is word_id**, which is entry_id (also in table) with an additional index pasted on
-  # has individual word information (possibly multiple lines) for each entry in ENTRY_NAME
+#   **key is word_id**, which is entry_id (also in table) with an additional index pasted on
+#   has individual word information (possibly multiple lines) for each entry in ENTRY_NAME
 # ENTRY_PAGE
-  # key is file_id <- change to different ID system?
-######################################################################################################################################
+#   key is file_id <- change to different ID system?
+###################################################################################################
 
 # 0. Setup ----
 
 library(tablewine)
+library(stringr)
+library(dplyr)
 
 setwd("~/Documents/DSI")
 
@@ -29,7 +31,7 @@ setwd("~/Documents/DSI")
 FLIP.Y = FALSE
 
 # 1. Run image files ----
-
+#   1a. arguments ----
 # These can be overwritten by command line args
 # If a valid path is given for the input folder and output folder then the data will be used and saved by default
 # If no input folder is given the images will be re-ocr'd and if no valid output folder is given it won't be saved
@@ -40,7 +42,7 @@ FLIP.Y = FALSE
 FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< has both now
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_2535.jpg"#<- single file
 #DATA1 = readRDS("/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/UCD_Lehmann_0190_data1.RDS")
-OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output//"
+OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output"
 DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 SAVE.DATA = FALSE
@@ -49,21 +51,24 @@ OCR.ONLY = FALSE
 BINARY.THRESHOLD = 150
 #PIX.THRESHOLD = 100; PIX.NEWVALUE = 0
 
+#   1b. source and check ----
 source("wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
 
 #Check that files ran -- ones that didn't should have bad color or no tabless
-list.files(FILESET, pattern = ".jpg")[! sapply(str_split(list.files(FILESET, pattern = ".jpg"), "\\."), first) %in% sapply(str_split(list.files(OUTPUT.DIR, pattern = ".RDS"), "\\."), first) ]
+list.files(FILESET, pattern = ".jpg")[! sapply(strsplit(list.files(FILESET, pattern = ".jpg"), "\\."), first) %in% sapply(strsplit(list.files(OUTPUT.DIR, pattern = ".RDS"), "\\."), first) ]
 
-# TO DO -- rerun files that didn't run with a dynamically detected value for PIX.THRESHOLD
+# TO DO -- Automate rerun files that didn't run with a dynamically detected value for PIX.THRESHOLD
 
 # 2. Parse names from output of 1----
 
+#   2a. arguments ----
 NAME.INPUT.DIR = OUTPUT.DIR
-DICTIONARY.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/dictionaries"
 NAME.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data"
 
+#   2b. source ----
 source("~/Documents/DSI/wine-price-extraction/dsi/scripts/run_parse_items.R")
 
+#   2c. load (if already run) ----
 parsed_folder = readRDS(file.path(NAME.OUTPUT.DIR, "parse_folder_sample.RDS")) # done in run_parse_items - can source
 
 # 3. Current evaluation code (Optional. Will be changed to work on TABLES, not .RDS) ----
@@ -100,7 +105,8 @@ ENTRY_NAME = ENTRY_NAME %>% group_by(file_id, table) %>% mutate(name_id = paste(
 # Can unify this with below so not looping through price_RDS_files twice
 name_output = 
   do.call("rbind",
-  lapply(price_RDS_files, function(x) {
+  lapply(list.files(NAME.INPUT.DIR, full.names = TRUE, pattern = ".RDS", recursive = F), 
+         function(x) {
     output = readRDS(x)
     rows = unlist(sapply(output$name.locations, rownames))
     nameboxes = do.call("rbind", output$name.locations)
@@ -126,7 +132,7 @@ name_output =
     return(nameboxes)
   }))
 
-#check
+#check (may be off if different numbers of files)
 sum(ENTRY_NAME$name_id != name_output$name_id)
 
 ENTRY_NAME = left_join(ENTRY_NAME,
@@ -240,7 +246,7 @@ ENTRY_PRICE$sum_flag = rowSums(ENTRY_PRICE %>% select(contains("flag_")) %>%
 
 #ENTRY_PRICE %>% arrange(-sum_flag*!is.na(text.true))
 
-# Save ----
+#     - Save ----
 write.csv(ENTRY_PRICE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PRICE.csv"), row.names = FALSE)
 
 #     ENTRY_PAGE ----

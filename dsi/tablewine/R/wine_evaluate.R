@@ -108,7 +108,7 @@ wine.compare <- function(test.prices, truth.prices) {
                 dollar.diff = as.numeric(text.new.truth)-as.numeric(text.new.test),
               
                 #levenshtein distances       
-                lev.diff = levenshteinDist(text.new.truth, text.new.test),
+                lev.diff = RecordLinkage::levenshteinDist(text.new.truth, text.new.test),
               
                 missing.digit = nchar(text.new.truth) > nchar(text.new.test),
               
