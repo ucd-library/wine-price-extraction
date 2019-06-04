@@ -10,7 +10,7 @@ services:
       - db:/var/lib/postgresql/data
       - ./io:/io
     ports:
-      - 5434:5432
+      - 5432:5432
   tesseract:
     image: tesseractshadow/tesseract4re
     command: tail -f /dev/null

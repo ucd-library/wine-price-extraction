@@ -4,13 +4,14 @@ rotation float,
 hocr jsonb
 );
 
-COPY hocr (ark,rotation,hocr) from /io/unrotated.json;
-COPY hocr (ark,rotation,hocr) from /io/rotated.json;
+--COPY hocr (ark,rotation,hocr) from /io/hocr.json;
+--COPY hocr (ark,rotation,hocr) from /io/unrotated.json;
+--COPY hocr (ark,rotation,hocr) from /io/rotated.json;
 
 --  refresh materialized view carea;
-refresh materialized view par;
-refresh materialized view line;
-refresh materialized view words;
+--refresh materialized view par;
+--refresh materialized view line;
+--refresh materialized view words;
 
 create materialized view carea as
 with a as ( select
@@ -78,5 +79,5 @@ select
  from b
  where text is not null;
 
-create index on words_ark on words(ark);
-create index on words_line_id on words(line_id);
+-- create index words_ark on words(ark);
+-- create index words_line_id on words(line_id);

@@ -1,4 +1,4 @@
-# Various performance-evaluating code that acts on TABLE output of run_wine_database.R 
+# Various performance-evaluating code that acts on TABLE output of run_wine_database.R
 # May 2019
 
 # 1. Flag prices by ratio, not increasing order, magnitude, year, digit placement, etc. (in ENTRY_PRICE) ----
@@ -36,7 +36,7 @@ year_flag = function(prices_to_check, year_lower = 1800, year_upper = 2000){
 # Aguments set allowable digits left and right of the dot
 # Output is a vector of Boolean values, where TRUE means flagged.
 size_flag = function(prices_to_check, size_left = 4, size_right = 2){
-  
+
   flag = lapply(1:length(prices_to_check),function(i){
     price = as.character((prices_to_check[i]))
     #set conditions to filter errors out, and return error with FALSE
@@ -75,9 +75,9 @@ size_flag = function(prices_to_check, size_left = 4, size_right = 2){
   return(flag)
 }
 
-# Flag potential prices based on unlikely last digit (least helpful flag) 
+# Flag potential prices based on unlikely last digit (least helpful flag)
 # Input is a vector of detected prices, most likely ENTRY_PRICE$price_new
-# Argument "ratio" sets minimum percentage a digit has to represent to not get flagged 
+# Argument "ratio" sets minimum percentage a digit has to represent to not get flagged
 # Output is a vector of Boolean values, where TRUE means flagged.
 digit_flag = function(prices_to_check, ratio = .04){
   #collect the second digits after the dot of each price
@@ -107,7 +107,7 @@ digit_flag = function(prices_to_check, ratio = .04){
   #convert output to data frame
   flag_df = as.data.frame(table(flag_train))
   #start trainning with the ratio input
-  flag_digit = lapply(1:10,function(i){
+  flag_digit = lapply(1:nrow(flag_df),function(i){
     if (flag_df[i,2]/length(flag_train) >= ratio){
       return(as.numeric(as.character(flag_df[i,1])))
     }
@@ -156,7 +156,7 @@ digit_flag = function(prices_to_check, ratio = .04){
 # One jane added:
 # Flag potential prices based on amount being too small or large
 # Input is a vector of detected prices, most likely ENTRY_PRICE$price_new
-# Arguments sets range (min_price to max_price) that would not be flagged 
+# Arguments sets range (min_price to max_price) that would not be flagged
 # Output is a vector of Boolean values, where TRUE means flagged.
 amount_flag = function(prices_to_check, min_price = 0.1, max_price = 2000) {
   numeric_price = as.numeric(prices_to_check)
@@ -170,14 +170,14 @@ amount_flag = function(prices_to_check, min_price = 0.1, max_price = 2000) {
 # Takes a table, mostly likely ENTRY_PRICE, as input
   # argument "tocheck" says which column of detected prices to check, defaulting to "price_new"
     # "price_raw" may be useful in some cases.
-# Output is a vector of Boolean values where TRUE means the row in TABLE is not in increasing order, 
+# Output is a vector of Boolean values where TRUE means the row in TABLE is not in increasing order,
   # i.e. the selected row had a price that was lower than the row before it
 
 order_flag = function(TABLE, tocheck = "price_new"){
 
   TABLE = TABLE[c(tocheck,'cluster','table','row','file_number')]
   result = vector(length = nrow(TABLE))
-  
+
   for (i in unique(TABLE$file_number)){
     subsetfile = TABLE[TABLE$file_number == i,]
     for (j in unique(subsetfile$table)){
@@ -203,11 +203,11 @@ order_flag = function(TABLE, tocheck = "price_new"){
 # See parse_items.R for more description of fields
 
 name_summary_global_stats <- function(ENTRY_NAME) {
-  
+
   round(t(
-    
+
     with(ENTRY_NAME,
-         
+
          data.frame(
            items = nrow(ENTRY_NAME),
            pages = n_distinct(file),
@@ -228,7 +228,7 @@ name_summary_global_stats <- function(ENTRY_NAME) {
            pct.designation = 1 - mean( designation== "NULL"),
            pct.variety = 1 - mean( variety== "NULL"),
            pct.country = 1 - mean( country== "NULL"),
-           
+
            # Unique values found (-1 for "NULL")
            unique.id = length(unique(id)) - 1,
            unique.year = length(unique(year)) - 1,

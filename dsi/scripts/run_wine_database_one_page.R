@@ -465,16 +465,9 @@ price_output = lapply(price_RDS_files, function(x) {
 ENTRY_PRICE = do.call("rbind", price_output) #n_distinct(ENTRY_PRICE$name_id)
 
 
-#     - Add in truth if accurate enough ----
-#summary_vs_truth = read.csv(file.path(OUTPUT.DIR, "summary_vs_truth.csv"), stringsAsFactors = FALSE)
-# Only report where number of extracted tables matches number of truth tables
-#accurate_file = str_extract((summary_vs_truth %>% filter(diff.in.tables == 0))$X, "UCD_Lehmann_[0-9]{4}")
 truth_all = read.csv(file.path(TRUTH.DIR, "truth_all.csv"), stringsAsFactors = FALSE)
-truth_all = filter(truth_all, file_id %in% accurate_file) #removes about 20%
-#truth_all
 
-#     - Add truth to table ----
-ENTRY_PRICE = left_join(ENTRY_PRICE, truth_all[,c("text.true", "truth_entered_by", "file_id",
+ENTRY_PRICE = left_join(ENTRY_PRICE, truth_all[truth_all$accurate_file,c("text.true", "truth_entered_by", "file_id",
                                                   "table", "row", "cluster")],
                 by = c("file_id" = "file_id", "table" = "table", "row" = "row", "cluster" = "cluster"))
 
@@ -494,12 +487,11 @@ ENTRY_PRICE = ENTRY_PRICE %>% select(-c("price","type", "text", "text.new"))
 ENTRY_PRICE$flag_year = year_flag(ENTRY_PRICE$price_new)
 ENTRY_PRICE$flag_amount = amount_flag(ENTRY_PRICE$price_new)
 ENTRY_PRICE$flag_size = size_flag(ENTRY_PRICE$price_new, size_left = 4, size_right = 2)
-ENTRY_PRICE$flag_digit = digit_flag(ENTRY_PRICE$price_new, ratio = .04)
+#ENTRY_PRICE$flag_digit = digit_flag(ENTRY_PRICE$price_new, ratio = .04)
 ENTRY_PRICE$flag_order = order_flag(ENTRY_PRICE, tocheck = "price_new")
 ENTRY_PRICE$flag_type_new = ENTRY_PRICE$type_new!="TRUE"
 # Sum of flags is a placeholder for class detection until we develop a better model
-ENTRY_PRICE$sum_flag = rowSums(ENTRY_PRICE %>% select(contains("flag_")) %>%
-                                 select(-"flage_digit")) #digit has too many false positives
+ENTRY_PRICE$sum_flag = rowSums(ENTRY_PRICE %>% select(contains("flag_"))) #digit has too many false positives
 
 #ENTRY_PRICE %>% arrange(-sum_flag*!is.na(text.true))
 
@@ -529,7 +521,7 @@ write.csv(ENTRY_PAGE, file.path(OUTPUT.DIR, "ENTRY_PAGE.csv"), row.names = FALSE
 # see https://github.com/ucd-library/wine-price-extraction/issues/9 for discussion of vars
 text_vars_to_include = c("text", "text_raw", "name", "id", "name_id", "file_id") #remember this id is the id in the catalog
 wine_vars_to_include = c("country", "year", "color", "variety", "region", "province", "designation")
-price_vars_to_include = c("price_raw", "confidence", "type", "price_new", "cluster", "table","row", "entry_id", "name_id", "text.true", "truth_entered_by", "col.header")
+price_vars_to_include = c("price_raw", "confidence", "type_new","price_new", "cluster", "table","row", "entry_id", "name_id", "text.true", "truth_entered_by", "col.header")
 
 PRICE_NAME = left_join(ENTRY_PRICE[,price_vars_to_include],
                         ENTRY_NAME[,c(text_vars_to_include, wine_vars_to_include)],
