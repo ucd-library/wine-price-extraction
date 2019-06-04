@@ -131,6 +131,7 @@ summary.output = do.call("rbind", summary.output)
 
 write.csv(summary.output, file.path(EVAL.OUTPUT.DIR, "summary_vs_truth.csv"))
 
+
 # C. Compile all truth data to bind to extract prices in ENTRY_PRICE ----
 
 truth_all = lapply(truth.subdir, function(elem) {
@@ -165,5 +166,9 @@ truth_all = truth_all %>% group_by(file_id, table, cluster, row) %>%
   arrange(truth_entered_by) %>% summarize_all(first) %>% ungroup()
 
 names(truth_all)[names(truth_all)=="text.new"] = "text.true"
+
+#  "Accurate" if number of extracted tables matches number of truth tables
+accurate_files = rownames(summary.output)[summary.output$diff.in.tables == 0]
+truth_all$accurate_file = unlist(sapply(truth_all$file_id, grepl, paste(accurate_files, collapse = " ")))
 
 write.csv(truth_all, file.path(EVAL.OUTPUT.DIR, "truth_all.csv"))
