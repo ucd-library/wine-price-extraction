@@ -9,3 +9,11 @@ service-account.json
 #emacs
 *~
 *#
+
+# jane's list to ignore older versions
+dsi/Data/summary_vs_truth_*
+dsi/Data/output_[0-9]_*
+dsi/Data/output_summary_internal_*
+dsi/Data/parse_folder_sample_*
+dsi/Data/Truth2
+dsi/Data/.Rapp.history
