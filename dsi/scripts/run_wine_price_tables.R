@@ -83,9 +83,8 @@ if ( !exists("DATA.OUTPUT.DIR") || is.null(DATA.OUTPUT.DIR) || is.na(DATA.OUTPUT
   ifelse(OCR.ONLY, stop(call. = FALSE, "OCR.ONLY is set to TRUE but no valid path to store data was supplied."),
          "No valid path to store data (output of GetBoxes). Will not store.")
 } else {
-  if (!exists("SAVE.DATA")) {SAVE.DATA = FALSE} 
-  # If path to save data output not already given as false, SAVE.DATA -> TRUE
-  if (SAVE.DATA != FALSE) {
+  # If path to save data output not given as false, and there is a data.output.dir, SAVE.DATA -> TRUE
+  if (!exists("SAVE.DATA") || SAVE.DATA != FALSE) {
     SAVE.DATA = TRUE
     print(paste("Data will be saved in",DATA.OUTPUT.DIR))
   }
