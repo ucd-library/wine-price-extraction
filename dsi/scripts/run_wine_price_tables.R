@@ -17,8 +17,7 @@ library(tablewine)
 # OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
 # DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
 # DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
-# SAVE.DATA = FALSE
-# 
+
 # #DEFAULTS
 # OCR.ONLY = FALSE
 # SAVE.DATA = TRUE
@@ -84,6 +83,7 @@ if ( !exists("DATA.OUTPUT.DIR") || is.null(DATA.OUTPUT.DIR) || is.na(DATA.OUTPUT
   ifelse(OCR.ONLY, stop(call. = FALSE, "OCR.ONLY is set to TRUE but no valid path to store data was supplied."),
          "No valid path to store data (output of GetBoxes). Will not store.")
 } else {
+  if (!exists("SAVE.DATA")) {SAVE.DATA = FALSE} 
   # If path to save data output not already given as false, SAVE.DATA -> TRUE
   if (SAVE.DATA != FALSE) {
     SAVE.DATA = TRUE
