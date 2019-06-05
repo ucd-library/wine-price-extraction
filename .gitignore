@@ -17,3 +17,5 @@ dsi/Data/output_summary_internal_*
 dsi/Data/parse_folder_sample_*
 dsi/Data/Truth2
 dsi/Data/.Rapp.history
+
+dsi/tmp

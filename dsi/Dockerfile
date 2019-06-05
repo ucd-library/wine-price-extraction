@@ -31,15 +31,13 @@ RUN R -e 'install.packages("cluster")'
 RUN R -e 'install.packages("changepoint")'
 RUN R -e 'install.packages("RecordLinkage")'
 
-# Install NodeJs for cloud processing.. (perhaps move to child container)
-# RUN curl -sL https://deb.nodesource.com/setup_10.x | bash -
-# RUN apt-get install -y nodejs
-
+# Install tablewine package
+COPY ./tablewine /opt/tablewine
+RUN R -e 'install.packages("/opt/tablewine", repos = NULL, type="source")'
 
 RUN mkdir -p /opt/dsi
 WORKDIR /opt/dsi
 COPY Data Data/
-COPY R R/
 COPY scripts scripts/
 
 CMD "tail -f /dev/null"
