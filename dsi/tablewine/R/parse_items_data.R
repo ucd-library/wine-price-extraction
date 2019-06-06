@@ -14,7 +14,7 @@
 # -producer (winery)
 # -designation (the vineyard within the winery where the grapes that made the wine are from)
 # -variety (the type of grapes used to make the wine, e.g. Pinot Noir)
-# 
+#
 # It will also compute some statistics on how many matches with dictionaries were full matches, how many items didn't have any match, etc.
 #
 # Parsing steps:
@@ -51,15 +51,15 @@
 # and loading dictionaries
 
 # 1. Helper functions ------------------------------------------------------------------- ####
-# Initializes result object. 
+# Initializes result object.
 # Returns empty result object.
 init_result = function() {
   result = list(
-    
+
     text = NULL,            # original text as recognized by tesseract
     text_raw = NULL,        # store raw text
     text_conf = NULL,       # tesseract confidence of recognizing particular parts of text
-    
+
     # extracted from the original text:
     name = NULL,            # cleaned original text without year and id, e.g. "CHATEAU LYNCH BAGES (Pauillac)"
     keywords = NULL,        # keywords, e.g. "estate bottled"
@@ -67,7 +67,7 @@ init_result = function() {
     lower_text = NULL,      # cleaned lower case text
     brackets_text = NULL,   # brackets content, e.g. "(red wine)"
     dictionary_hits = NULL, # matrix of dictionary matches (all dictionaries vs upper, lower,bracket texts)
-    
+
     # item attributes:
     id = NULL,              # wine id, e.g. 246 or N-4
     year = NULL,            # wine vintage, e.g. 1957
@@ -78,7 +78,7 @@ init_result = function() {
     designation = NULL,     # corresponds to designations dictionary, vineyard within the producer where the grapes that made the wine are from, e.g. Pavillon Blanc de Chateau Margaux
     variety = NULL,         # corresponds to varieties dictionary, type of grapes used to make the wine, e.g. Sauvignon Blanc
     country = NULL,         # country associated with province, region, producer (value from dictionary)
-    
+
     # fields' confidences:
     id_conf = NULL,         # tesseract confidence
     year_conf = NULL,       # tesseract confidence
@@ -89,8 +89,8 @@ init_result = function() {
     designation_sim = NULL, # Levenshtein similarity with a value from dictionary
     variety_sim = NULL,     # Levenshtein similarity with a value from dictionary
     brackets_conf = NULL,   # tesseract confidence, data frame
-    dictionary_hits_sim = NULL, # matrix of similarity to dictionary matches 
-    
+    dictionary_hits_sim = NULL, # matrix of similarity to dictionary matches
+
     # additional fields:
     upper_text_hit = NULL,    # flag telling if this part of text had a match in dictionary
     lower_text_hit = NULL,    # flag telling if this part of text had a match in dictionary
@@ -101,7 +101,7 @@ init_result = function() {
     dictionary_hit = FALSE,   # tells if there was any dictionary hit
     any_hit = FALSE           # tells if there was any hit at all (e.g. id, year, color, dictionary hits, etc.)
   );
-  
+
   return(result);
 }
 
@@ -112,7 +112,7 @@ remove_spaces = function(text) {
   text = gsub("\\s+", " ", text);
   # remove space at the begining and at the end
   text = gsub("^\\s|\\s$", "", text);
-  
+
   return(text)
 }
 
@@ -125,7 +125,7 @@ clean_text = function(text) {
   text = gsub("(\\s\\.|\\.){2,}.*", " ", text);
   # remove redundant spaces
   text = remove_spaces(text);
-  
+
   return(text);
 }
 
@@ -135,14 +135,14 @@ clean_text = function(text) {
 find_id = function(result_object) {
   # look for a number at the beggining of the text (or number and max 3 characters, e.g. N-4)
   id = str_extract(result_object$text, "^[0-9]+\\S{0,3}\\b|^\\S{0,3}[0-9]+\\b");
-  
+
   # if found trim from text and look for confidence
   if (!is.na(id)) {
     result_object$id = id;
     result_object$id_conf = result_object$text_conf$confidence[grep(id, result_object$text_conf$text, fixed = TRUE)];
     result_object$text = gsub(id, "", result_object$text, fixed = TRUE);
   }
-  
+
   return(result_object);
 }
 
@@ -151,14 +151,14 @@ find_id = function(result_object) {
 find_year = function(result_object) {
   # look for number 18xx or 19xx
   year = str_extract(result_object$text, "1[8|9]\\d\\d");
-  
+
   # if found trim from text and look for confidence
   if (!is.na(year)) {
     result_object$year = year;
     result_object$year_conf = as.numeric(result_object$text_conf$confidence[grep(year, result_object$text_conf$text)]);
     result_object$text = gsub(year, "", result_object$text);
   }
-  
+
   return(result_object);
 }
 
@@ -172,7 +172,7 @@ clean_text_aggressive = function(text) {
   text = gsub("[-_,.;?]+", " ", text);
   # remove redundant spaces
   text = remove_spaces(text);
-  
+
   return(text);
 }
 
@@ -189,10 +189,10 @@ find_keywords = function(result_object) {
   # trim keywords from text
   text = gsub(paste(matched_keywords, collapse = "|"), "", text, ignore.case = TRUE);
   text = remove_spaces(text);
-  
+
   result_object$text = text;
   result_object$keywords = matched_keywords;
-  
+
   return(result_object);
 }
 
@@ -202,7 +202,7 @@ find_keywords = function(result_object) {
 find_color = function(result_object) {
   # look for color keywords
   color = str_extract(result_object$text, regex(pattern = "white|blanc|rose|pink|red|rouge", ignore_case = TRUE));
-  
+
   # if found look for confidence
   if (!is.na(color)) {
     result_object$color_conf = as.numeric(result_object$text_conf$confidence[grep(color, result_object$text_conf$text)]);
@@ -216,16 +216,16 @@ find_color = function(result_object) {
     }
     result_object$color = color;
   }
-  
+
   return(result_object);
 }
 
 
 # Looks for and trims brackets content.
 find_brackets = function(result_object) {
-  
+
   brackets = str_extract(result_object$text, "[\\[\\({].*?[\\]\\)}]");
-  
+
   # if found trim from text and look for confidence
   if (!is.na(brackets)) {
     result_object$brackets_text = substr(brackets, 2, nchar(brackets) - 1);
@@ -236,21 +236,21 @@ find_brackets = function(result_object) {
     text = remove_spaces(text);
     result_object$text = text;
   }
-    
+
   return(result_object);
 }
 
 
 # Divides text into upper- and lower-case text.
 divide_upper_lower = function(result_object) {
-  
+
   upper_text = str_extract(result_object$text, "[A-Z][A-Z\\s-,.;']*[A-Z]\\b"); #more rigorous pattern: ^([A-Z\\s]+[A-Z\\s',.]*[A-Z])\\b
   if (is.na(upper_text)) {
     lower_text = result_object$text;
   } else {
     lower_text = gsub(upper_text, "", result_object$text); #more rigorous pattern: \\b([^A-Z]*[A-Z]{0,2}[^A-Z]+)+$
   }
-  
+
   # check if longer than 4 chars
   if (!is.na(upper_text) & nchar(upper_text) > 4) {
     result_object$upper_text = upper_text;
@@ -259,13 +259,13 @@ divide_upper_lower = function(result_object) {
     lower_text = remove_spaces(lower_text);
     result_object$lower_text = lower_text;
   }
-  
+
   return(result_object);
 }
 
 
 # Look for the most similar string.
-# Returns list of matches (one or more) and their similarity with string_to_match 
+# Returns list of matches (one or more) and their similarity with string_to_match
 closest_match = function(string_to_match, string_vector){
   # get similarities to all values in vector
   similarity = RecordLinkage::levenshteinSim(str1 = tolower(string_to_match), str2 = tolower(string_vector));
@@ -287,7 +287,7 @@ dictionary_matches = function(string_to_match) {
   best_desig = closest_match(string_to_match, as.character(designations$Designation));
   # look for variety
   best_var = closest_match(string_to_match, as.character(varieties$Variety));
-  
+
   return(
     rbind(
       "province" = best_prov,
@@ -303,7 +303,7 @@ dictionary_matches = function(string_to_match) {
 # Looks for full matches (similarity = 1) only among all matches.
 # Modifies matrix for further searches.
 find_full_matches = function(result_object) {
-  
+
   # helper object for shorter code
   hits_sim = result_object$dictionary_hits_sim;
 
@@ -316,11 +316,11 @@ find_full_matches = function(result_object) {
         # add warning to 'inspect' field
         result_object$inspect = paste0(result_object$inspect, "duplication in dictionaries; ");
       }
-      
+
       # if we have a full match set other values in column and row to 0
       hits_sim[[part]][hits_sim[[part]] != 1] = 0;
       hits_sim[hits_sim[[part]] == 1, names(hits_sim) != part] = 0;
-      
+
       # store values in result_object
       row_id = which(hits_sim[[part]] == 1);
       row_name = rownames(hits_sim)[row_id];
@@ -332,23 +332,23 @@ find_full_matches = function(result_object) {
       result_object[[paste0(part, "_hit")]] = row_name;
     }
   };
-  
+
   # remove full matches from similarity matrix for further searches
   hits_sim[hits_sim == 1] = 0;
 
   # don't forget it was only a helper object
   result_object$dictionary_hits_sim = hits_sim;
-  
+
   return(result_object);
 }
 
 
 # Looks for very probable matches (similarity > SIMILARITY_THRESHOLD).
 find_decent_matches = function(result_object) {
-  
+
   # helper object for shorter code
   hits_sim = result_object$dictionary_hits_sim;
-  
+
   # go through all columns (parts) separately
   for (part in colnames(hits_sim)) {
     # check if this part wasn't a full match and if there is any decent match
@@ -367,32 +367,32 @@ find_decent_matches = function(result_object) {
       result_object$inspect = paste0(result_object$inspect, paste0(row_name, " (decent ", part,"); "));
     }
   };
-  
+
   return(result_object);
 }
 
 
 # Looks for submatches of particular text part within particular dictionary.
 dictionary_submatches = function(result_object, text_part, attribute, dictionary) {
-  
+
   # consider only attributes that didn't have a hit
   if (is.null(result_object[[attribute]])) {
     # get all matching substrings
     submatches = na.omit(str_extract(result_object[[text_part]], regex(as.character(dictionary), ignore_case = TRUE, fixed = TRUE)));
     if (length(submatches) > 0) {
-      
+
       #print(submatches);
       #print(submatches[1]);
-      
+
       # pick the longest one
       submatch = submatches[which.max(nchar(submatches))];
       # store it as in dictionary (letter case matters later)
       submatch = as.character(dictionary[tolower(dictionary) == tolower(submatch)]);
-      
+
       #print(submatch);
       #print(class(submatch));
       #cat0("\n", attribute, ":", paste0(submatch, collapse = "/"), "/end");
-      
+
       # sometimes str_extract gives strange results that are not full match from dictionary
       # make sure our value is not empty
       if (length(submatch) > 0) {
@@ -414,14 +414,14 @@ dictionary_submatches = function(result_object, text_part, attribute, dictionary
 
 # Looks for sub-matches. For each text part try every entry from each dictionary as a substring.
 find_submatches = function(result_object) {
-  
+
   # go through all columns (parts) separately
   for (part in colnames(result_object$dictionary_hits_sim)) {
     # check if this part wasn't a full match and if it's not null
     if (is.null(result_object[[paste0(part, "_hit")]]) & !is.null(result_object[[part]])) {
-      
+
       #cat("\ntext: ", result_object[[part]]);
-      
+
       # go over all attributes (that have a dictionary)
       result_object = dictionary_submatches(result_object, part, "province", provinces$Province);
       result_object = dictionary_submatches(result_object, part, "region", regions$Region);
@@ -430,23 +430,23 @@ find_submatches = function(result_object) {
       result_object = dictionary_submatches(result_object, part, "variety", varieties$Variety);
     }
   };
-  
+
   return(result_object);
 }
 
 
 # Find best matches in dictionaries for all text parts (upper, lower, brackets).
 check_dictionaries = function(result_object) {
-  
+
   # create similarity matrix (all dictionaries vs all considered texts)
   result_object$dictionary_hits = as.data.frame(matrix(character(0), nrow = 5, ncol = 3,
                               dimnames = list(c("province","region","producer", "designation", "variety"),
                                               c("upper_text","lower_text","brackets_text"))));
-  
+
   result_object$dictionary_hits_sim = as.data.frame(matrix(0, nrow = 5, ncol = 3,
                                   dimnames = list(c("province","region","producer", "designation", "variety"),
                                                   c("upper_text","lower_text","brackets_text"))));
-  
+
   # update matrix only if text part is not null
   if (!is.null(result_object$upper_text)) {
     upper_mat = dictionary_matches(result_object$upper_text);
@@ -463,26 +463,26 @@ check_dictionaries = function(result_object) {
     result_object$dictionary_hits$brackets_text = brackets_mat[,1];
     result_object$dictionary_hits_sim$brackets_text = brackets_mat[,2];
   }
-  
+
   # look for full matches
   result_object = find_full_matches(result_object);
-  
+
   # look for decent matches
   result_object = find_decent_matches(result_object);
-  
+
   # look for sub-matches
   result_object = find_submatches(result_object);
-  
+
   return(result_object);
 }
 
 
 # Assigns country based on province / region / producer.
 assign_country = function(result_object) {
-  
+
   # create vector for countries
   countries_found = character(0);
-  
+
   # if attributes are not null look for country in the dictionary
   if (!is.null(result_object$province)) {
     country_prov = as.character(provinces$Country[which(provinces$Province == result_object$province)]);
@@ -498,11 +498,11 @@ assign_country = function(result_object) {
     country_prod = as.character(producers$Country[which(producers$Producer == result_object$producer)]);
     countries_found = append(countries_found, trimws(country_prod));
   }
-  
+
   # remove empty values (dictionaries may have missing values)
   if (length(countries_found) > 0) {
     countries_found = Filter(length, countries_found);
-    
+
     # check if all values are the same
     if (length(unique(countries_found)) == 1) {
       # store value
@@ -512,17 +512,17 @@ assign_country = function(result_object) {
       result_object$inspect = paste0(result_object$inspect, "multiple countries (", paste(countries_found, collapse = " / "), ");");
     }
   }
-  
-  
+
+
   return(result_object);
 }
 
 
 # Returns well formated text, ready to be printed or stored in output file.
 format_result = function(result) {
-  
+
   text = "";
-  
+
   text = paste0(text, "\n\n    raw text:  ", result$text_raw);
   text = paste0(text, "\n   conf text:  ", paste(result$text_conf$text, collapse = " "));
   if (is.null(result$name)) {
@@ -531,7 +531,7 @@ format_result = function(result) {
     text = paste0(text, "\n        name:  ", result$name);
   }
   text = paste0(text, "\n  clean text:  ", result$text);
-  
+
   if (is.null(result$upper_text)) {
     text = paste0(text, "\n  upper_text:  ");
   } else {
@@ -552,13 +552,13 @@ format_result = function(result) {
   } else {
     text = paste0(text, "\n    keywords:  ", paste(result$keywords, collapse = " / "));
   }
-  
+
   ###################
   ###
   ### ATTRIBUTES
   ###
   ###################
-  
+
   if (is.null(result$id)) {
     text = paste0(text, "\n          id:  ");
   } else {
@@ -575,7 +575,7 @@ format_result = function(result) {
     text = paste0(text, "\n       color:  ", result$color, " (", round(result$color_conf, 0), "%)");
   }
   if (is.null(result$province)) {
-    text = paste0(text, "\n    province:  "); # 
+    text = paste0(text, "\n    province:  "); #
   } else {
     text = paste0(text, "\n    province:  ", paste(result$province, collapse = " / "), " (", round(result$province_sim, 2), ")");
   }
@@ -604,13 +604,13 @@ format_result = function(result) {
   } else {
     text = paste0(text, "\n     country:  ", result$country);
   }
-  
+
   if (is.null(result$inspect)) {
     text = paste0(text, "\n     inspect:  ");
   } else {
     text = paste0(text, "\n     inspect:  ", result$inspect);
   }
-  
+
   return(text);
 }
 
@@ -619,58 +619,58 @@ format_result = function(result) {
 # Gets items$name.words$table_X. Gets only column text and confidence.
 # Returns result object.
 parse_item = function(item_text, item_text_conf) {
-  
-  
+
+
   #items = readRDS("C:\\Users\\ssaganowski\\Desktop\\wines\\items\\UCD_Lehmann_0011.RDS");
   #item_text = items$name.words$table_1[[3]]$text;
   #item_text_conf = items$name.words.old$table_1[[3]][,c("text","confidence")];
-  
-  
+
+
   # init result object
   result = init_result();
   result$text_conf = item_text_conf;
-  
+
   # collate text
   result$text = paste(item_text, collapse = " ");
   # store raw text
   result$text_raw = result$text;
-  
+
   # 1. Clean text
   result$text = clean_text(result$text);
-  
+
   # 2. Find and trim ID
   result = find_id(result);
-  
+
   # 3. Find and trim year
   result = find_year(result);
-  
+
   # 4. Store current text as a name
   # TODO: correct spelling errors (using dictionaries?)
   result$name = remove_spaces(result$text);
-  
+
   # At that point we have item name, now try to recognize some values from dictionary
-  
+
   # 5. Clean text more aggressively
   result$text = clean_text_aggressive(result$text);
-  
+
   # 6. Recognize and trim key words like: "estate bottled", "cooperation"
   result = find_keywords(result);
-  
+
   # 7. Find color
   result = find_color(result);
-  
+
   # 8. Find and trim brackets
   result = find_brackets(result);
-  
+
   # 9. divide text into upper- and lower-case parts
   result = divide_upper_lower(result);
-  
+
   # 10. Identify entities using dictionaries
   result = check_dictionaries(result);
-  
+
   # 11. assign country based on province / region / producer
   result = assign_country(result);
-  
+
   # check if we had hits (for stats)
   if (!is.null(result$province) | !is.null(result$region) | !is.null(result$producer) | !is.null(result$designation) | !is.null(result$variety)) {
     result$dictionary_hit = TRUE;
@@ -679,37 +679,37 @@ parse_item = function(item_text, item_text_conf) {
   if (!is.null(result$id) | !is.null(result$year) | !is.null(result$color)) {
     result$any_hit = TRUE;
   }
-  
+
   return(result);
 }
 
 
-# Initializes page_stats object. 
+# Initializes page_stats object.
 # Returns empty page stats object.
 init_page_stats = function() {
   page_stats = list(
-    
+
     # general
     items = 0,          # number of items in RDS file
     dictionary_hits = 0,# total number of dictionary hits
     items_no_dict_hits = 0,  # number of items that didn't have any hit in dictionaries (full, decent, or sub)
     items_no_hits = 0,  # number of items that didn't have any hit at all (not even id)
     inspect = 0,        # how many items have to be inspected
-    
+
     # number of non-dictionary attributes found (non-null attributes in result_object)
     id = 0,
     year = 0,
     color = 0,
     country = 0,
-    
+
     # top
     top_countries = character(0), # list of countries found within this page
-    
+
     # number of non-empty parts of text
     upper_text = 0,
     lower_text = 0,
     brackets_text = 0,
-    
+
     # number of particular types of matches in dictionary (full, decent, sub)
     matches_matrix = matrix(0, nrow = 5, ncol = 3, dimnames = list(c("province","region","producer", "designation", "variety"),
                                                                 c("full","decent","sub"))),
@@ -718,7 +718,7 @@ init_page_stats = function() {
     hits_matrix = matrix(0, nrow = 5, ncol = 3, dimnames = list(c("province","region","producer", "designation", "variety"),
                                                                 c("upper_text","lower_text","brackets_text")))
   );
-  
+
   return(page_stats);
 }
 
@@ -737,9 +737,9 @@ type_of_match = function(similarity) {
 
 # Returns well formated text, ready to be printed or stored in output file.
 format_page_stats = function(stats) {
-  
+
   text = "\n";
-  
+
   text = paste0(text, "\n             items:  ", stats$items);
   text = paste0(text, "\n           inspect:  ", stats$inspect, " (", round((stats$inspect / stats$items) * 100, 0), "%)");
   text = paste0(text, "\n        total hits:  ", stats$dictionary_hits, " (", round(stats$dictionary_hits / stats$items, 2), " per item)");
@@ -754,8 +754,8 @@ format_page_stats = function(stats) {
   text = paste0(text, "\n   countries found:  ", stats$country);
   text = paste0(text, "\n         countries:  ", paste(stats$top_countries, collapse = " "));
   text = paste0(text, "\n       hits matrix:\n");
-  
-  
+
+
   return(text);
 }
 
@@ -770,7 +770,7 @@ format_page_stats = function(stats) {
 pick_better_result = function(result1, result2, verbose = FALSE) {
   points1 = 0;
   points2 = 0;
-  
+
   if (!is.null(result1$id)){
     points1 = points1 + 1;
   }
@@ -800,8 +800,8 @@ pick_better_result = function(result1, result2, verbose = FALSE) {
     match_type = type_of_match(result1$variety_sim);
     points1 = points1 + (3 / match_type);
   }
-  
-  
+
+
   if (!is.null(result2$id)){
     points2 = points2 + 1;
   }
@@ -831,9 +831,9 @@ pick_better_result = function(result1, result2, verbose = FALSE) {
     match_type = type_of_match(result2$variety_sim);
     points2 = points2 + (3 / match_type);
   }
-  
+
   if (verbose) cat0("\npoints re-ocr: ", points1, "; points first ocr: ", points2);
-  
+
   if (points1 >= points2) {
     return(result1)
   } else {
@@ -843,25 +843,25 @@ pick_better_result = function(result1, result2, verbose = FALSE) {
 
 # Computes stats for a single page (jane's version).
 calc_page_stats = function(page_results) {
-  
+
   stats = init_page_stats()
   page_unlist = apply(page_results, 2, unlist)
-  
+
   stats$items = as.vector(table(page_unlist$table))
-  
+
   # count non-dictionary fields
   stats$id = length(page_unlist$id)
-  
-  stats$year = length(page_unlist$year) 
-  
-  stats$color = length(page_unlist$color) 
-  
-  stats$country = length(page_unlist$country) 
-  
+
+  stats$year = length(page_unlist$year)
+
+  stats$color = length(page_unlist$color)
+
+  stats$country = length(page_unlist$country)
+
   if (stats$country > 0) {
     stats$top_countries = page_unlist$country;
   }
-  
+
   # count types of matches
   for (category in c("province", "region", "producer", "designation", "variety")) {
     if (!is.null(page_unlist[[paste0(category,"_sim")]])) {
@@ -869,47 +869,47 @@ calc_page_stats = function(page_results) {
       stats$matches_matrix[category, as.numeric(names(table(match_type)))] = table(match_type)
     }
   }
-  
+
   # count hits in particular text types
   # ?? FIXME: when text part produces more than one hit, we count it only once (this happens in sub-matching)
   for (hit_type in c("upper_text", "lower_text", "brackets_text")) {
     if (!is.null(page_unlist[[paste0(hit_type,"_hit")]])) {
-      stats$hits_matrix[names(table(page_unlist[[paste0(hit_type,"_hit")]])), hit_type] = 
+      stats$hits_matrix[names(table(page_unlist[[paste0(hit_type,"_hit")]])), hit_type] =
         as.vector(table(page_unlist[[paste0(hit_type,"_hit")]]))
     }
   }
-  
-  
+
+
   # total dictionary hits
   stats$dictionary_hits = sum(stats$matches_matrix);
-  
+
   # items without a dictionary hit
   stats$items_no_dict_hits = sum(!page_unlist$dictionary_hit)
-  
+
   # items without any hit at all
   stats$items_no_hits = sum(!page_unlist$any_hit)
-  
+
   # inspect
   stats$inspect = length(page_unlist$inspect)
-  
+
   return(stats);
 }
 
 # 2. Parse given page. -------------------------------------------------------------------
 # As an input requires Jane's RDS file.
 pageResults = function(RDS_path, pattern_threshold = 0.5, similarity_threshold = 0.8) {
-  
+
   print(paste("Parsing output", RDS_path))
   # read items
   items = readRDS(RDS_path);
-  
+
   # outputs a matrix with several element types -> call columns by index not name
   page_list = lapply(1:length(items$name.words), function(i) {
-    
+
     page_result = lapply(1:length(items$name.words[[i]]), function(item_no) {
-      
+
       # parse single item using re-ocr'ed text...
-      
+
       #  (if no text)
       if(length(items$name.words[[i]][[item_no]]$text) == 0) {
         result_reocr = parse_item(items$name.words[[i]][[item_no]]$text, "")
@@ -917,7 +917,7 @@ pageResults = function(RDS_path, pattern_threshold = 0.5, similarity_threshold =
         result_reocr = parse_item(items$name.words[[i]][[item_no]]$text,
                items$name.words[[i]][[item_no]][,c("text", "confidence")]);
       }
-      
+
       # and using first ocr result
       text = paste(items$name.words.old[[i]][[item_no]][,c("text")], collapse = " ");
 
@@ -925,30 +925,30 @@ pageResults = function(RDS_path, pattern_threshold = 0.5, similarity_threshold =
         item_result = result_reocr
       } else {
         result_first_ocr = parse_item(text, items$name.words.old[[i]][[item_no]][,c("text", "confidence")]);
-      
+
         # pick better result
         item_result = pick_better_result(result_reocr, result_first_ocr);
       }
-      
+
       item_result$table = i
       item_result$file = gsub(RDS_path, pattern = "\\.RDS", replacement = "")
       item_result
     })
-    
+
     page_result = do.call("rbind", page_result)
     page_result
   })
-  
+
   page_results = do.call("rbind", page_list)
-  
+
   return(page_results)
 }
 
 pageStats <- function(page_results, pattern_threshold = 0.5, similarity_threshold = 0.8, verbose = FALSE) {
-  
+
   # calc all instead of updating one by one
   page_stats = calc_page_stats(page_results)
-  
+
   if(verbose) cat("PAGE STATS by column:\n", format_page_stats(page_stats))
   # look for patterns based on stats
   page_patterns = findPatterns(page_results, page_stats, pattern_threshold, similarity_threshold);
@@ -958,49 +958,49 @@ pageStats <- function(page_results, pattern_threshold = 0.5, similarity_threshol
 
 # Looks for patterns in stats.
 findPatterns = function(page_results, page_stats, pattern_threshold = 0.5, similarity_threshold = 0.8, verbose = FALSE) {
-  
+
   hits = page_stats$hits_matrix;
-  
+
   # upper_text
   pattern_upper = NULL;
   # if more than pattern_threshold% matches in upper_text belongs to one category, assume that's the pattern
   # TODO: to discuss: > pattern_threshold% of upper_text hits or > pattern_threshold% of items' number?
   # I lowered the pattern_threshold to 50% but used the total number of items
-  
+
   if (max(hits[,1]) > pattern_threshold * sum(page_stats$items)) {
     # we have a pattern!
     row_id = which.max(hits[,1]);
     pattern_upper = rownames(hits)[row_id];
-    
+
     cat("\npattern upper:", pattern_upper);
   }
-  
+
   # lower_text
   pattern_lower = NULL;
   if (max(hits[,2]) > pattern_threshold * sum(page_stats$items)) {
     # we have a pattern!
     row_id = which.max(hits[,2]);
     pattern_lower = rownames(hits)[row_id];
-    
+
     cat("\npattern lower:", pattern_lower);
   }
-  
+
   # brackets_text
   pattern_brackets = NULL;
   if (max(hits[,3]) > pattern_threshold * sum(page_stats$items)) {
     # we have a pattern!
     row_id = which.max(hits[,3]);
     pattern_brackets = rownames(hits)[row_id];
-    
+
     cat("\npattern brackets:", pattern_brackets);
   }
-  
-    
+
+
   # check what we can improve
   for (i in 1:nrow(page_results)) {
-    
+
     i = page_results[i,]
-    
+
     # upper
     if (!is.null(pattern_upper) & !is.null(i$upper_text)) {
       if (is.null(i[[paste0(pattern_upper, "_sim")]])) {
@@ -1014,7 +1014,7 @@ findPatterns = function(page_results, page_stats, pattern_threshold = 0.5, simil
         if (verbose) cat0("\nU decent: ", paste(i[[pattern_upper]], collapse = " / "));
       }
     }
-    
+
     # lower
     if (!is.null(pattern_lower) & !is.null(i$lower_text)) {
       if (is.null(i[[paste0(pattern_lower, "_sim")]])) {
@@ -1028,7 +1028,7 @@ findPatterns = function(page_results, page_stats, pattern_threshold = 0.5, simil
         if (verbose) cat0("\nL decent: ", paste(i[[pattern_lower]], collapse = " / "));
       }
     }
-    
+
     # brackets
     if (!is.null(pattern_brackets) & !is.null(i$brackets_text)) {
       if (is.null(i[[paste0(pattern_brackets, "_sim")]])) {
@@ -1043,15 +1043,15 @@ findPatterns = function(page_results, page_stats, pattern_threshold = 0.5, simil
       }
     }
   }
-  
+
   return(patterns = list(upper = pattern_upper, lower = pattern_lower, brackets = pattern_brackets))
 }
 
-# Initializes global_stats object. 
+# Initializes global_stats object.
 # Returns empty global stats object.
 init_global_stats = function() {
   global_stats = list(
-    
+
     # general
     pages = 0,          # number of pages parsed
     items = 0,          # number of items in RDS file
@@ -1059,7 +1059,7 @@ init_global_stats = function() {
     items_no_dict_hits = 0,  # number of items that didn't have any hit in dictionaries (full, decent, or sub)
     items_no_hits = 0,  # number of items that didn't have any hit at all (not even id)
     inspect = 0,        # how many items have to be inspected
-    
+
     # number of attributes found (non-null attributes in result_object)
     id = 0,
     year = 0,
@@ -1071,17 +1071,17 @@ init_global_stats = function() {
     designation = 0,
     variety = 0
   );
-  
+
   return(global_stats);
 }
 
 # COmpute global stats from the list of page stats
 compute_global_stats = function(page_stats_list) {
-  
+
   # init global stats
   stats = init_global_stats();
   stats$pages = length(page_stats_list);
-  
+
   # loop over all page stats and sum up values
   for (i in page_stats_list) {
     stats$items = stats$items + i$items;
@@ -1098,38 +1098,38 @@ compute_global_stats = function(page_stats_list) {
     stats$producer = stats$producer + sum(i$hits_matrix[3,]);
     stats$designation = stats$designation + sum(i$hits_matrix[4,]);
     stats$variety = stats$variety + sum(i$hits_matrix[5,]);
-    
+
   }
-  
+
   return(stats);
 }
 
 # Parse all pages in a given folder.
 parseFolder = function(folder_path, pattern_threshold = 0.5, similarity_threshold = 0.8) {
-  
-  files = list.files(path=folder_path, pattern="*.RDS", full.names=TRUE, recursive=FALSE);
-  
+
+  files = list.files(path=folder_path, pattern="*-[0-9][0-9][0-9].RDS", full.names=TRUE, recursive=TRUE);
+
   page_results_list = lapply(files, function(x) {
     try({pageResults(x, pattern_threshold, similarity_threshold)})
   });
-    
+
   page_stats_list = lapply(page_results_list, function(x) {
     try({pageStats(x, pattern_threshold, similarity_threshold)})
   });
   #do.call("rbind", page_stats_list)
-  
+
   #fix and make some of these percentage-wise
   #global_stats = compute_global_stats(page_stats_list);
-  
-  return(list(page_results = page_results_list, 
+
+  return(list(page_results = page_results_list,
          page_stats = page_stats_list));
 }
 
 # Returns well formated text, ready to be printed or stored in output file.
 format_global_stats = function(stats) {
-  
+
   text = "\n";
-  
+
   text = paste0(text, "\n             pages:  ", stats$pages);
   text = paste0(text, "\n             items:  ", stats$items);
   text = paste0(text, "\n           inspect:  ", stats$inspect, " (", round((stats$inspect / stats$items) * 100, 0), "%)");
@@ -1145,10 +1145,7 @@ format_global_stats = function(stats) {
   text = paste0(text, "\n   producers found:  ", stats$producer);
   text = paste0(text, "\ndesignations found:  ", stats$designation);
   text = paste0(text, "\n   varieties found:  ", stats$variety);
-  
-  
+
+
   return(text);
 }
-
-
-

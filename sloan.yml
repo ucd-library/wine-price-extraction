@@ -16,14 +16,14 @@ services:
     command: tail -f /dev/null
     volumes:
       - ./ark_87287:/home/work
-  # pgt:
-  #   build: ./pgt
-  #   ports:
-  #     - "${PORT}:80"
-  #   environment:
-  #     - PGT_JWT=${PGT_JWT}
-  #     - PGT_HOST=localhost
-  #   links:
-  #     - postgres:postgres
-  #   depends_on:
-  #     - postgres
+#  r-base:
+#    image: r-base
+#    command: tail -f /dev/null
+#    volumes:
+#      - ./io:/io
+  sloan:
+    image: ucdlib/sloan-ocr
+    command: tail -f /dev/null
+    volumes:
+      - ./io:/io
+      - ./dsi:/opt/dsi

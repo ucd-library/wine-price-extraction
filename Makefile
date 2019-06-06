@@ -7,11 +7,46 @@ ark:=
 qlr:=$(patsubst %,%.qlr,${ark})
 
 
+define pod
+
+=pod
+
+=head1 SYNOPSIS
+
+  make [-n] <command>
+  where command is one of: alias
+
+This Makefile is used manage some files in an archive.
+
+  eval $(make alias)
+
+Autogenerates some TTL files if they are missing.  This is for the images and the image directories.
+
+  make import
+
+Will use tesseract to autogenerate OCR text versions of the images.
+
+=cut
+
+endef
+
+.PHONY: INFO check alias
+
+INFO::
+	@pod2usage -exit 0 ${MAKEFILE_LIST}
+
+check::
+	@podchecker ${MAKEFILE_LIST}
+
+
+alias:
+	@echo "alias sloan-dc='docker-compose -f ${PWD}/sloan.yml -p sloan'"
+
 # Catalog function
 cat=$1
 catalog=$(word 1,$(subst -, ,$1))
 
-INFO:
+INFO::
 	$(foreach a,${ark},$(warning $a,$(call catalog,$a)))
 
 qlr:${qlr}

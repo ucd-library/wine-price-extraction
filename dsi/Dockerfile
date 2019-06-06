@@ -24,6 +24,7 @@ RUN R -e 'install.packages("/opt/Rtesseract", repos = NULL, type="source")'
 
 # Install Script dependencies
 RUN R -e 'install.packages("dplyr")'
+RUN R -e 'install.packages("gsubr")'
 RUN R -e 'install.packages("tidyverse")'
 RUN R -e 'install.packages("jpeg")'
 RUN R -e 'install.packages("stringr")'

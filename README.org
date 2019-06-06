@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:sql :engine postgresql :cmdline "service=datafest" :tangle yes
+#+PROPERTY: header-args:sql :engine postgresql :cmdline "service=sloan" :tangle yes
 * Crosswalk
 
 There are three different nameing schemes for the files, the original filename
@@ -338,12 +338,28 @@ I am running tesseract over all the current images as a first pass for ocr. I'm
 hoping to be able to parse the html format and pull out all the rectangles that
 I'll need.
 
+#+BEGIN_SRC bash
 for i in $(find .. -name \*.jpg ); do n=$(basename $i .jpg); echo $n; tesseract
 $i $n -l eng --psm 1 --oem 1 txt hocr; done
+#+END_SRC
 
 It seem's that it will be easier to import JSON, rather than html.  I'll use pup
 to convert to a simple json format.  This includes the filename, so I can import
 easily with
+
+#+BEGIN_SRC bash
+	rm hocr.json;
+	for i in $(find ~/sherry-lehmann/sherry-lehmann -name \*.hocr ); do
+	if [[ -s $i ]]; then
+	 ark=$(basename $i .hocr);
+	 echo $ark;
+	 echo -n -e "$ark\t0\t" >> hocr.json;
+	 pup 'div.ocr_page json{}' < $i | jq -c . | sed -e 's/\\/\\\\/g' >> hocr.json;
+	fi;
+	done
+#+END_SRC
+
+
 
 #+BEGIN_SRC bash
   rm unrotated.json;
@@ -614,9 +630,8 @@ select * from a;
 #+END_SRC
 
 #+RESULTS:
-| SET         |
-|-------------|
 | DROP VIEW   |
+|-------------|
 | CREATE VIEW |
 
 #+BEGIN_SRC sql
@@ -1032,3 +1047,468 @@ for i in ark_87287/*; do
 done | tee catalog_list.csv
 
 #+END_SRC
+
+
+* Jane's R Scripts
+
+** RData
+
+This is a simple goofy script that reads the _data1.RDS files from the google
+cloud, and then writes those to a CSV file.  These are collected into a single
+table.
+
+#+BEGIN_SRC bash
+for i in $(find io/sloan-ocr/ -name \*_data1.RDS); do
+ n=${i%_data1.RDS}; b=$(basename $n);
+ docker exec -i $(sloan-dc ps -q r-base) R --slave --vanilla <<<"write.csv(readRDS('$i'),stdout())" |\
+ sed -e "s/^/$b,/" |\ tee --append io/data1.csv ;
+done
+#+END_SRC
+
+#+BEGIN_SRC sql
+	--	create schema jane;
+
+	create table jane.data1 (
+		ark text not null,
+		word_idx integer,
+		"left" integer,
+		bottom integer,
+		"right" integer,
+		top integer,
+		"text" text,
+		confidence float
+		);
+#+END_SRC
+
+#+RESULTS:
+| CREATE TABLE |
+|--------------|
+
+#+BEGIN_SRC sql
+\COPY jane.data1 from 'io/data1.csv' with csv
+
+create table jane.words as
+select ark,word,
+st_setsrid(st_makebox2d(st_makepoint("left",-bottom),st_makePoint("right",-top)),32662) as bbox
+from jane.data1;
+alter table jane.words add jword_id serial primary key;
+
+create index words_bbox_idx on jane.words using gist(bbox);
+create index words_word on jane.words(word);
+create index words_ark on jane.words(ark);
+#+END_SRC
+
+Now, if we want to find the overlapping words between the two tables, we need to
+do something like:
+
+#+BEGIN_SRC sql
+create table jane.overlapping_words as
+select c.ark,
+ c.word_id,
+ j.jword_id,
+ st_intersection(c.bbox,j.bbox) as intersection
+ from jane.words j join catalogs.words c
+ on (c.ark=j.ark and st_intersects(c.bbox,j.bbox) and
+     ( st_area(st_intersection(c.bbox,j.bbox))/st_area(j.bbox) > 0.9 or
+       st_area(st_intersection(c.bbox,j.bbox))/st_area(c.bbox) > 0.9 )
+    );
+#+END_SRC
+
+
+** Running Scripts
+
+The first step is to run the parse_items.RDS command over all the data.  This creates
+#+BEGIN_SRC bash
+for i in $(find /io/sloan-ocr/D-* -name \*-[0-9][0-9][0-9].RDS); do
+ d=$(dirname $i);
+ echo $d;
+ if [[ -f $d/parsed_items.RDS ]]; then
+   echo $d/parsed_items.RDS exists;
+ else
+   Rscript --vanilla /opt/dsi/scripts/run_parse_items.R name.input.dir=$d name.output.dir=$d
+  fi ;
+done
+#+END_SRC
+
+#+BEGIN_SRC bash
+for i in $(find /io/sloan-ocr/catalogs/ -name parse_folder_sample.RDS); do
+ d=$(dirname $i);
+ if [[ -f $d/PRICE_NAME.csv ]];
+ then echo $d/PRICE_NAME.csv;
+ else
+  Rscript run_wine_database_one_page.R in=$i
+ fi;
+done
+#+END_SRC
+
+These can be combined to run at the same time.
+
+#+BEGIN_SRC bash
+s=/opt/dsi/scripts
+R='Rscript --vanilla --quiet'
+for i in $(find /io/sloan-ocr/D-* -name \*-[0-9][0-9][0-9].RDS | head -1 ); do
+ d=$(dirname $i);
+ if [[ ! -f $d/PRICE_NAME.csv ]]; then
+   if [[ ! -f $d/parsed_items.RDS ]]; then
+     $R $s/run_parse_items.R name.input.dir=$d name.output.dir=$d 2> /dev/null > /dev/null;
+   fi ;
+   $R $s/run_wine_database_one_page.R truth.dir=/io/dsiData in=$d/parsed_items.RDS 2>/dev/null >/dev/null;
+ fi;
+ wc -l $d/PRICE_NAME.csv;
+done
+#+END_SRC
+
+
+** CSV Outputs
+
+#+BEGIN_SRC sql
+create table jane.entry_page(
+"angle" float,
+"angle_conf" float,
+"height" integer,
+"width" integer,
+"binary.threshold" integer,
+"pix.threshold" float,
+"pix.newValue" float,
+"file_id" text
+);
+#+END_SRC
+
+#+BEGIN_SRC bash
+for i in $(find io/sloan-ocr/catalogs/ -name ENTRY_PAGE.csv); do
+  f=$(basename $(dirname $i));
+  cat $i | sed -e "s/NA$/$f/" |\
+    psql service=sloan -c "\COPY jane.entry_page from STDIN CSV HEADER NULL 'NA'";
+done
+
+#+END_SRC
+
+#+BEGIN_SRC bash
+for i in $(find io/sloan-ocr/catalogs/ -name ENTRY_PAGE.csv); do
+  f=$(basename $(dirname $i));
+  tail -n +2 $i | sed -e "s/NA$/$f/" >> entry_page.csv;
+done
+#+END_SRC
+
+#+RESULTS:
+
+The entry_price table is the collection of name and prices linked together.
+There are multiple
+
+#+BEGIN_SRC sql
+drop table if exists jane.entry_price;
+create table jane.entry_price(
+"left" float,
+"bottom" float,
+"right" float,
+"top" float,
+"confidence" float,
+"cluster" integer,
+"table" integer,
+"row" integer,
+"file_id" text,
+"file_number" text,
+"entry_id" text,
+"name_id" text,
+"col.header" text,
+"price_center_x_orig" float,
+"price_center_y_orig" float,
+"text.true" text,
+"truth_entered_by" text,
+"price_raw" text,
+"type_raw" text,
+"price_new" text,
+"type_new" text,
+"flag_year" boolean,
+"flag_amount" boolean,
+"flag_size" boolean,
+"flag_order" boolean,
+"flag_type_new" boolean,
+"sum_flag" integer,
+"page_ark" text
+);
+#+END_SRC
+
+#+RESULTS:
+
+| DROP TABLE   |
+|--------------|
+| CREATE TABLE |
+
+Entry prices are collected together, where the page_ark is simply tacked on to
+the end.
+
+#+BEGIN_SRC bash
+  rm entry_price.csv
+  for i in $(find io/sloan-ocr/catalogs/ -name ENTRY_PRICE.csv); do
+    f=$(basename $(dirname $i));
+    tail -n +2 $i | sed -e "s/$/,$f/" >> entry_price.csv;
+  done
+  wc -l entry_price.csv
+#+END_SRC
+
+#+RESULTS:
+: 33888 entry_price.csv
+
+Then imported into the system
+#+BEGIN_SRC bash
+  psql service=sloan -c "truncate jane.entry_price;copy jane.entry_price from STDIN CSV NULL 'NA'" < entry_price.csv
+#+END_SRC
+
+#+RESULTS:
+: COPY 33888
+
+The next table, the entry_name is adds additional information from joining the
+entries with additional information from a wine database.
+
+#+BEGIN_SRC sql
+  drop table if exists jane.entry_name;
+  create table jane.entry_name(
+    "text" text,
+    "text_raw" text,
+    "text_conf" text,
+    "name" text,
+    "keywords" text,
+    "upper_text" text,
+    "lower_text" text,
+    "brackets_text" text,
+    "id" text,
+    "year" integer,
+    "color" text,
+    "province" text,
+    "region" text,
+    "producer" text,
+    "designation" text,
+    "variety" text,
+    "country" text,
+    "id_conf" text,
+    "year_conf" text,
+    "color_conf" text,
+    "province_sim" text,
+    "region_sim" text,
+    "producer_sim" text,
+    "designation_sim" text,
+    "variety_sim" text,
+    "brackets_conf" text,
+    "upper_text_hit" text,
+    "lower_text_hit" text,
+    "brackets_text_hit" text,
+    "inspect" text,
+    "dictionary_hit" text,
+    "any_hit" text,
+    "table" text,
+    "file" text,
+    "file_id" text,
+    "file_number" text,
+    "name_id" text,
+    "l" float,
+    "b" float,
+    "r" float,
+    "t" float,
+    "name_center_x_orig" float,
+    "name_center_y_orig" float,
+	"page_ark" text
+    );
+#+END_SRC
+
+#+RESULTS:
+| DROP TABLE   |
+|--------------|
+| CREATE TABLE |
+
+
+I don't know why a small number have a 'text_conf' entry
+#+BEGIN_SRC bash
+  rm entry_name.csv
+  for i in $(find io/sloan-ocr/catalogs/ -name ENTRY_NAME.csv); do
+    f=$(basename $(dirname $i));
+    if (head -1 $i | grep -q text_conf); then
+      tail -n +2 $i | sed -e 's/NULL/NA/g;' -e 's/"NA"/NA/g;' >> entry_name_with_conf.csv;
+    else
+      tail -n +2 $i | sed -e 's/NULL/NA/g;' -e 's/"NA"/NA/g;' >> entry_name_without_conf.csv;
+    fi
+  done
+  wc -l entry_name*.csv
+#+END_SRC
+
+#+RESULTS:
+|   441 | entry_name_with_conf.csv    |
+| 18345 | entry_name_without_conf.csv |
+| 18786 | total                       |
+
+Then imported into the system as one table.
+
+#+BEGIN_SRC bash
+  psql service=sloan -c "truncate jane.entry_name;"
+  psql service=sloan -c "copy jane.entry_name (\"text\",\"text_raw\",\"text_conf\",\"name\",\"keywords\",\"upper_text\",\"lower_text\",\"brackets_text\",\"id\",\"year\",\"color\",\"province\",\"region\",\"producer\",\"designation\",\"variety\",\"country\",\"id_conf\",\"year_conf\",\"color_conf\",\"province_sim\",\"region_sim\",\"producer_sim\",\"designation_sim\",\"variety_sim\",\"brackets_conf\",\"upper_text_hit\",\"lower_text_hit\",\"brackets_text_hit\",\"inspect\",\"dictionary_hit\",\"any_hit\",\"table\",\"file\",\"file_id\",\"file_number\",\"name_id\",\"l\",\"b\",\"r\",\"t\",\"name_center_x_orig\",\"name_center_y_orig\") from STDIN CSV NULL 'NA'" < entry_name_with_conf.csv
+  psql service=sloan -c "copy jane.entry_name (\"text\",\"text_raw\",\"name\",\"keywords\",\"upper_text\",\"lower_text\",\"brackets_text\",\"id\",\"year\",\"color\",\"province\",\"region\",\"producer\",\"designation\",\"variety\",\"country\",\"id_conf\",\"year_conf\",\"color_conf\",\"province_sim\",\"region_sim\",\"producer_sim\",\"designation_sim\",\"variety_sim\",\"brackets_conf\",\"upper_text_hit\",\"lower_text_hit\",\"brackets_text_hit\",\"inspect\",\"dictionary_hit\",\"any_hit\",\"table\",\"file\",\"file_id\",\"file_number\",\"name_id\",\"l\",\"b\",\"r\",\"t\",\"name_center_x_orig\",\"name_center_y_orig\") from STDIN CSV NULL 'NA'" < entry_name_without_conf.csv
+  psql service=sloan -c "update jane.entry_name set page_ark=split_part(file,'/',9)"
+#+END_SRC
+
+#+RESULTS:
+| TRUNCATE | TABLE |
+| COPY     |   421 |
+| COPY     | 18345 |
+| UPDATE   | 18766 |
+
+#+BEGIN_SRC sql
+drop table if exists jane.name_match;
+  create table jane.name_match(
+  "text" text,
+  confidence text,
+  name_id text,
+  word_id text,
+  page_ark text
+  );
+#+END_SRC
+
+#+RESULTS:
+| DROP TABLE   |
+|--------------|
+| CREATE TABLE |
+
+#+BEGIN_SRC bash
+  rm name_match.csv
+  for i in $(find io/sloan-ocr/catalogs/ -name NAME_MATCH.csv); do
+    f=$(basename $(dirname $i));
+    tail -n +2 $i | sed -e "s/$/,$f/" >> name_match.csv;
+  done
+  wc -l name_match.csv
+#+END_SRC
+
+#+RESULTS:
+: 157026 name_match.csv
+
+#+BEGIN_SRC bash
+  psql service=sloan -c "truncate jane.name_match;"
+  psql service=sloan -c "copy jane.name_match from STDIN CSV NULL 'NA'" < name_match.csv
+#+END_SRC
+
+#+RESULTS:
+| TRUNCATE |  TABLE |
+| COPY     | 157026 |
+
+
+#+BEGIN_SRC sql
+drop table if exists jane.name_summary_global_stats;
+create table jane.name_summary_global_stats (
+  key text,
+  value text,
+  page_ark text
+);
+#+END_SRC
+
+#+RESULTS:
+| DROP TABLE   |
+|--------------|
+| CREATE TABLE |
+
+#+BEGIN_SRC bash
+  rm name_summary_global_stats.csv
+  for i in $(find io/sloan-ocr/catalogs/ -name name_summary_global_stats.csv); do
+    f=$(basename $(dirname $i));
+    tail -n +2 $i | sed -e "s/$/,$f/" >> name_summary_global_stats.csv;
+  done
+  wc -l name_summary_global_stats.csv
+#+END_SRC
+
+#+RESULTS:
+: 19550 name_summary_global_stats.csv
+
+#+BEGIN_SRC bash
+  psql service=sloan -c "truncate jane.name_summary_global_stats;"
+  psql service=sloan -c "copy jane.name_summary_global_stats from STDIN CSV NULL 'NA'" < name_summary_global_stats.csv
+#+END_SRC
+
+#+RESULTS:
+| TRUNCATE | TABLE |
+| COPY     | 19550 |
+
+#+BEGIN_SRC sql
+drop table if exists jane.price_name;
+create table jane.price_name (
+  "price_raw" text,
+  "confidence" float,
+  "type_new" text,
+  "price_new" text,
+  "cluster" integer,
+  "table" integer,
+  "row" integer,
+  "entry_id" text,
+  "name_id" text,
+  "text.true" text,
+  "truth_entered_by" text,
+  "col.header" text,
+  "text" text,
+  "text_raw" text,
+  "name" text,
+  "id" text,
+  "file_id" text,
+  "country" text,
+  "year" integer,
+  "color" text,
+  "variety" text,
+  "region" text,
+  "province" text,
+  "designation" text,
+"page_ark" text
+  );
+
+#+END_SRC
+
+#+RESULTS:
+| DROP TABLE   |
+|--------------|
+| CREATE TABLE |
+
+#+BEGIN_SRC bash
+  rm price_name.csv
+  for i in $(find io/sloan-ocr/catalogs/ -name PRICE_NAME.csv); do
+    f=$(basename $(dirname $i));
+      tail -n +2 $i | sed -e 's/NULL/NA/g;' -e 's/"NA"/NA/g;' -e "s/$/,$f/" >> price_name.csv;
+  done
+  wc -l price_name.csv
+#+END_SRC
+
+#+RESULTS:
+: 33888 price_name.csv
+
+Then imported into the system
+#+BEGIN_SRC bash
+  psql service=sloan -c "truncate jane.price_name;copy jane.price_name from STDIN CSV NULL 'NA'" < price_name.csv
+#+END_SRC
+
+#+RESULTS:
+: COPY 33888
+
+** Updating the Truth tables
+
+#+BEGIN_SRC sql
+
+create table fix.truth_all (
+num integer,
+file_id text,
+"table" integer,
+cluster integer,
+row integer,
+text_true text,
+truth_entered_by text,
+accurate_file text
+);
+#+END_SRC
+
+#+RESULTS:
+| CREATE TABLE |
+|--------------|
+
+#+BEGIN_SRC sql
+create table fix.xwalk (
+file text,
+page_ark text,
+x integer,
+y integer);
+#+END_SRC
+
+#+RESULTS:
+| CREATE TABLE |
+|--------------|
