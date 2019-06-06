@@ -21,6 +21,7 @@
 
 # 0. Setup ----
 
+library(tablewine)
 library(dplyr)
 library(stringr)
 
@@ -51,7 +52,7 @@ if (length(args) >= 1) {
   IN = args.default[1]
 	TRUTH.DIR= args.default[2]
   # flip.y argument for back-rotating image points, accounts for plotting images with y = 0 at top left instead of bottom left
-  FLIP.Y = args.default[3]
+#  FLIP.Y = args.default[3]
 # We could add all as command line  arguments
 #SAVE.DATA = FALSE
 #SAVE.DESKEWED = FALSE
@@ -75,16 +76,16 @@ if (length(args) >= 1) {
 }
 
 # Table extraction
-source(file.path(thisdir,"../R/wine_price_pageCols.R"), echo = F) #redundant
-source(file.path(thisdir,"../R/wine_price_tables_functions.R"), echo = F) #redundant
-source(file.path(thisdir,"../R/wine_price_nameBoxes.R"), echo = F) #redundant
-source(file.path(thisdir,"../R/helper.R"), echo = F) #redundant
-source(file.path(thisdir,"../R/wine_price_tables.R"), echo = F)
+#source(file.path(thisdir,"../R/wine_price_pageCols.R"), echo = F) #redundant
+#source(file.path(thisdir,"../R/wine_price_tables_functions.R"), echo = F) #redundant
+#source(file.path(thisdir,"../R/wine_price_nameBoxes.R"), echo = F) #redundant
+#source(file.path(thisdir,"../R/helper.R"), echo = F) #redundant
+#source(file.path(thisdir,"../R/wine_price_tables.R"), echo = F)
 
 # Evaluation
 #source(file.path(thisdir,"../R/wine_evaluate.R"))
 # Functions to summarize name hit success and add flags to ENTRY_PRICE
-source(file.path(thisdir,"../R/wine_flag_and_summarize.R"))
+#source(file.path(thisdir,"../R/wine_flag_and_summarize.R"))
 
 OUTPUT.DIR = dirname(IN);
 
@@ -116,9 +117,8 @@ exclude1 = names(unlist(sapply(page_results_all[1,], nrow)))
 
 ENTRY_NAME = data.frame(page_results_all[,!colnames(page_results_all) %in% exclude1]) %>% mutate_if(is.list, as.character)
 # remove unused file_name col and confidence which is all null
-ENTRY_NAME = ENTRY_NAME %>% select(-c("file_name", "confidence")) %>% mutate(file_id = str_extract(file, "UCD_Lehmann_[0-9]{4}"))
-ENTRY_NAME$file_number = str_extract(ENTRY_NAME$file_id, pattern = "[0-9]{4}")
-ENTRY_NAME = ENTRY_NAME %>% group_by(file_id, table) %>% mutate(name_id = paste(file_number, table, 1:n(), sep = "_"))
+ENTRY_NAME = ENTRY_NAME %>% select(-c("file_name", "confidence")) %>% mutate(file_id = tools::file_path_sans_ext(basename(file)))
+ENTRY_NAME = ENTRY_NAME %>% group_by(file_id, table) %>% mutate(name_id = paste(file_id, table, 1:n(), sep = "_"))
 
 
 #     - Load PRICE data ----
@@ -133,13 +133,12 @@ name_output =
     nameboxes = do.call("rbind", output$name.locations)
     nameboxes$table = as.numeric(sapply( strsplit(rownames(nameboxes), "_|\\.") , nth, 2 ))
     nameboxes$number = as.numeric(sapply( strsplit(rownames(nameboxes), "_|\\.") , last ))
-    nameboxes$file_id = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}")
-    nameboxes$file_number = str_extract(nameboxes$file_id, "[0-9]{4}")
+    nameboxes$file_id = tools::file_path_sans_ext(basename(x))
     # possible that there can be slightly more names than prices if there were ids with unmatched price rows
       # latest run:
       # sum(!ENTRY_NAME$name_id %in% ENTRY_PRICE$name_id) #5
       # "0027_1_14" "0237_1_26" "0644_1_9"  "2504_1_4"  "2504_2_5"
-    nameboxes$name_id = paste(nameboxes$file_number, nameboxes$table, rows, sep = "_")
+    nameboxes$name_id = paste(nameboxes$file_id, nameboxes$table, rows, sep = "_")
 
     # Add an xy coordinate for the app to use
     # flip.y argument can account for when images are plotted with flipped y scales
@@ -341,11 +340,11 @@ amount_flag = function(prices_to_check, min_price = 0.1, max_price = 2000) {
 
 order_flag = function(TABLE, tocheck = "price_new"){
 
-  TABLE = TABLE[c(tocheck,'cluster','table','row','file_number')]
+  TABLE = TABLE[c(tocheck,'cluster','table','row','file_id')]
   result = vector(length = nrow(TABLE))
 
-  for (i in unique(TABLE$file_number)){
-    subsetfile = TABLE[TABLE$file_number == i,]
+  for (i in unique(TABLE$file_id)){
+    subsetfile = TABLE[TABLE$file_id == i,]
     for (j in unique(subsetfile$table)){
       subsettable = subsetfile[subsetfile$table == j,]
       for (k in unique(subsettable$cluster)){
@@ -356,7 +355,7 @@ order_flag = function(TABLE, tocheck = "price_new"){
           if (is.na(tmp[l+1]) | is.na(tmp[l])){next}
           differ[l] = tmp[l+1]-tmp[l]
           if (differ[l] < 0) {
-            result[which(TABLE$file_number==i & TABLE$table ==j & TABLE$cluster ==k & TABLE$row == l+1)] = TRUE
+            result[which(TABLE$file_id==i & TABLE$table ==j & TABLE$cluster ==k & TABLE$row == l+1)] = TRUE
           }
         }
       }
@@ -447,10 +446,9 @@ price_output = lapply(price_RDS_files, function(x) {
                    times = sapply(page.cols$prices, nrow))
   prices = do.call("rbind", page.cols$prices)
   prices = prices %>% mutate(
-    file_id = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}"),
-    file_number = str_extract(file_id, pattern = "[0-9]{4}"),
-    entry_id = paste(file_number, table, 1:nrow(prices), sep = "_"),
-    name_id = paste(file_number, table, row, sep = "_"),
+    file_id = tools::file_path_sans_ext(basename(x)),
+    entry_id = paste(file_id, table, 1:nrow(prices), sep = "_"),
+    name_id = paste(file_id, table, row, sep = "_"),
     col.header = col.header
   )
   # Add an xy coordinate for the app to use
@@ -465,11 +463,20 @@ price_output = lapply(price_RDS_files, function(x) {
 ENTRY_PRICE = do.call("rbind", price_output) #n_distinct(ENTRY_PRICE$name_id)
 
 
-truth_all = read.csv(file.path(TRUTH.DIR, "truth_all.csv"), stringsAsFactors = FALSE)
+# Add in Truth Tables
+ENTRY_TRUTH = read.csv(file.path(TRUTH.DIR, "truth_all.csv"), stringsAsFactors = FALSE)
+#ENTRY_TRUTH = read.csv(file.path(EVAL.OUTPUT.DIR, "ENTRY_TRUTH.csv"), stringsAsFactors = FALSE)
 
-ENTRY_PRICE = left_join(ENTRY_PRICE, truth_all[truth_all$accurate_file,c("text.true", "truth_entered_by", "file_id",
-                                                  "table", "row", "cluster")],
-                by = c("file_id" = "file_id", "table" = "table", "row" = "row", "cluster" = "cluster"))
+accurate_file = inner_join(ENTRY_PRICE %>% group_by(file_id) %>% summarize(n_table = n_distinct(table)),
+                          ENTRY_TRUTH %>% group_by(file_id) %>% summarize(n_table = n_distinct(table)), by = c("file_id", "n_table")) %>%
+                select(file_id)
+
+ENTRY_TRUTH$accurate_file = ENTRY_TRUTH$file_id %in% accurate_file$file_id
+
+ENTRY_PRICE = left_join(ENTRY_PRICE,
+                        ENTRY_TRUTH[ENTRY_TRUTH$accurate_file,c("text.true", "truth_entered_by", "file_id",
+                                                            "table", "row", "cluster")],
+                        by = c("file_id" = "file_id", "table" = "table", "row" = "row", "cluster" = "cluster"))
 
 #     - Variable transformations --------
 
@@ -509,7 +516,7 @@ page_output = lapply(price_RDS_files, function(x) {
                          pix.threshold = NA, pix.newValue = NA)
   if (exists("output$page.cols$pix.threshold")) {page_info$pix.threshold  = output$page.cols$pix.threshold}
   if (exists("output$page.cols$pix.threshold")) {page_info$pix.newValue  = output$page.cols$pix.newValue}
-  page_info$file_id = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}")
+  page_info$file_id = tools::file_path_sans_ext(basename(x))
   return(page_info)
 })
 

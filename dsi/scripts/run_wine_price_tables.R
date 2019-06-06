@@ -6,56 +6,24 @@
 # Setup ####
 ####################################################################################################
 
-# Load packages, source files ----
-library(dplyr, warn.conflicts = FALSE)
-library(Rtesseract, warn.conflicts = FALSE)
-library(tidyverse, warn.conflicts = FALSE)
-library(stringr, warn.conflicts = FALSE)
-library(jpeg, warn.conflicts = FALSE)
-library(cluster, warn.conflicts = FALSE)
-library(changepoint, warn.conflicts = FALSE)
-library(RecordLinkage, warn.conflicts = FALSE)
-#library(MASS) #<- Should have MASS installed for rlm, but load creates conflict with select
-
-# Source necessary files when running from command line ----
-if (length(commandArgs(trailingOnly = TRUE)) >= 1) {
-  #https://stackoverflow.com/questions/1815606/rscript-determine-path-of-the-executing-script
-  thisFile <- function() {
-    cmdArgs <- commandArgs(trailingOnly = FALSE)
-    needle <- "--file="
-    match <- grep(needle, cmdArgs)
-    if (length(match) > 0) {
-      # Rscript
-      return(dirname(sub(needle, "", cmdArgs[match])))
-    } else {
-      # 'source'd via R console
-      return(dirname(sys.frames()[[1]]$ofile))
-    }
-  }
-  
-  thisdir <- thisFile()
-  
-  source(file.path(thisdir, "../R/wine_price_tables.R"), echo = FALSE)
-  source(file.path(thisdir, "../R/wine_price_pageCols.R"), echo = FALSE)
-  source(file.path(thisdir, "../R/wine_price_tables_functions.R"), echo = FALSE)
-  source(file.path(thisdir, "../R/wine_price_nameBoxes.R"), echo = FALSE)
-  source(file.path(thisdir, "../R/helper.R"), echo = FALSE)
-}
+library(tablewine)
 
 # Get args (defaults and process from command line) ----
 
 # IF running from this script, set args like...: 
-#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"
-#OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
-#DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
-#DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
-#SAVE.DATA = FALSE
-
-#DEFAULTS 
-OCR.ONLY = FALSE
-SAVE.DATA = TRUE
-DATA1 = NULL
-SAVE.DESKEWED = FALSE
+# FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"
+# FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_0008.jpg"
+# DATA1 = readRDS("/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/UCD_Lehmann_0008_data1.RDS")
+# OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output/"
+# DATA.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
+# DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
+# SAVE.DATA = FALSE
+# 
+# #DEFAULTS
+# OCR.ONLY = FALSE
+# SAVE.DATA = TRUE
+# DATA1 = NULL
+# SAVE.DESKEWED = FALSE
 
 # For command line args, case doesn't matter (they'll be converted to upper either way)
 possible.args = c("FILESET", "OUTPUT.DIR", "DATA.OUTPUT.DIR", "DATA.INPUT.DIR",
@@ -110,7 +78,7 @@ if ( (!exists("OUTPUT.DIR") || is.na(OUTPUT.DIR) || !file.exists(OUTPUT.DIR)) &&
 
 # Check for valid directory to store data (getBoxes) output.
 # If none, data won't be stored. SAVE.DATA will be false.
-if ( !exists("DATA.OUTPUT.DIR") || is.na(DATA.OUTPUT.DIR) || !file.exists(DATA.OUTPUT.DIR) ) {
+if ( !exists("DATA.OUTPUT.DIR") || is.null(DATA.OUTPUT.DIR) || is.na(DATA.OUTPUT.DIR) || !file.exists(DATA.OUTPUT.DIR) ) {
   DATA.OUTPUT.DIR = NULL
   SAVE.DATA = FALSE
   ifelse(OCR.ONLY, stop(call. = FALSE, "OCR.ONLY is set to TRUE but no valid path to store data was supplied."),
@@ -124,7 +92,7 @@ if ( !exists("DATA.OUTPUT.DIR") || is.na(DATA.OUTPUT.DIR) || !file.exists(DATA.O
 }
 
 # Check for valid directory for input data. If given, function will attempt to use it
-if (!exists("DATA.INPUT.DIR") || is.na(DATA.INPUT.DIR) || !file.exists (DATA.INPUT.DIR) ) {
+if (!exists("DATA.INPUT.DIR") || is.null(DATA.INPUT.DIR) || is.na(DATA.INPUT.DIR) || !file.exists (DATA.INPUT.DIR) ) {
   DATA.INPUT.DIR = NULL
   DATA1 = NULL
   if (!OCR.ONLY) print("No valid path to load existing data (output of GetBoxes). Will OCR images instead.")
@@ -137,7 +105,7 @@ if (!exists("SAVE.DESKEWED") || is.na(SAVE.DESKEWED)) {
   if (SAVE.DESKEWED!=TRUE) {SAVE.DESKEWED = FALSE}
 }
 
-if ( !exists("PIX.THRESHOLD") || is.na(PIX.THRESHOLD) || is.na(as.numeric(PIX.THRESHOLD)) ) {
+if ( !exists("PIX.THRESHOLD") || is.null(PIX.THRESHOLD) || is.na(PIX.THRESHOLD) || is.na(as.numeric(PIX.THRESHOLD)) ) {
   PIX.THRESHOLD = NULL
   PIX.NEWVALUE = NULL
 } else if (is.numeric(PIX.THRESHOLD) && (PIX.THRESHOLD <=1 || PIX.THRESHOLD >= 256)) {

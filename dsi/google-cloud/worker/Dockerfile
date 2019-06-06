@@ -12,8 +12,6 @@ RUN mkdir /storage
 # Setup @ucd-lib/job-autoscaler-commons config
 ENV CLOUD_STORAGE_BUCKET=sloan-ocr
 ENV PUBSUB_TOPIC=sloan-ocr
-ENV FIREBASE_COLLECTION=sloan-ocr
-ENV FIREBASE_URL=https://digital-ucdavis-edu.firebaseio.com
 ENV SERVICE_ACCOUNT_PATH=/etc/google/service-account.json
 
 RUN mkdir /worker

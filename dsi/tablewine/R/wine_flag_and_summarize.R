@@ -165,6 +165,13 @@ amount_flag = function(prices_to_check, min_price = 0.1, max_price = 2000) {
   })
 }
 
+# One more jane added (Hangshi made one but for the old output form)
+# If bottle, case, use global criteria
+# Otherwise, use local ratio
+ratio_flag = function(TABLE) {
+  #tbd
+  }
+  
 # David's functin:
 # check for nonincreasing values in table price column.
 # Takes a table, mostly likely ENTRY_PRICE, as input

@@ -1,0 +1,14 @@
+Package: tablewine
+Title: Extract price tables from images of wine catalogs
+Version: 0.0.0.9000
+Authors@R: c(
+		person("Jane", "Carlen", email = "jacarlen@ucdavis.edu", role = c("aut", "cre")),
+		person("Stanislaw", "Saganowski", role = "aut"),
+		person("Duncan", "Temple Lang", role = "aut")
+	)
+Description: The folder contains code produced by the DSI (mostly Jane Carlen and Stanislaw Saganowski, building on work by Duncan Temple Lang) with the goal of extracting prices tables from the Sherry Lehmann wine catalogs.
+Depends: R (>= 3.5.2), Rtesseract(>= 0.4), dplyr (>= 0.0.0), ggplot2 (>= 3.0.0)
+Imports: jpeg (>= 0.0.0), changepoint (>= 2.0.0), stringr (>= 1.0.0), cluster (>= 2.0.0), RecordLinkage (>= 0.4.0), MASS (>= 1.0.0)
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true

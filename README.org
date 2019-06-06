@@ -1048,6 +1048,7 @@ done | tee catalog_list.csv
 
 #+END_SRC
 
+
 * Jane's R Scripts
 
 ** RData
@@ -1112,6 +1113,51 @@ select c.ark,
        st_area(st_intersection(c.bbox,j.bbox))/st_area(c.bbox) > 0.9 )
     );
 #+END_SRC
+
+
+** Running Scripts
+
+The first step is to run the parse_items.RDS command over all the data.  This creates
+#+BEGIN_SRC bash
+for i in $(find /io/sloan-ocr/D-* -name \*-[0-9][0-9][0-9].RDS); do
+ d=$(dirname $i);
+ echo $d;
+ if [[ -f $d/parsed_items.RDS ]]; then
+   echo $d/parsed_items.RDS exists;
+ else
+   Rscript --vanilla /opt/dsi/scripts/run_parse_items.R name.input.dir=$d name.output.dir=$d
+  fi ;
+done
+#+END_SRC
+
+#+BEGIN_SRC bash
+for i in $(find /io/sloan-ocr/catalogs/ -name parse_folder_sample.RDS); do
+ d=$(dirname $i);
+ if [[ -f $d/PRICE_NAME.csv ]];
+ then echo $d/PRICE_NAME.csv;
+ else
+  Rscript run_wine_database_one_page.R in=$i
+ fi;
+done
+#+END_SRC
+
+These can be combined to run at the same time.
+
+#+BEGIN_SRC bash
+s=/opt/dsi/scripts
+R='Rscript --vanilla --quiet'
+for i in $(find /io/sloan-ocr/D-* -name \*-[0-9][0-9][0-9].RDS | head -1 ); do
+ d=$(dirname $i);
+ if [[ ! -f $d/PRICE_NAME.csv ]]; then
+   if [[ ! -f $d/parsed_items.RDS ]]; then
+     $R $s/run_parse_items.R name.input.dir=$d name.output.dir=$d 2> /dev/null > /dev/null;
+   fi ;
+   $R $s/run_wine_database_one_page.R truth.dir=/io/dsiData in=$d/parsed_items.RDS 2>/dev/null >/dev/null;
+ fi;
+ wc -l $d/PRICE_NAME.csv;
+done
+#+END_SRC
+
 
 ** CSV Outputs
 

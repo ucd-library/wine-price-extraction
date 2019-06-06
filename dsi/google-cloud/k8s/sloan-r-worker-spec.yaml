@@ -1,0 +1,28 @@
+containers:
+- name: sloan-r-worker
+  image: ucdlib/sloan-ocr-worker
+  imagePullPolicy: Always
+  env:
+  - name: CLOUD_STORAGE_BUCKET
+    value: "sloan-ocr"
+  - name: PUBSUB_TOPIC
+    value: "sloan-ocr"
+  - name: SERVICE_ACCOUNT_PATH
+    value: "/etc/google/service-account.json"
+  resources:
+    requests:
+      memory: "10Gi"
+      cpu: "700m"
+  volumeMounts:
+  - name: service-account-key
+    mountPath: /etc/google/
+  - name: storage-volume
+    mountPath: /storage
+volumes:
+- name: storage-volume
+  emptyDir: {}
+- name: service-account-key
+  secret:
+    secretName: service-account-key
+nodeSelector:
+  intendedfor: workers

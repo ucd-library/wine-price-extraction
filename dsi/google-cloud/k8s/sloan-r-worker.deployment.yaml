@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sloan-r-worker-deployment
+spec:
+  selector:
+    matchLabels:
+      app: sloan-r-worker
+  template:
+    metadata:
+      labels:
+        app: sloan-r-worker
+    spec:
+      containers:
+      - name: sloan-r-worker
+        image: ucdlib/sloan-ocr-worker
+        env:
+        - name: CLOUD_STORAGE_BUCKET
+          value: "sloan-ocr"
+        - name: PUBSUB_TOPIC
+          value: "sloan-ocr"
+        - name: FIREBASE_COLLECTION
+          value: "sloan-ocr"
+        - name: FIREBASE_URL
+          value: "https://digital-ucdavis-edu.firebaseio.com"
+        - name: SERVICE_ACCOUNT_PATH
+          value: "/etc/google/service-account.json"
+        resources:
+          requests:
+            memory: "10Gi"
+            cpu: "700m"
+          # Doesn't play well with auto scaler?
+          # https://stackoverflow.com/questions/43968485/horizontal-pod-autoscaling-not-working-unable-to-get-metrics-for-resource-cpu
+          # limits:
+          #   memory: "3Gi"
+          #   cpu: "800m"
+        volumeMounts:
+        - name: service-account-key
+          mountPath: /etc/google/
+        - name: storage-volume
+          mountPath: /storage
+      volumes:
+      - name: storage-volume
+        emptyDir: {}
+      - name: service-account-key
+        secret:
+          secretName: service-account-key

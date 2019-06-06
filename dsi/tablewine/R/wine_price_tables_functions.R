@@ -24,7 +24,7 @@ updatePageCols <- function(page.cols, type = "price") {
   
     # remove a cluster if necessary and reorder, next assumes this order
     if (sum(page.cols$price_cols$entries == 0) > 0) {
-        page.cols$price_cols = filter(page.cols$price_cols, entries !=0)
+        page.cols$price_cols = dplyr::filter(page.cols$price_cols, entries !=0)
         if(nrow(page.cols$price_cols)==0) {break("Filtered out all entries. Stopping")}
         # relevel clusters
         cluster.old = page.cols$price_cols$cluster
@@ -111,8 +111,8 @@ addPrices <- function(page.cols, px) {
       tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = T, dollar = F)
       tmp.boxes.from.cols_price[[x]]$text.new = extractPrice(tmp.boxes.from.cols_price[[x]]$text)
       tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text.new, maybe = T, dollar = F)
-      tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], type !="FALSE", 
-                                              !str_detect(tmp.boxes.from.cols_price[[x]]$text, "\\$"))
+      tmp.boxes.from.cols_price[[x]] = dplyr::filter(tmp.boxes.from.cols_price[[x]], type !="FALSE", 
+                                              !stringr::str_detect(tmp.boxes.from.cols_price[[x]]$text, "\\$"))
       
       if (nrow(tmp.boxes.from.cols_price[[x]])>0) {
       
@@ -120,10 +120,10 @@ addPrices <- function(page.cols, px) {
         compare.col = abs(outer(tmp.boxes.from.cols_price[[x]]$bottom, page.cols$prices[[x]]$bottom, "-"))
         tmp.new = apply(compare.col, 1, min) > page.cols$charheight
         tmp.lost = apply(compare.col, 2, min) > page.cols$charheight # prices not found in new data
-        new.prices = filter(tmp.boxes.from.cols_price[[x]], tmp.new)
+        new.prices = dplyr::filter(tmp.boxes.from.cols_price[[x]], tmp.new)
     
         #better prices? - should have same number of rows as old
-        tmp.boxes.from.cols_price[[x]] = filter(tmp.boxes.from.cols_price[[x]], !tmp.new)
+        tmp.boxes.from.cols_price[[x]] = dplyr::filter(tmp.boxes.from.cols_price[[x]], !tmp.new)
     
         #what is the closest old price for each?
         tmp.compare = apply(cbind(page.cols$prices[[x]]$type[!tmp.lost], tmp.boxes.from.cols_price[[x]]$type), 1, compareTypes)
@@ -138,7 +138,7 @@ addPrices <- function(page.cols, px) {
         }
     
         #strip leading periods from new text
-        page.cols$prices[[x]]$text.new = str_remove(page.cols$prices[[x]]$text.new, "^\\.+")
+        page.cols$prices[[x]]$text.new = stringr::str_remove(page.cols$prices[[x]]$text.new, "^\\.+")
       }
       return(page.cols$prices[[x]])
     }
@@ -162,13 +162,13 @@ addIds <- function(page.cols, px) {
     #are the things we found IDs?
     tmp.boxes.from.cols_id[[x]]$price = isPrice(tmp.boxes.from.cols_id[[x]]$text, maybe = F)
     tmp.boxes.from.cols_id[[x]]$type = isPrice(tmp.boxes.from.cols_id[[x]]$text, maybe = T)
-    tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], type == page.cols$idtype)
+    tmp.boxes.from.cols_id[[x]] = dplyr::filter(tmp.boxes.from.cols_id[[x]], type == page.cols$idtype)
     
     #another heuristic to weed out non-IDs
-    tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]],
+    tmp.boxes.from.cols_id[[x]] = dplyr::filter(tmp.boxes.from.cols_id[[x]],
                                          !grepl("[a-zA-Z-]{3}", tmp.boxes.from.cols_id[[x]]$text))
     
-    old.ids = filter(page.cols$ids, table == x)
+    old.ids = dplyr::filter(page.cols$ids, table == x)
     compare.ids = abs(outer(tmp.boxes.from.cols_id[[x]]$bottom, old.ids$bottom, "-"))
     tmp.new = apply(compare.ids, 1, min) > page.cols$charheight
     if (sum(tmp.new) > 0) {
@@ -178,10 +178,10 @@ addIds <- function(page.cols, px) {
       if (length(keep.cols) > 0) {
         compare.ids = as.matrix(compare.ids[,keep.cols],  ncol = length(keep.cols))
         tmp.lost = apply(compare.ids, 2, min) > page.cols$charheight
-        new.ids = filter(tmp.boxes.from.cols_id[[x]], (apply(compare.ids, 1, min) > page.cols$charheight))
+        new.ids = dplyr::filter(tmp.boxes.from.cols_id[[x]], (apply(compare.ids, 1, min) > page.cols$charheight))
     
         #better ids? - should have same number of rows as oldx
-        tmp.boxes.from.cols_id[[x]] = filter(tmp.boxes.from.cols_id[[x]], !tmp.new)
+        tmp.boxes.from.cols_id[[x]] = dplyr::filter(tmp.boxes.from.cols_id[[x]], !tmp.new)
     
         # replace if original worse thn 90 and new at least 10 better
         tmp.replace = (old.ids$confidence[!tmp.lost])[keep.cols] < 90 &
@@ -251,7 +251,7 @@ pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
   start.table = 1
   tmp.table = c()
   for (i in 1:max(page.cols$price_cols$table.row)) {
-    tmp.cols = filter(page.cols$price_cols, table.row == i)
+    tmp.cols = dplyr::filter(page.cols$price_cols, table.row == i)
     tmp.prices = page.cols$prices[tmp.cols$cluster]
     v.prices = lapply(tmp.prices, function(x) {c(median(x$left), median(x$right))})
     v.widths = diff(unlist(v.prices)) #column width, break, column width, break, etc.
@@ -262,7 +262,7 @@ pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
         words.left = unlist(v.prices)[seq(2, length(unlist(v.prices)), by = 2)]
         words.right = lead(unlist(v.prices)[seq(1, length(unlist(v.prices)), by = 2)])
         check.words = sapply( 1: (length(words.left)-1), function(j) {
-          nrow(filter(data1, left > words.left[j], right < words.right[j], 
+          nrow(dplyr::filter(data1, left > words.left[j], right < words.right[j], 
                       top < tmp.cols$col.top[j], bottom > tmp.cols$col.top[j] - 10*page.cols$charheight))
         }) 
         
@@ -283,17 +283,17 @@ pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
   left.price_cols = page.cols$price_cols %>% arrange(table.row, table) %>% group_by(table.row)  %>%
     #to start use either the right point of the previous table (here we have only the leftmost column) or 0 for left margin
     mutate(cpt.left = lag(col.right, default = 0))  %>% ungroup() %>% group_by(table) %>%  
-    filter(col.left == min(col.left))
+    dplyr::filter(col.left == min(col.left))
 
   table.left = sapply(1:nrow(left.price_cols), function(x) {
     column = left.price_cols[x,]
     # look for table left boundary ####
-    data1.order = data1 %>% filter(top < column$col.top + buffer, bottom > column$col.bottom - buffer, left < column$col.left, left > column$cpt.left) %>% arrange(left)
+    data1.order = data1 %>% dplyr::filter(top < column$col.top + buffer, bottom > column$col.bottom - buffer, left < column$col.left, left > column$cpt.left) %>% arrange(left)
     data1.cum = sapply(1:column$col.left, function(x) {sum(data1.order$left <= x |data1.order$right <=x)})
     data1.lag = diff(data1.cum)
     data1.lag[1] = 0
-    v.regions = cpt.var(data1.lag, method = "BinSeg", penalty = "None", Q = 1)
-    #v.regions = cpt.var(data1.lag, method='PELT', penalty = )
+    v.regions = changepoint::cpt.var(data1.lag, method = "BinSeg", penalty = "None", Q = 1)
+    #v.regions = changepoint::cpt.var(data1.lag, method='PELT', penalty = )
     cpts = v.regions@cpts
     cpts = cpts[cpts < column$col.left - min.col.width] # max right
     
@@ -312,7 +312,7 @@ pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
   # Add table and column var to price column table
   page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% mutate(column = rank(col.left)) %>% ungroup()
   page.cols$prices = lapply(page.cols$prices, function(x) {
-    x$table = filter(page.cols$price_cols, cluster == x$cluster[1])$table
+    x$table = dplyr::filter(page.cols$price_cols, cluster == x$cluster[1])$table
     x$row = 1:nrow(x)
     x})
   
@@ -329,17 +329,17 @@ pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
     t = (page.cols$ids %>% group_by(table) %>% summarize(t = max(top)))[["t"]]
     b = (page.cols$ids %>% group_by(table) %>% summarize(b = min(bottom)))[["b"]]
     new.table = sapply(1:length(m), function(i) {
-      (filter(page.cols$price_cols, col.right > m[i], col.bottom < t[i], col.top > b[i]) %>% 
+      (dplyr::filter(page.cols$price_cols, col.right > m[i], col.bottom < t[i], col.top > b[i]) %>% 
          arrange(col.left))[["table"]][1]
     })
     page.cols$ids$table = rep(new.table, table(page.cols$ids$table))
-    page.cols$ids = filter(page.cols$ids, !is.na(table) )
+    page.cols$ids = dplyr::filter(page.cols$ids, !is.na(table) )
     if (nrow(page.cols$ids) == 0) {
       page.cols$ids =  NULL
       page.cols$id_cols = NULL
       page.cols$n_id_cols = NULL
     } else {
-      page.cols$id_cols = filter(page.cols$id_cols, table %in% page.cols$ids$table)
+      page.cols$id_cols = dplyr::filter(page.cols$id_cols, table %in% page.cols$ids$table)
     }
   }
   
@@ -373,28 +373,28 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
   
   # list of tables we think have missing prices based on price column length mismatches
   tables.incomplete.by.price = page.cols$price_cols %>% group_by(table) %>% summarize(sum(missing.by.price)) %>% 
-    filter(`sum(missing.by.price)` > 0) %>% .[,"table"]
+    dplyr::filter(`sum(missing.by.price)` > 0) %>% .[,"table"]
  
   if (nrow(tables.incomplete.by.price) > 0) {
     cat("\nTable", unlist(tables.incomplete.by.price), "might be missing prices\n")
 
     for (t in unlist(tables.incomplete.by.price)) {
       
-      table.prices = do.call("rbind", page.cols$prices) %>% filter(table == t)
+      table.prices = do.call("rbind", page.cols$prices) %>% dplyr::filter(table == t)
       max.rows = max(table.prices$row)
-      cols.missing = page.cols$prices[as.character(filter(ungroup(page.cols$price_cols), missing.by.price, table == t)$cluster)]
-      cols.full = page.cols$prices[as.character(filter(ungroup(page.cols$price_cols), !missing.by.price, table == t)$cluster)]
+      cols.missing = page.cols$prices[as.character(dplyr::filter(ungroup(page.cols$price_cols), missing.by.price, table == t)$cluster)]
+      cols.full = page.cols$prices[as.character(dplyr::filter(ungroup(page.cols$price_cols), !missing.by.price, table == t)$cluster)]
       missing.spots = lapply(cols.missing, function(x) {which(! 1:max.rows %in% x$row)})
       
       if(length(missing.spots)>0) {
         cols.missing = lapply(1:length(cols.missing), function(x) {
             missing.boxes = data.frame(
               left = rep(quantile(cols.missing[[x]]$left, .2), length(missing.spots[[x]])),
-              bottom = table.prices %>% filter(row %in% missing.spots[[x]]) %>% group_by(row) %>% 
+              bottom = table.prices %>% dplyr::filter(row %in% missing.spots[[x]]) %>% group_by(row) %>% 
                           summarize(bottom = median(bottom)) %>% ungroup() %>% dplyr::select(bottom),
               width = rep(quantile(cols.missing[[x]]$right, .8), length(missing.spots[[x]])) -
                         rep(quantile(cols.missing[[x]]$left,.2), length(missing.spots[[x]])),
-              height =  table.prices %>% filter(row %in% missing.spots[[x]]) %>% group_by(row) %>% 
+              height =  table.prices %>% dplyr::filter(row %in% missing.spots[[x]]) %>% group_by(row) %>% 
                 summarize(bottom = median(bottom), top = median(top), height = top - bottom) %>% ungroup() %>% dplyr::select(height)
             )
             boxes = checkBoxes(missing.boxes, px, height = img.height, buffer = buffer, rbind = FALSE)
@@ -405,7 +405,7 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
             return(rbind(cols.missing[[x]], boxes[, names(cols.missing[[x]])]) %>% arrange(row))
         })
       }
-      page.cols$prices[filter(page.cols$price_cols, table == t)$cluster] = c(cols.missing, cols.full)
+      page.cols$prices[dplyr::filter(page.cols$price_cols, table == t)$cluster] = c(cols.missing, cols.full)
       page.cols = updatePageCols(page.cols, type = "price")
     }    
 
@@ -419,10 +419,10 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
     all.prices = do.call("rbind", page.cols$prices)
     
     for (i in tables.with.ids) {
-      table.prices = filter(all.prices, table == i)
-      table.ids = filter(page.cols$ids, table == i)
+      table.prices = dplyr::filter(all.prices, table == i)
+      table.ids = dplyr::filter(page.cols$ids, table == i)
       for (clust in unique(table.prices$cluster)) {
-        cluster.prices = filter(table.prices, cluster == clust)
+        cluster.prices = dplyr::filter(table.prices, cluster == clust)
         ids.need.prices = 
           apply(abs(outer(table.ids$top, cluster.prices[["top"]], "-")), 1, min) > buffer & 
           apply(abs(outer(table.ids$bottom, cluster.prices[["bottom"]], "-")), 1, min) > buffer
@@ -443,7 +443,7 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
         }
       }
     }
-    all.prices = filter(all.prices, text !="") #for IDs don't keep the blank prices we find
+    all.prices = dplyr::filter(all.prices, text !="") #for IDs don't keep the blank prices we find
     page.cols$prices = split(all.prices, all.prices$cluster)
   }
   page.cols = updatePageCols(page.cols, type = "price")
@@ -454,14 +454,14 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
     
     tables.with.ids = unique(page.cols$ids$table)
     page.cols$price_cols = page.cols$price_cols %>% group_by(table) %>% mutate(missing.id = n_ids < entries) %>% ungroup()
-    incomplete.by.id = filter(page.cols$price_cols, missing.id, table %in% tables.with.ids)
+    incomplete.by.id = dplyr::filter(page.cols$price_cols, missing.id, table %in% tables.with.ids)
     
     if (nrow(incomplete.by.id) > 0) {
       for (row in 1:nrow(incomplete.by.id)) {
         #match the ids and prices
         tmp.table = as.numeric(incomplete.by.id[row,"table"])
-        tmp.ids = filter(page.cols$ids, table == tmp.table)
-        tmp.cluster = as.numeric(filter(page.cols$price_cols, table == tmp.table, column == 1)$cluster)
+        tmp.ids = dplyr::filter(page.cols$ids, table == tmp.table)
+        tmp.cluster = as.numeric(dplyr::filter(page.cols$price_cols, table == tmp.table, column == 1)$cluster)
         tmp.prices = page.cols$prices[[which(sapply(page.cols$prices, function(x) {x$cluster[1]==tmp.cluster}))]]
         
         prices.missing.ids = which(apply(abs(outer(tmp.prices$top, tmp.ids$top, "-")), 1, min) > buffer * 4) #might need more buffer
@@ -475,7 +475,7 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
             height = rep(2*page.cols$charheight, n.missing)
             )
           boxes = checkBoxes(missing.boxes, px, height = img.height, buffer = buffer)
-          try({boxes = filter(boxes, grepl("[0-9].*", boxes$text), nchar(boxes$text) < 2*max(nchar(tmp.ids$text)))}) #some ids like N-1 only have one number
+          try({boxes = dplyr::filter(boxes, grepl("[0-9].*", boxes$text), nchar(boxes$text) < 2*max(nchar(tmp.ids$text)))}) #some ids like N-1 only have one number
         
           if (!is.null(boxes) && nrow(boxes) > 0) {
             cat("Missing entries detected", boxes$text)
@@ -506,7 +506,7 @@ removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "
   if (sum(is.na(page.cols$price_cols$col.header)) == 0) {
     page.cols$prices = lapply(page.cols$prices, function(x) {
       tmp.col = which(page.cols$price_cols$cluster == x$cluster[1])
-      filter(x, x$bottom > as.numeric(page.cols$price_cols[tmp.col,"col.header.bottom"] - buffer*5))
+      dplyr::filter(x, x$bottom > as.numeric(page.cols$price_cols[tmp.col,"col.header.bottom"] - buffer*5))
     })
     page.cols = updatePageCols(page.cols, type = "price")
     if (!is.null(page.cols$ids)) page.cols = updatePageCols(page.cols, type = "ids")
@@ -523,13 +523,13 @@ removeExtra <- function(page.cols, buffer = page.cols$charheight, removeType = "
       x$center = (x$left + x$right)/2  #in case center justified
       diffs1 = abs(outer(x[[page.cols$justify]], x[[page.cols$justify]], "-")); diag(diffs1) = NA
       c1 = apply(diffs1, 1, min, na.rm = T) > buffer/2
-      x = filter(x, ! ( (x$right < median(x$left)| x$left > median(x$right)) & c1) )
+      x = dplyr::filter(x, ! ( (x$right < median(x$left)| x$left > median(x$right)) & c1) )
       
       if (page.cols$justify == "center") {
-        x = filter(x, ! (abs(scale( x[["center"]] )) > 2.5 & type == "number") )
+        x = dplyr::filter(x, ! (abs(scale( x[["center"]] )) > 2.5 & type == "number") )
         x = x[,-which(names(x)=="center")]
       } else { #check both to be conservative. Otherwise may just be white space
-        x = filter(x, ! ((abs(scale(x[["left"]])) > 2.5 & type == "number") & (abs(scale(x[["right"]])) > 2.5 & type == "number")) )
+        x = dplyr::filter(x, ! ((abs(scale(x[["left"]])) > 2.5 & type == "number") & (abs(scale(x[["right"]])) > 2.5 & type == "number")) )
         x = x[,-which(names(x)=="center")]
       }
 
