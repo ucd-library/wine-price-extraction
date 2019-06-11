@@ -122,7 +122,7 @@ ENTRY_NAME = ENTRY_NAME %>% group_by(file_id, table) %>% mutate(name_id = paste(
 
 
 #     - Load PRICE data ----
-price_RDS_files = list.files(OUTPUT.DIR, full.names = TRUE, pattern = "*-[0-9][0-9][0-9].RDS", recursive = F)
+price_RDS_files = list.files(OUTPUT.DIR, full.names = TRUE, pattern = "*-[0-9]+.RDS", recursive = F)
 
 # Can unify this with below so not looping through price_RDS_files twice
 name_output =

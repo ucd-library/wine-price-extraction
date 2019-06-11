@@ -1107,7 +1107,8 @@ compute_global_stats = function(page_stats_list) {
 # Parse all pages in a given folder.
 parseFolder = function(folder_path, pattern_threshold = 0.5, similarity_threshold = 0.8) {
 
-  files = list.files(path=folder_path, pattern="*-[0-9][0-9][0-9].RDS", full.names=TRUE, recursive=TRUE);
+#  files = list.files(path=folder_path, pattern="(?!data1).RDS", full.names=TRUE, recursive=TRUE);
+  files = list.files(path=folder_path, pattern="*-[0-9]+.RDS", full.names=TRUE, recursive=TRUE);
 
   page_results_list = lapply(files, function(x) {
     try({pageResults(x, pattern_threshold, similarity_threshold)})
