@@ -80,7 +80,7 @@ let crawl = false;
     // fs.writeFileSync('all-data.json', JSON.stringify(images, '  ', '  '));
   } else {
     images = require('./all-data');
-    images = images.splice(0, 5);
+    images = images.splice(10, 13);
   }
 
   let job = new Job();
@@ -94,6 +94,8 @@ let crawl = false;
 
     image.ocr = true;
     image.processOcr = true;
+    image.parseItems = true;
+    image.exportCsv = true;
     // image.force = true;
 
     job.addTaskSegment(task.id, image);
@@ -101,10 +103,12 @@ let crawl = false;
 
   console.log('starting', images.length);
   
-  Master.kubernetesDeployment = 'sloan-r-workers';
+  // Master.kubernetesDeployment = 'sloan-r-workers';
 
-  let spec = path.join(__dirname, '..', 'k8s', 'sloan-r-worker-spec.yaml');
-  spec = fs.readFileSync(spec, 'utf-8');
-  await Master.startJob(job, {yaml: spec});
+  //let spec = path.join(__dirname, '..', 'k8s', 'sloan-r-worker-spec.yaml');
+  //spec = fs.readFileSync(spec, 'utf-8');
+  //await Master.startJob(job, {yaml: spec});
+
+  await Master.startJob(job);
 })();
 

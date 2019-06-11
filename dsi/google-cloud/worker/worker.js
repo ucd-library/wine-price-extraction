@@ -11,7 +11,9 @@ class WorkerImpl extends Worker {
   constructor(name) {
     super(name);
     this.processed = 0;
-    this.exitOnComplete = true;
+    this.exitOnComplete = process.env.KEEPALIVE ? false : true;
+
+    this.R_CMD = 'Rscript --vanilla --quiet';
   }
   
   async run() {
@@ -28,6 +30,12 @@ class WorkerImpl extends Worker {
       }
       if( this.segment.processOcr ) {
         await this.processOCR();
+      }
+      if( this.segment.parseItems ) {
+        await this.parseItems();
+      }
+      if( this.segment.exportCsv ) {
+        await this.exportCsv();
       }
     } catch(e) {
       logger.error('error running segment', e, this.segment);
@@ -54,7 +62,7 @@ class WorkerImpl extends Worker {
 
     // Rscript for_justin_run_wine_price_tables.R /io/input /io/output TRUE 
     let {stdout, stderr} = await this.exec(
-      `Rscript run_wine_price_tables.R FILESET=${ROOT_DIR}/input/${this.segment.filename} DATA.OUTPUT.DIR=${ROOT_DIR}/output OCR.ONLY=TRUE`
+      `${this.R_CMD} run_wine_price_tables.R FILESET=${ROOT_DIR}/input/${this.segment.filename} DATA.OUTPUT.DIR=${ROOT_DIR}/output OCR.ONLY=TRUE`
     )
     await this._uploadFiles(stdout, stderr, 'ocr');
   }
@@ -69,10 +77,8 @@ class WorkerImpl extends Worker {
     }
     logger.info('Running ocr processing for ', this.segment.imageUrl);
 
-
-    let ocrFile = path.join(ROOT_DIR,'output',path.parse(this.segment.filename).name);
-    ocrFile += '_data1.RDS';
-
+    // download ocr r data file
+    let ocrFile = path.join(ROOT_DIR,'output',path.parse(this.segment.filename).name+'_data1.RDS');
     if( !fs.existsSync(ocrFile) ) {
       let gcsFile = path.join(this.segment.pathId, path.parse(this.segment.filename).name+'_data1.RDS');
       await cloudStorage.getFile(gcsFile, ocrFile);
@@ -82,10 +88,68 @@ class WorkerImpl extends Worker {
     await this.downloadImage(this.segment.imageUrl, this.segment.filename);
 
     let {stdout, stderr} = await this.exec(
-      `Rscript run_wine_price_tables.R FILESET=${ROOT_DIR}/input OUTPUT.DIR=${ROOT_DIR}/output DATA.INPUT.DIR=${ROOT_DIR}/output`
+      `${this.R_CMD} run_wine_price_tables.R FILESET=${ROOT_DIR}/input OUTPUT.DIR=${ROOT_DIR}/output DATA.INPUT.DIR=${ROOT_DIR}/output`
     );
 
     await this._uploadFiles(stdout, stderr, 'process');
+  }
+
+  async parseItems() {
+    if( !this.segment.force && !this.segment.forceParseItems ) {
+      let ocrCloudFile = path.join(this.segment.pathId, 'parsed_items.RDS');
+      if( await this._gcsFileExists(ocrCloudFile) ) {
+        logger.info('Ignoring PARSE ITEMS, product exists and no force flag set', this.segment.imageUrl);
+        return;
+      }
+    }
+    logger.info('Running parse items for ', this.segment.imageUrl);
+
+    let processedFile = path.join(ROOT_DIR,'output',path.parse(this.segment.filename).name+'.RDS');
+    if( !fs.existsSync(processedFile) ) {
+      let gcsFile = path.join(this.segment.pathId, path.parse(this.segment.filename).name+'.RDS');
+
+      if( !(await this._gcsFileExists(gcsFile)) ) {
+        logger.info(`Ignoring PARSE ITEMS, ${gcsFile} does not exist`, this.segment.imageUrl);
+        return;
+      }
+
+      await cloudStorage.getFile(gcsFile, processedFile);
+    }
+
+    let {stdout, stderr} = await this.exec(
+      `${this.R_CMD} run_parse_items.R name.input.dir=${ROOT_DIR}/output name.output.dir=${ROOT_DIR}/output`
+    );
+
+    await this._uploadFiles(stdout, stderr, 'parse_items');
+  }
+
+  async exportCsv() {
+    if( !this.segment.force && !this.segment.forceExportCsv ) {
+      let ocrCloudFile = path.join(this.segment.pathId, 'PRICE_NAME.csv');
+      if( await this._gcsFileExists(ocrCloudFile) ) {
+        logger.info('Ignoring EXPORT CSV, product exists and no force flag set', this.segment.imageUrl);
+        return;
+      }
+    }
+    logger.info('Running export csv for ', this.segment.imageUrl);
+
+    let parsedItemsFile = path.join(ROOT_DIR,'output','parsed_items.RDS');
+    if( !fs.existsSync(parsedItemsFile) ) {
+      let gcsFile = path.join(this.segment.pathId, 'parsed_items.RDS');
+
+      if( !(await this._gcsFileExists(gcsFile)) ) {
+        logger.info(`Ignoring EXPORT CSV, ${gcsFile} does not exist`, this.segment.imageUrl);
+        return;
+      }
+
+      await cloudStorage.getFile(gcsFile, processedFile);
+    }
+
+    let {stdout, stderr} = await this.exec(
+      `${this.R_CMD} run_wine_database_one_page.R truth.dir=/opt/dsi/Data in=${ROOT_DIR}/output/parsed_items.RDS`
+    );
+
+    await this._uploadFiles(stdout, stderr, 'export_csv');
   }
 
   async _uploadFiles(stdout, stderr, suffix='') {
@@ -97,7 +161,7 @@ class WorkerImpl extends Worker {
     // upload files to cloud storage
     let files = await fs.readdir(path.join(ROOT_DIR,'output'));
 
-    Promise.all(
+    await Promise.all(
       files.map(file => cloudStorage.addFile(
         path.join(ioRoot, file),
         path.join(this.segment.pathId, file)
