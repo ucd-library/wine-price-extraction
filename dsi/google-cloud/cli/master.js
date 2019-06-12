@@ -10,7 +10,7 @@ config.cloudStorage.rootBucketName = 'sloan-ocr';
 config.pubsub.topic = 'sloan-ocr';
 config.pubsub.subscription = 'sloan-ocr-sub';
 
-let crawl = false;
+let crawl = true;
 
 (async function() {
   console.log('ensuring bucket');
@@ -18,12 +18,13 @@ let crawl = false;
 
   let images = [];
   if( crawl ) {
-    let crawler = new Crawler('sherry-lehmann');
+    // let crawler = new Crawler('sherry-lehmann');
+    let crawler = new Crawler('amerine-menus');
     images = await crawler.getImageUrls({
-  //    max: 100,
+      //max: 10,
       root: [
-        "/D-202/d70w2t"
-
+        "/items/d7rs4c",
+        // "/D-202/d70w2t"
         // "/D-005/d79w2m",
         // "/D-005/d7ps3c",
         // "/D-005/d72013",
@@ -77,10 +78,15 @@ let crawl = false;
       ]
     });
 
-    // fs.writeFileSync('all-data.json', JSON.stringify(images, '  ', '  '));
+    // fs.writeFileSync('all-menu-data.json', JSON.stringify(images, '  ', '  '));
   } else {
-    images = require('./all-data');
-    images = images.splice(10, 13);
+    images = require('./all-menu-data');
+    images = images.splice(0, 3);
+  }
+
+  for( let image of images ) {
+    image.imageUrl += '/svc:iiif/full/full/0/default.jpg';
+    image.filename = image.filename.replace(/\.png$/, '.jpg');
   }
 
   let job = new Job();
@@ -96,7 +102,7 @@ let crawl = false;
     image.processOcr = true;
     image.parseItems = true;
     image.exportCsv = true;
-    // image.force = true;
+    image.force = true;
 
     job.addTaskSegment(task.id, image);
   }
@@ -105,9 +111,9 @@ let crawl = false;
   
   // Master.kubernetesDeployment = 'sloan-r-workers';
 
-  //let spec = path.join(__dirname, '..', 'k8s', 'sloan-r-worker-spec.yaml');
-  //spec = fs.readFileSync(spec, 'utf-8');
-  //await Master.startJob(job, {yaml: spec});
+  // let spec = path.join(__dirname, '..', 'k8s', 'sloan-r-worker-spec.yaml');
+  // spec = fs.readFileSync(spec, 'utf-8');
+  // await Master.startJob(job, {yaml: spec, parallelism: 250});
 
   await Master.startJob(job);
 })();

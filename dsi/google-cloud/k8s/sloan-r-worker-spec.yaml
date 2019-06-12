@@ -12,7 +12,7 @@ containers:
   resources:
     requests:
       memory: "10Gi"
-      cpu: "700m"
+      cpu: "850m"
   volumeMounts:
   - name: service-account-key
     mountPath: /etc/google/

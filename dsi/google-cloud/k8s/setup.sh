@@ -9,8 +9,9 @@ CLUSTER=sloan-r-workers
 # Create cluster via cli
 gcloud beta container clusters create ${CLUSTER} \
   --zone us-central1-a \
-  --num-nodes 1 \
+  --num-nodes 3 \
   --disk-size 10GB \
+  --no-enable-autorepair \
   --machine-type n1-standard-1 \
   --cluster-version=1.12.7 \
   --enable-stackdriver-kubernetes
