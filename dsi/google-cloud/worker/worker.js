@@ -142,7 +142,7 @@ class WorkerImpl extends Worker {
         return;
       }
 
-      await cloudStorage.getFile(gcsFile, processedFile);
+      await cloudStorage.getFile(gcsFile, parsedItemsFile);
     }
 
     let {stdout, stderr} = await this.exec(
