@@ -5,37 +5,11 @@
 
 # Hangshi's functions
 
-# Flag potential prices based on likely being a year
-# Input is a vector of detected prices, most likely ENTRY_PRICE$price_new
-# Arguments set allowable year range and which column to check defaults to price_new
-# Output a vector of Boolean values, where TRUE means flagged.
-
-year_flag = function(prices_to_check, year_lower = 1800, year_upper = 2000){
-  flag = lapply(1:length(prices_to_check),function(i){
-    price = as.numeric(as.character((prices_to_check[i])))
-    #set conditions to filter out error entries, and filtered ones are marked unflagged
-    if (length(price)== 1&& !anyNA(price) && !price %in% c('','FALSE') && !grepl("\\.",price)){
-      #flag the price that falls into the year range
-      if (price >= year_lower && price < year_upper){
-        return(TRUE)
-      }
-      else{
-        return(FALSE)
-      }
-    }
-    else{
-      return(FALSE)
-    }
-  })
-  flag = matrix(unlist(flag))
-  return(flag)
-}
-
 # Flag potential prices based on wrong numbers of digits before or after the decimal
 # Input is a vector of detected prices, most likely ENTRY_PRICE$price_new
 # Aguments set allowable digits left and right of the dot
 # Output is a vector of Boolean values, where TRUE means flagged.
-size_flag = function(prices_to_check, size_left = 4, size_right = 2){
+format_flag = function(prices_to_check, size_left = 4, size_right = 2){
 
   flag = lapply(1:length(prices_to_check),function(i){
     price = as.character((prices_to_check[i]))
@@ -158,52 +132,76 @@ digit_flag = function(prices_to_check, ratio = .04){
 # Input is a vector of detected prices, most likely ENTRY_PRICE$price_new
 # Arguments sets range (min_price to max_price) that would not be flagged
 # Output is a vector of Boolean values, where TRUE means flagged.
-amount_flag = function(prices_to_check, min_price = 0.1, max_price = 2000) {
+amount_flag = function(prices_to_check, min_price = 0.1, max_price = 1500) {
   numeric_price = as.numeric(prices_to_check)
-  sapply( numeric_price, function(x) {
+  flag = sapply( numeric_price, function(x) {
     ifelse( !is.na(x) && (x < min_price | x >= max_price), TRUE, FALSE)
   })
+  return(flag)
 }
 
 # One more jane added (Hangshi made one but for the old output form)
-# If bottle, case, use global criteria
-# Otherwise, use local ratio
+# TO DO: If bottle, case, use global criteria. Currently use local ratio
+# Note: If a ratio is off both sides of the offending value will be flagged, but only one is guilty,
+#       If one side of the ratio can't be converted to numeric the flag is FALSE
 ratio_flag = function(TABLE) {
-  #tbd
-  }
+  table_split = split(TABLE, paste(TABLE$file_id, TABLE$table))
+  flag = unlist(
+    
+    lapply(table_split, function(table1) {
+     if (length(unique(table1$column)) > 1) {
+      
+      mat1 = matrix(NA, max(table1$row), max(table1$column))
+      mat1[cbind(table1$row, table1$column)] = as.numeric(table1$price_new)
+      ratio1 = mat1
+      ratio1[,1] = ratio1[,2] / ratio1[,1] 
+      for (i in 2:length(unique(table1$column))) {
+        ratio1[,i] = mat1[,i] / mat1[,(i-1)] 
+      }
+      # check deviation from center by standard deviations and absolute diff
+      ratio1 = data.frame(abs(apply(ratio1, 2, scale)) > .5 & abs(apply(ratio1, 2, scale, scale = FALSE)) > 1 )
+      ratio1 = data.frame(
+                 flag = unlist(ratio1), 
+                 column = rep(1:ncol(ratio1), each = nrow(ratio1)),
+                 row = rep(1:nrow(ratio1), times = ncol(ratio1))
+                 )
+      table2 = left_join(table1, ratio1, by = c("column", "row"))
+      table2$flag[is.na(table2$flag)] = FALSE
+      return(table2$flag)
+    } else {
+      return(rep(FALSE, nrow(table1)))
+    }
+  })
+  )
+  return(flag)
+}
 
-# David's functin:
 # check for nonincreasing values in table price column.
 # Takes a table, mostly likely ENTRY_PRICE, as input
   # argument "tocheck" says which column of detected prices to check, defaulting to "price_new"
     # "price_raw" may be useful in some cases.
-# Output is a vector of Boolean values where TRUE means the row in TABLE is not in increasing order,
-  # i.e. the selected row had a price that was lower than the row before it
+# Output is a vector of Boolean values where TRUE means the row in TABLE is not in order,
+  # i.e. the selected row had a price that was greater than the two after or less than two before
+  #   (if possible, e.g can't check for last row of table)
+  #   check two behind or ahead so if we have something like 1, 2, 6, 3, 4 it's clear whether to flag 6 or 3
 
-order_flag = function(TABLE, tocheck = "price_new"){
-
-  TABLE = TABLE[c(tocheck,'cluster','table','row','file_id')]
-  result = vector(length = nrow(TABLE))
-
-  for (i in unique(TABLE$file_id)){
-    subsetfile = TABLE[TABLE$file_id == i,]
-    for (j in unique(subsetfile$table)){
-      subsettable = subsetfile[subsetfile$table == j,]
-      for (k in unique(subsettable$cluster)){
-        subsetfinal = subsettable[subsettable$cluster == k,]
-        tmp = suppressWarnings(as.numeric(as.character(subsetfinal[,1])))
-        differ = vector(length = length(tmp)-1)
-        for (l in seq(length(differ))) {
-          if (is.na(tmp[l+1]) | is.na(tmp[l])){next}
-          differ[l] = tmp[l+1]-tmp[l]
-          if (differ[l] < 0) {
-            result[which(TABLE$file_id==i & TABLE$table ==j & TABLE$cluster ==k & TABLE$row == l+1)] = TRUE
-          }
-        }
-      }
-    }
-  }
-  result
+order_flag = function(TABLE, tocheck = "price_new") {
+  TABLE = TABLE[c(tocheck, 'table', 'column', 'row', 'file_id')]
+  names(TABLE)[1] = "tocheck"
+  flag = rep(FALSE, nrow(TABLE))
+  # greater than one after, or less than one before
+  toflag =  TABLE %>% 
+            mutate(flag_index = 1:nrow(TABLE)) %>%
+            group_by(file_id, table, column) %>% arrange(file_id, table, column, row) %>%
+            filter(tocheck!="FALSE")
+  toflag =  toflag %>% mutate(flag = 
+                   ( as.numeric(tocheck) > dplyr::lead(as.numeric(tocheck), default = Inf) &
+                     as.numeric(tocheck) > dplyr::lead(as.numeric(tocheck), default = Inf, n = 2) ) | 
+                     as.numeric(tocheck) < dplyr::lag(as.numeric(tocheck), default = 0) &
+                     as.numeric(tocheck) < dplyr::lag(as.numeric(tocheck), default = 0, n = 2) 
+                   )
+  flag[toflag$flag_index] = toflag$flag
+  return (flag)
 }
 
 # 2. Summarize success of name dictionary matching (in ENTRY_NAME) ----

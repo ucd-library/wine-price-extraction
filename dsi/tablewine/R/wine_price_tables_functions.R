@@ -98,18 +98,29 @@ addPrices <- function(page.cols, px) {
   page.cols$prices = page.cols$prices[order(as.numeric(names(page.cols$prices)))] 
   page.cols$price_cols = page.cols$price_cols %>% arrange(cluster)
   
+  #assumes prices ordered from bottom to top
+  page.cols$prices = lapply(page.cols$prices, arrange, bottom)
+  
+  # search the whole column
   tmp.boxes.from.cols_price = lapply(1:page.cols$n_price_cols, boxesFromCols,
                                      page.cols$price_cols, px, buffer = page.cols$charheight/3)
+
   
-  # only add new ones, only replace ones that got better
+  # only add new ones or  replace ones that got better
+
   page.cols$prices = lapply(1:page.cols$n_price_cols, function(x) { try({
-    
+  
     if (nrow(tmp.boxes.from.cols_price[[x]])>0) {
       
+      # note: - tmp.boxes.from.cols_price elements have a "text" field that's from re-ocr and will 
+      #         get a "text.new", then the two text.new of this and page.cols$prices will be compared
+      #     -   also note text may be from original ocr or re-ocr (if a newly detected price), 
+      #         and text.new reflects numToPrice function being applied 
+      
       #evaluate possible new prices
-      tmp.boxes.from.cols_price[[x]]$price = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = F, dollar = F)
-      tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text, maybe = T, dollar = F)
-      tmp.boxes.from.cols_price[[x]]$text.new = extractPrice(tmp.boxes.from.cols_price[[x]]$text)
+      tmp.boxes.from.cols_price[[x]]$text.new = extractPrice(tmp.boxes.from.cols_price[[x]]$text) #might be bad   
+      tmp.boxes.from.cols_price[[x]]$text.new = sapply(tmp.boxes.from.cols_price[[x]]$text, numToPrice) #make better in some cases
+      tmp.boxes.from.cols_price[[x]]$price = isPrice(tmp.boxes.from.cols_price[[x]]$text.new, maybe = F, dollar = F)
       tmp.boxes.from.cols_price[[x]]$type = isPrice(tmp.boxes.from.cols_price[[x]]$text.new, maybe = T, dollar = F)
       tmp.boxes.from.cols_price[[x]] = dplyr::filter(tmp.boxes.from.cols_price[[x]], type !="FALSE", 
                                               !stringr::str_detect(tmp.boxes.from.cols_price[[x]]$text, "\\$"))
@@ -122,14 +133,14 @@ addPrices <- function(page.cols, px) {
         tmp.lost = apply(compare.col, 2, min) > page.cols$charheight # prices not found in new data
         new.prices = dplyr::filter(tmp.boxes.from.cols_price[[x]], tmp.new)
     
-        #better prices? - should have same number of rows as old
+        #remove new so it has same number of rows and we can compare
         tmp.boxes.from.cols_price[[x]] = dplyr::filter(tmp.boxes.from.cols_price[[x]], !tmp.new)
-    
+  
         #what is the closest old price for each?
-        tmp.compare = apply(cbind(page.cols$prices[[x]]$type[!tmp.lost], tmp.boxes.from.cols_price[[x]]$type), 1, compareTypes)
-        page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==1] = page.cols$prices[[x]]$text[!tmp.lost][tmp.compare==1]
-        page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==2] = tmp.boxes.from.cols_price[[x]]$text[tmp.compare==2]
-        page.cols$prices[[x]]$text.new[tmp.lost] = page.cols$prices[[x]]$text[tmp.lost]
+        tmp.compare = apply(cbind(page.cols$prices[[x]]$type[!tmp.lost], 
+                                  tmp.boxes.from.cols_price[[x]]$type[!tmp.new]), 1, compareTypes)
+        page.cols$prices[[x]]$text.new[!tmp.lost][tmp.compare==2] = 
+          tmp.boxes.from.cols_price[[x]]$text.new[tmp.compare==2]
     
         #add new prices
         if (nrow(new.prices) > 0) {
@@ -137,16 +148,28 @@ addPrices <- function(page.cols, px) {
           page.cols$prices[[x]] = rbind(page.cols$prices[[x]], new.prices[,names(page.cols$prices[[x]])]) %>% arrange(top)
         }
     
+        
+        page.cols$prices[[x]]$price = isPrice(page.cols$prices[[x]]$text.new, maybe = F, dollar = F)
+        page.cols$prices[[x]]$type = isPrice(page.cols$prices[[x]]$text.new, maybe = T, dollar = F)
         #strip leading periods from new text
-        page.cols$prices[[x]]$text.new = stringr::str_remove(page.cols$prices[[x]]$text.new, "^\\.+")
+        #page.cols$prices[[x]]$text.new = stringr::str_remove(page.cols$prices[[x]]$text.new, "^\\.+")
       }
       return(page.cols$prices[[x]])
     }
-    else {return(page.cols$prices[[x]])}
-  })}) 
+    else {
+      update.text.new.index = (page.cols$prices[[x]] %>% mutate(type.text = isPrice(text, maybe = T),
+                                       type.text.new = isPrice(text.new, maybe = T),
+                                       compare  = apply(cbind(type.text, type.text.new), 1, compareTypes)))$compare
+      
+      #use original text for new if no improvement was found
+      page.cols$prices[[x]]$text.new[update.text.new.index==1] =  page.cols$prices[[x]]$text[update.text.new.index==1]
+                               
+      return(page.cols$prices[[x]])
+    }
+  })})
   
   if(sum(sapply(page.cols$prices, class)=="try-error")>0) stop("addPrices failed updating page.cols$prices")
-  cat("\n addPrices added prices by column:", 
+  cat("\n addPrices added prices by column:\n", 
       sapply(page.cols$prices, nrow) - page.cols$price_cols$entries)
   # update other stuff
   page.cols = updatePageCols(page.cols)
@@ -401,6 +424,9 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
             if (is.null(boxes)) {boxes = vector(mode = "list", length = nrow(missing.boxes))}
             boxes = checkMissingBoxes(boxes, missing.boxes, type = "price", cluster = cols.missing[[x]]$cluster[1], table = cols.missing[[x]]$table[1])
             boxes = do.call("rbind", boxes)
+            boxes$text.new = extractPrice(boxes$text.new)
+            boxes$text.new = sapply(boxes$text.new, numToPrice)
+            boxes$type = sapply(boxes$text.new, isPrice, maybe = T)
             boxes$row = missing.spots[[x]]
             return(rbind(cols.missing[[x]], boxes[, names(cols.missing[[x]])]) %>% arrange(row))
         })
@@ -438,6 +464,9 @@ addMissing <- function(page.cols, buffer = page.cols$charheight/2, img.height, p
           if (is.null(boxes)) {boxes = vector(mode = "list", length = nrow(missing.boxes))}
           boxes = checkMissingBoxes(boxes, missing.boxes, type = "number", cluster = clust, table = i)  
           boxes = do.call("rbind", boxes)
+          boxes$text.new = extractPrice(boxes$text.new)
+          boxes$text.new = sapply(boxes$text.new, numToPrice)
+          boxes$type = sapply(boxes$text.new, isPrice, maybe = T)
           boxes$row = NA
           all.prices = rbind(all.prices, boxes[, names(table.prices)])
         }
