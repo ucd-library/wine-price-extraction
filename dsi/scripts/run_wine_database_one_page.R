@@ -46,7 +46,7 @@ if (length(args) >= 1) {
   args.default[which(!is.na(argnums))] =
     sapply(args, function(x) trimws(last(strsplit(x, "=")[[1]])) )[argnums[!is.na(argnums)]]
 
-# In is the pointer to the parse_folder_sample.RDS file.  OR whatever we rename it.
+# In is the pointer to the parse_folder_sample.RDS file.  OR whatever we rename it. 
   IN = args.default[1]
 	TRUTH.DIR= args.default[2]
   # flip.y argument for back-rotating image points, accounts for plotting images with y = 0 at top left instead of bottom left
@@ -177,6 +177,10 @@ price_output = lapply(price_RDS_files, function(x) {
   col.header = rep(page.cols$price_cols$col.header[match.cluster.order],
                    times = sapply(page.cols$prices, nrow))
   prices = do.call("rbind", page.cols$prices)
+  
+  #add in column variable which was already available in page.cols$price_cols
+  prices = left_join(prices, page.cols$price_cols %>% select(c("table", "cluster", "column")), by = c("table", "cluster"))
+  
     prices = prices %>% mutate(
     file_id = tools::file_path_sans_ext(basename(x)),
     entry_id = paste(file_id, table, 1:nrow(prices), sep = "_"),
@@ -226,17 +230,25 @@ ENTRY_PRICE = ENTRY_PRICE %>% select(-c("price","type", "text", "text.new"))
 
 #     - Add flags ----
 
-ENTRY_PRICE$flag_year = year_flag(ENTRY_PRICE$price_new)
-ENTRY_PRICE$flag_amount = amount_flag(ENTRY_PRICE$price_new)
-ENTRY_PRICE$flag_size = size_flag(ENTRY_PRICE$price_new, size_left = 4, size_right = 2)
-ENTRY_PRICE$flag_digit = digit_flag(ENTRY_PRICE$price_new, ratio = .04)
+ENTRY_PRICE = ENTRY_PRICE %>% arrange(file_id, table, column, row)
 ENTRY_PRICE$flag_order = order_flag(ENTRY_PRICE, tocheck = "price_new")
+# note the ratio flag will flag both entries (e.g. bottle and case) if only one is wrong
+# so may want to use ratio flag in combination with order flag
+ENTRY_PRICE$flag_ratio = ratio_flag(ENTRY_PRICE)
+ENTRY_PRICE$flag_amount = amount_flag(ENTRY_PRICE$price_new)
+ENTRY_PRICE$flag_format = format_flag(ENTRY_PRICE$price_new, size_left = 4, size_right = 2)
+ENTRY_PRICE$flag_digit = digit_flag(ENTRY_PRICE$price_new, ratio = .04)
+# we convert raw years to prices format, so flag if started as year:
+ENTRY_PRICE$flag_raw_year = ENTRY_PRICE$type_raw == "year"
 ENTRY_PRICE$flag_type_new = ENTRY_PRICE$type_new!="TRUE"
 # Sum of flags is a placeholder for class detection until we develop a better model
-ENTRY_PRICE$sum_flag = rowSums(ENTRY_PRICE %>% select(contains("flag_")) %>%
-                                 select(-"flag_digit")) #digit has too many false positives
+ENTRY_PRICE$sum_flag = rowSums(ENTRY_PRICE %>% select(contains("flag_")) %>% 
+                                 select(-"flag_digit"), na.rm = T) #digit has too many false positives
 
-#ENTRY_PRICE %>% arrange(-sum_flag*!is.na(text.true))
+#table(ENTRY_PRICE$sum_flag)
+#Check that new prices improve on old
+#table(ENTRY_PRICE$type_new, ENTRY_PRICE$type_raw)
+
 
 #     - Save ----
 write.csv(ENTRY_PRICE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PRICE.csv"), row.names = FALSE)
@@ -264,7 +276,7 @@ write.csv(ENTRY_PAGE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PAGE.csv"), row.names =
 # see https://github.com/ucd-library/wine-price-extraction/issues/9 for discussion of vars
 text_vars_to_include = c("text", "text_raw", "name", "id", "name_id", "file_id") #remember this id is the id in the catalog
 wine_vars_to_include = c("country", "year", "color", "variety", "region", "province", "designation")
-price_vars_to_include = c("price_raw", "confidence", "type_new", "price_new", "cluster", "table","row", "entry_id", "name_id", "text.true", "truth_entered_by", "col.header")
+price_vars_to_include = c("price_raw", "confidence", "type_new", "price_new", "cluster", "table","row", "column", "entry_id", "name_id", "text.true", "truth_entered_by", "col.header")
 
 PRICE_NAME = left_join(ENTRY_PRICE[,price_vars_to_include],
                         ENTRY_NAME[,c(text_vars_to_include, wine_vars_to_include)],
