@@ -12,12 +12,10 @@ if("package:MASS" %in% search()) detach("package:MASS")
 # NAME.INPUT.DIR = OUTPUT.DIR
 # NAME.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data"
 
-# dictionary.directory = "~/Documents/DSI/wine-price-extraction/dsi/Data/dictionaries"
-# output.directory = "~/Documents/DSI/wine-price-extraction/dsi/Data/sample_output/"
-
 # For command line args, case doesn't matter (they'll be converted to upper either way)
 possible.args = c("NAME.INPUT.DIR", "NAME.OUTPUT.DIR")
 args = commandArgs(trailingOnly = TRUE)
+print("Any command line args?")
 print(args)
 
 # Use command line args if running from terminal:
@@ -62,4 +60,4 @@ data("varieties")
 
 # parse all pages in the folder  Works for one pages as well
 parse_folder = parseFolder(NAME.INPUT.DIR, PATTERN_THRESHOLD, SIMILARITY_THRESHOLD);
-saveRDS(parse_folder, file.path(NAME.OUTPUT.DIR, "parsed_items.RDS"))
+saveRDS(parse_folder, file.path(NAME.OUTPUT.DIR, "parsed_folder.RDS"))

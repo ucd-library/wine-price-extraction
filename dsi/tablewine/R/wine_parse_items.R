@@ -164,7 +164,7 @@ find_year = function(result_object) {
 
 
 # Cleans item text more aggressively.
-clean_text_aggressive = function(text) {
+clean_text_aggressive = function(text, two.char.whitelist = c("st", "de")) {
   # start with replacing abbreviations (St. -> Saint), this will improve matching with dictionaries
   text = gsub("St\\.", "Saint ", text, ignore.case = FALSE);
   text = gsub("ST\\.", "SAINT ", text, ignore.case = FALSE);
@@ -172,8 +172,27 @@ clean_text_aggressive = function(text) {
   text = gsub("[-_,.;?]+", " ", text);
   # remove redundant spaces
   text = remove_spaces(text);
-
-  return(text);
+  
+  # more aggressive cleaning that jane added:
+  text_split = strsplit(text, " ")[[1]]
+  text_split = text_split[! (
+    # remove two-char words unless in whitelist
+    ((nchar(text_split) <= 2 & !grepl(text_split, pattern = paste(two.char.whitelist, collapse = "|"), ignore.case = T))) |
+      #allow abbereviations like V. O.
+      grepl(text_split, pattern = "[A-Z]{1}\\.") | 
+      grepl(text_split, pattern = "^[a-z]") &  #starts with lower case and not in two-char whitelist
+      !grepl(text_split, pattern = paste(two.char.whitelist, collapse = "|"), ignore.case = T) | 
+      grepl(text_split, pattern = "[+]") |  #contains+
+      grepl(text_split, pattern = "[a-z][A-Z]") |  #upper case after lower case
+      grepl(text_split, pattern = "[A-Z|a-z][0-9]") |  #number after word in same word
+      # leave prices because they may seperate name from previuos name 
+      # considered removing everything before price but price could also be right of the name
+      # grepl(text_split, pattern = "[0-9]+\\.[0-9]{2}") |  #price
+      grepl(text_split, pattern = "[©€%]") |  #price  
+      grepl(text_split, pattern = "[AEIOUaeiou]{4}") # 4 vowels in a row
+  )] 
+  
+  return(paste(text_split, collapse = " "))
 }
 
 
@@ -517,104 +536,6 @@ assign_country = function(result_object) {
   return(result_object);
 }
 
-
-# Returns well formated text, ready to be printed or stored in output file.
-format_result = function(result) {
-
-  text = "";
-
-  text = paste0(text, "\n\n    raw text:  ", result$text_raw);
-  text = paste0(text, "\n   conf text:  ", paste(result$text_conf$text, collapse = " "));
-  if (is.null(result$name)) {
-    text = paste0(text, "\n        name:  ");
-  } else {
-    text = paste0(text, "\n        name:  ", result$name);
-  }
-  text = paste0(text, "\n  clean text:  ", result$text);
-
-  if (is.null(result$upper_text)) {
-    text = paste0(text, "\n  upper_text:  ");
-  } else {
-    text = paste0(text, "\n  upper_text:  ", result$upper_text);
-  }
-  if (is.null(result$lower_text)) {
-    text = paste0(text, "\n  lower_text:  ");
-  } else {
-    text = paste0(text, "\n  lower_text:  ", result$lower_text);
-  }
-  if (is.null(result$brackets_text)) {
-    text = paste0(text, "\n    brackets:  ");
-  } else {
-    text = paste0(text, "\n    brackets:  ", result$brackets_text); #" (", round(mean(result$brackets_conf$confidence), 0), "%)");
-  }
-  if (is.null(result$keywords)) {
-    text = paste0(text, "\n    keywords:  ");
-  } else {
-    text = paste0(text, "\n    keywords:  ", paste(result$keywords, collapse = " / "));
-  }
-
-  ###################
-  ###
-  ### ATTRIBUTES
-  ###
-  ###################
-
-  if (is.null(result$id)) {
-    text = paste0(text, "\n          id:  ");
-  } else {
-    text = paste0(text, "\n          id:  ", result$id, " (", round(result$id_conf, 0), "%)");
-  }
-  if (is.null(result$year)) {
-    text = paste0(text, "\n        year:  ");
-  } else {
-    text = paste0(text, "\n        year:  ", result$year, " (", round(result$year_conf, 0), "%)");
-  }
-  if (is.null(result$color)) {
-    text = paste0(text, "\n       color:  ");
-  } else {
-    text = paste0(text, "\n       color:  ", result$color, " (", round(result$color_conf, 0), "%)");
-  }
-  if (is.null(result$province)) {
-    text = paste0(text, "\n    province:  "); #
-  } else {
-    text = paste0(text, "\n    province:  ", paste(result$province, collapse = " / "), " (", round(result$province_sim, 2), ")");
-  }
-  if (is.null(result$region)) {
-    text = paste0(text, "\n      region:  ");
-  } else {
-    text = paste0(text, "\n      region:  ", paste(result$region, collapse = " / "), " (", round(result$region_sim, 2), ")");
-  }
-  if (is.null(result$producer)) {
-    text = paste0(text, "\n    producer:  ");
-  } else {
-    text = paste0(text, "\n    producer:  ", paste(result$producer, collapse = " / "), " (", round(result$producer_sim, 2), ")");
-  }
-  if (is.null(result$designation)) {
-    text = paste0(text, "\n designation:  ");
-  } else {
-    text = paste0(text, "\n designation:  ", paste(result$designation, collapse = " / "), " (", round(result$designation_sim, 2), ")");
-  }
-  if (is.null(result$variety)) {
-    text = paste0(text, "\n     variety:  ");
-  } else {
-    text = paste0(text, "\n     variety:  ", paste(result$variety, collapse = " / "), " (", round(result$variety_sim, 2), ")");
-  }
-  if (is.null(result$country)) {
-    text = paste0(text, "\n     country:  ");
-  } else {
-    text = paste0(text, "\n     country:  ", result$country);
-  }
-
-  if (is.null(result$inspect)) {
-    text = paste0(text, "\n     inspect:  ");
-  } else {
-    text = paste0(text, "\n     inspect:  ", result$inspect);
-  }
-
-  return(text);
-}
-
-
 # Parses single item
 # Gets items$name.words$table_X. Gets only column text and confidence.
 # Returns result object.
@@ -647,11 +568,11 @@ parse_item = function(item_text, item_text_conf) {
   # 4. Store current text as a name
   # TODO: correct spelling errors (using dictionaries?)
   result$name = remove_spaces(result$text);
-
+  
   # At that point we have item name, now try to recognize some values from dictionary
 
-  # 5. Clean text more aggressively
-  result$text = clean_text_aggressive(result$text);
+  # 5. Clean name more aggressively to make more readable
+  result$name_trim = clean_text_aggressive(result$name);
 
   # 6. Recognize and trim key words like: "estate bottled", "cooperation"
   result = find_keywords(result);
@@ -1108,7 +1029,8 @@ compute_global_stats = function(page_stats_list) {
 parseFolder = function(folder_path, pattern_threshold = 0.5, similarity_threshold = 0.8) {
 
 #  files = list.files(path=folder_path, pattern="(?!data1).RDS", full.names=TRUE, recursive=TRUE);
-  files = list.files(path=folder_path, pattern="*-[0-9]+.RDS", full.names=TRUE, recursive=TRUE);
+  files = list.files(path=folder_path, pattern="RDS", full.names=TRUE, recursive=TRUE);
+  files = files[grepl(files, pattern="(?<!dat)\\.RDS", perl = TRUE)] #in case data1 objects in same folder
 
   page_results_list = lapply(files, function(x) {
     try({pageResults(x, pattern_threshold, similarity_threshold)})
