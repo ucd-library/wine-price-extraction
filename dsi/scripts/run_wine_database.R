@@ -224,7 +224,7 @@ accurate_file = inner_join(ENTRY_PRICE %>% group_by(file_id) %>% summarize(n_tab
 ENTRY_TRUTH$accurate_file = ENTRY_TRUTH$file_id %in% accurate_file$file_id
 
 #     - Add truth to table ----
-ENTRY_PRICE = left_join(ENTRY_PRICE, ENTRY_TRUTH[ENTRY_TRUTH$accurate_file,c("text.true", "truth_entered_by", "file_id",
+ENTRY_PRICE = left_join(ENTRY_PRICE, ENTRY_TRUTH[ENTRY_TRUTH$accurate_file,c("price_true", "truth_entered_by", "file_id",
                                                   "table", "row", "cluster")], 
                 by = c("file_id" = "file_id", "table" = "table", "row" = "row", "cluster" = "cluster"))
 
@@ -284,9 +284,9 @@ write.csv(ENTRY_PAGE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PAGE.csv"), row.names =
 #     PRICE_NAME ----
 
 # see https://github.com/ucd-library/wine-price-extraction/issues/9 for discussion of vars
-text_vars_to_include = c("text", "text_raw", "name", "id", "name_id", "file_id") #remember this id is the id in the catalog
+text_vars_to_include = c("text_raw", "name", "name_trim", "id", "name_id", "file_id") #remember this id is the id in the catalog
 wine_vars_to_include = c("country", "year", "color", "variety", "region", "province", "designation")
-price_vars_to_include = c("price_raw", "confidence", "type_new", "price_new", "cluster", "table","row", "column", "entry_id", "name_id", "text.true", "truth_entered_by", "col.header")
+price_vars_to_include = c("price_raw", "confidence", "type_new", "price_new", "cluster", "table","row", "column", "entry_id", "name_id", "price_true", "truth_entered_by", "col.header")
 
 PRICE_NAME = left_join(ENTRY_PRICE[,price_vars_to_include],
                         ENTRY_NAME[,c(text_vars_to_include, wine_vars_to_include)], 
