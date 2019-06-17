@@ -2,9 +2,10 @@
 #
 # TO DO: 
 #     - we may have an id from name extraction and one from table extraction, check if they align
-#     fix name naming so that ENTRY_PRICE and ENTRY_NAME have same number of entries
+#     > unique(ENTRY_NAME$name_id)[!unique(ENTRY_NAME$name_id) %in% unique(ENTRY_PRICE$name_id)]
+#     [1] "0027_1_14" "0237_1_26" "0644_1_9"  "2504_1_4"  "2504_2_5" 
 #     - Add dictionary hit info to NAME_MATCH table
-#
+#     - Automate rerun files that didn't run with a dynamically detected value for PIX.THRESHOLD
 # Tables
 # ENTRY_PRICE
 #   key is entry_id = 0923_1_23 is file number, table number, entry number
@@ -40,7 +41,7 @@ FLIP.Y = FALSE
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/test_image"
 #FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/MoreTruthPages/"
 FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages"#<-< has both now
-#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_2535.jpg"#<- single file
+#FILESET = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/UCD_Lehmann_1176.jpg"#<- single file
 #DATA1 = readRDS("/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed/UCD_Lehmann_0190_data1.RDS")
 OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Data/price_table_output"
 DATA.INPUT.DIR = "/Users/janecarlen/Documents/DSI/OCR_SherryLehmann/SampleCatalogPages/fullboxes_deskewed"
@@ -57,7 +58,7 @@ source("wine-price-extraction/dsi/scripts/run_wine_price_tables.R")
 #Check that files ran -- ones that didn't should have bad color or no tabless
 list.files(FILESET, pattern = ".jpg")[! sapply(strsplit(list.files(FILESET, pattern = ".jpg"), "\\."), first) %in% sapply(strsplit(list.files(OUTPUT.DIR, pattern = ".RDS"), "\\."), first) ]
 
-# TO DO -- Automate rerun files that didn't run with a dynamically detected value for PIX.THRESHOLD
+#To Do:     - Automate rerun files that didn't run with a dynamically detected value for PIX.THRESHOLD
 
 # 2. Parse names from output of 1----
 
@@ -69,7 +70,7 @@ NAME.OUTPUT.DIR = "/Users/janecarlen/Documents/DSI/wine-price-extraction/dsi/Dat
 source("~/Documents/DSI/wine-price-extraction/dsi/scripts/run_parse_items.R")
 
 #   2c. load (if already run) ----
-parsed_folder = readRDS(file.path(NAME.OUTPUT.DIR, "parse_folder_sample.RDS")) # done in run_parse_items - can source
+parsed_folder = readRDS(file.path(NAME.OUTPUT.DIR, "parsed_folder.RDS")) # done in run_parse_items - can source
 
 # 3. Current evaluation code (Optional. Will be changed to work on TABLES, not .RDS) ----
 
@@ -180,13 +181,18 @@ price_output = lapply(price_RDS_files, function(x) {
   col.header = rep(page.cols$price_cols$col.header[match.cluster.order],
                    times = sapply(page.cols$prices, nrow))
   prices = do.call("rbind", page.cols$prices)
+  
+  #add in column variable which was already available in page.cols$price_cols
+  prices = left_join(prices, page.cols$price_cols %>% select(c("table", "cluster", "column")), by = c("table", "cluster"))
+  
   prices = prices %>% mutate(
     file_id = str_extract(x, pattern = "UCD_Lehmann_[0-9]{4}"),
     file_number = str_extract(file_id, pattern = "[0-9]{4}"),
     entry_id = paste(file_number, table, 1:nrow(prices), sep = "_"),
     name_id = paste(file_number, table, row, sep = "_"),
-    col.header = col.header
+    col.header = col.header,
   )
+  
   # Add an xy coordinate for the app to use
   # flip.y argument can account for when images are plotted with flipped y scales
   prices_xy = prices %>% mutate(x = (left + right)/2, y = (top + bottom)/2) %>% select(x, y)
@@ -196,6 +202,7 @@ price_output = lapply(price_RDS_files, function(x) {
                                 flip.y = FLIP.Y)
   prices = cbind(prices, price_center_x_orig = prices_xy_orig[,1], price_center_y_orig = prices_xy_orig[,2])
 })
+
 ENTRY_PRICE = do.call("rbind", price_output) #n_distinct(ENTRY_PRICE$name_id)
 
 #     - make ENTRY_TRUTH ####
@@ -234,17 +241,24 @@ ENTRY_PRICE = ENTRY_PRICE %>% select(-c("price","type", "text", "text.new"))
 
 #     - Add flags ----
 
-ENTRY_PRICE$flag_year = year_flag(ENTRY_PRICE$price_new)
-ENTRY_PRICE$flag_amount = amount_flag(ENTRY_PRICE$price_new)
-ENTRY_PRICE$flag_size = size_flag(ENTRY_PRICE$price_new, size_left = 4, size_right = 2)
-ENTRY_PRICE$flag_digit = digit_flag(ENTRY_PRICE$price_new, ratio = .04)
+ENTRY_PRICE = ENTRY_PRICE %>% arrange(file_id, table, column, row)
 ENTRY_PRICE$flag_order = order_flag(ENTRY_PRICE, tocheck = "price_new")
+# note the ratio flag will flag both entries (e.g. bottle and case) if only one is wrong
+# so may want to use ratio flag in combination with order flag
+ENTRY_PRICE$flag_ratio = ratio_flag(ENTRY_PRICE)
+ENTRY_PRICE$flag_amount = amount_flag(ENTRY_PRICE$price_new)
+ENTRY_PRICE$flag_format = format_flag(ENTRY_PRICE$price_new, size_left = 4, size_right = 2)
+ENTRY_PRICE$flag_digit = digit_flag(ENTRY_PRICE$price_new, ratio = .04)
+# we convert raw years to prices format, so flag if started as year:
+ENTRY_PRICE$flag_raw_year = ENTRY_PRICE$type_raw == "year"
 ENTRY_PRICE$flag_type_new = ENTRY_PRICE$type_new!="TRUE"
 # Sum of flags is a placeholder for class detection until we develop a better model
 ENTRY_PRICE$sum_flag = rowSums(ENTRY_PRICE %>% select(contains("flag_")) %>% 
-                                 select(-"flag_digit")) #digit has too many false positives
+                                 select(-"flag_digit"), na.rm = T) #digit has too many false positives
 
-#ENTRY_PRICE %>% arrange(-sum_flag*!is.na(text.true))
+#table(ENTRY_PRICE$sum_flag)
+#Check that new prices improve on old
+#table(ENTRY_PRICE$type_new, ENTRY_PRICE$type_raw)
 
 #     - Save ----
 write.csv(ENTRY_PRICE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PRICE.csv"), row.names = FALSE)
@@ -272,7 +286,7 @@ write.csv(ENTRY_PAGE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PAGE.csv"), row.names =
 # see https://github.com/ucd-library/wine-price-extraction/issues/9 for discussion of vars
 text_vars_to_include = c("text", "text_raw", "name", "id", "name_id", "file_id") #remember this id is the id in the catalog
 wine_vars_to_include = c("country", "year", "color", "variety", "region", "province", "designation")
-price_vars_to_include = c("price_raw", "confidence", "type_new", "price_new", "cluster", "table","row", "entry_id", "name_id", "text.true", "truth_entered_by", "col.header")
+price_vars_to_include = c("price_raw", "confidence", "type_new", "price_new", "cluster", "table","row", "column", "entry_id", "name_id", "text.true", "truth_entered_by", "col.header")
 
 PRICE_NAME = left_join(ENTRY_PRICE[,price_vars_to_include],
                         ENTRY_NAME[,c(text_vars_to_include, wine_vars_to_include)], 
