@@ -16,7 +16,7 @@ RUN add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-
 # Install Tesseract, R and RTesseract dependencies
 RUN apt-get install -y tzdata
 RUN apt-get update && apt-get install -y tesseract-ocr libtesseract-dev libleptonica-dev git r-base \
-    libcurl4-openssl-dev libssl-dev libxml2-dev
+    libcurl4-openssl-dev libssl-dev libxml2-dev httpie make
 
 WORKDIR /opt
 RUN git clone https://github.com/duncantl/Rtesseract.git
@@ -40,5 +40,7 @@ RUN mkdir -p /opt/dsi
 WORKDIR /opt/dsi
 COPY Data Data/
 COPY scripts scripts/
+RUN mv /usr/share/tesseract-ocr/4.00/tessdata/eng.traineddata /usr/share/tesseract-ocr/4.00/tessdata/eng.traineddata-bad
+RUN cp /opt/dsi/Data/tesseract-ocr/4.00/tessdata/* /usr/share/tesseract-ocr/4.00/tessdata
 
 CMD "tail -f /dev/null"
