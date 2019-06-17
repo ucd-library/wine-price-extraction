@@ -80,6 +80,8 @@ numToPrice = function(numAsChar, dollar = FALSE) {
   #dollar False to not allow numbers will dollar sign in front 
   #order of options is important (don't reorder)
   
+  numAsChar = trimws(numAsChar)
+  
   #option 1, just have to remove extra stuff at end, e.g. a period -- at most two
   if( grepl("^([0-9]+)\\.[0-9]{2}.{0,2}$", numAsChar)) return(stringr::str_extract(numAsChar, "^([0-9]+)\\.[0-9]{2}"))
   
@@ -102,7 +104,10 @@ numToPrice = function(numAsChar, dollar = FALSE) {
   #option 5, number with no leading 0 -- add the 0
   if (grepl("^\\.[0-9]{2}", numAsChar)) { return(paste0("0",numAsChar))}
   
-  #option 6 number without punctuation (remove any puncuation at end -- allow at most 2 after)
+  #option 6, number with extra space after period
+  if (grepl("^[0-9]+\\.\\s[0-9]{2}", numAsChar)) { return(gsub(pattern = " ", replacement = "",numAsChar))}
+  
+  #option 7 number without punctuation (remove any puncuation at end -- allow at most 2 after)
   if (grepl("[0-9]{3,10}.{0,2}$", numAsChar)) {
     numAsChar = stringr::str_extract(numAsChar, "[0-9]{3,10}")     
     num = strsplit(numAsChar, split="")[[1]]
@@ -121,7 +126,9 @@ numToPrice = function(numAsChar, dollar = FALSE) {
 # For precendence between detected prices
 compareTypes <- function(pair) {
   if (pair[1] != "TRUE" & pair[2] == "TRUE") {return(2)}
-  if (pair[1] == "FALSE" & "number" %in% pair[2] ) {return(2)}
+  #add option for a price type being better than a number
+  if (pair[1] != "TRUE" & grepl(pair[2], pattern = "pri")) {return(2)}
+  if (pair[1] == "FALSE" & grepl(pair[2], pattern = "num")) {return(2)}
   else {return(1)}
 }
 
@@ -226,14 +233,16 @@ splitCol <- function(prices, type = "h", px = px1, buffer = 13, height = height1
 #where boxes is a result of a checkBoxes call on missing.boxes with rbind = FALSE
 checkMissingBoxes <- function(boxes, missing.boxes, type = "price", cluster = cols.missing[[x]]$cluster[1], table = cols.missing[[x]]$table[1]) {
   
-  if (type == "price") {pattern = "[0-9].*"}
-  else if (type == "ID") {pattern = "[A-Z]-[0-9].*"}
-  else {pattern = "[0-9].*"}
-  
   lapply(1:length(boxes), function(i) {
     box = boxes[[i]]
     if (!is.null(boxes[[i]])) {
-      box$text.new = stringr::str_extract(box$text, pattern)
+      if (type == "ID") { box$text.new = stringr::str_extract(box$text, "[A-Z]-[0-9].*") }
+      if (type == "number") { box$text.new = stringr::str_extract(box$text, "[0-9].*")}
+      if (type == "price") {
+        box$text.new = extractPrice(box$text)
+        box$text.new = sapply(box$text.new, numToPrice)
+      }
+      #allow other types?
       box$price = isPrice(box$text.new, dollar = FALSE, maybe = FALSE)
       box$type = isPrice(box$text.new, maybe = T, dollar = F)
       box$cluster = cluster
@@ -287,7 +296,7 @@ extractPrice <- function(x, dollar = FALSE)
   {
     if (dollar == FALSE) {
       extraction = stringr::str_replace(x, ",", "\\.") #first replace commas with periods
-      extraction = stringr::str_extract(extraction, "[0-9|,]+\\.{0,1}[0-9]+.{0,1}$") #(?![0-9])
+      extraction = stringr::str_extract(extraction, "[0-9]*\\.{0,1}\\s{0,1}[0-9]+.{0,1}$") # -- saw a few cases like 15. 50 so allow a space
       if (length(extraction)==0) {extraction = stringr::str_extract(extraction, "[0-9]+\\.[0-9]{2}$")}
       if (length(extraction)==0) {return(FALSE)} else {return(extraction)}
     } else {
