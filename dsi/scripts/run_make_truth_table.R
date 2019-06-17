@@ -14,7 +14,8 @@ library(tablewine)
 # For command line args, case doesn't matter (they'll be converted to upper either way)
 possible.args = c("TRUTH.DIR", "EVAL.OUTPUT.DIR")
 args = commandArgs(trailingOnly = TRUE)
-cat("command line args:", length(args), "\n", args)
+print("Any command line args?")
+print(args)
 
 if (length(args) >= 1) {
   
