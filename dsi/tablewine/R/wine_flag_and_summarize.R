@@ -193,7 +193,7 @@ order_flag = function(TABLE, tocheck = "price_new") {
   toflag =  TABLE %>% 
             mutate(flag_index = 1:nrow(TABLE)) %>%
             group_by(file_id, table, column) %>% arrange(file_id, table, column, row) %>%
-            filter(tocheck!="FALSE")
+            dplyr::filter(tocheck!="FALSE")
   toflag =  toflag %>% mutate(flag = 
                    ( as.numeric(tocheck) > dplyr::lead(as.numeric(tocheck), default = Inf) &
                      as.numeric(tocheck) > dplyr::lead(as.numeric(tocheck), default = Inf, n = 2) ) | 
