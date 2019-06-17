@@ -163,6 +163,13 @@ pageCols <- function(data1, img = NULL, img.height = NULL, show.plot = FALSE, co
   tmp.prices2 = prices2 %>% mutate(center = (left+right)/2)
   prices2 = dplyr::filter(prices2, minDiffs(tmp.prices2[[just]]) < max_diff)
   
+  
+  # til now "text.new" in page.cols$prices only has prices that could be extracted easily, e.g. 55,75 -> 55.75
+  # now "text.new" field is populated (if FALSE) with text field
+  prices2$text.new[prices2$text.new=="FALSE"] = prices2$text[prices2$text.new=="FALSE"]
+  #then updated type accordingly
+  prices2$type = isPrice(prices2$text.new)
+  
   #2d. final price column info ####
   
   cols2 = findCols(prices2, minGap = charheight)
