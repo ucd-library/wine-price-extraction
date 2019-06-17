@@ -28,6 +28,7 @@ library(tablewine)
 possible.args = c("FILESET", "OUTPUT.DIR", "DATA.OUTPUT.DIR", "DATA.INPUT.DIR",
                   "OCR.ONLY", "SAVE.DESKEWED", "PIX.THRESHOLD", "BINARY.THRESHOLD")
 args = commandArgs(trailingOnly = TRUE)
+print("Any command line args?")
 print(args)
 
 # Use command line args if running from terminal:

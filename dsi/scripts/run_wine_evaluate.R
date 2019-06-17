@@ -15,6 +15,7 @@ library(tablewine)
 # For command line args, case doesn't matter (they'll be converted to upper either way)
 possible.args = c("EVAL.INPUT.DIR", "TRUTH.DIR", "EVAL.OUTPUT.DIR")
 args = commandArgs(trailingOnly = TRUE)
+print("Any command line args?")
 print(args)
 
 # Use command line args if running from terminal:
