@@ -65,7 +65,7 @@ truth_all = do.call("rbind", truth_all)
 truth_all = truth_all %>% group_by(file_id, table, cluster, row) %>%
   arrange(truth_entered_by) %>% summarize_all(first) %>% ungroup()
 
-names(truth_all)[names(truth_all)=="text.new"] = "text.true"
+names(truth_all)[names(truth_all)=="text.new"] = "price_true"
 
 write.csv(truth_all, file.path(EVAL.OUTPUT.DIR, "ENTRY_TRUTH.csv"))
 
