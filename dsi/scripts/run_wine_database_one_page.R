@@ -276,7 +276,7 @@ write.csv(ENTRY_PAGE, file.path(TABLE.OUTPUT.DIR, "ENTRY_PAGE.csv"), row.names =
 # see https://github.com/ucd-library/wine-price-extraction/issues/9 for discussion of vars
 text_vars_to_include = c("text_raw", "name", "name_trim", "id", "name_id", "file_id") #remember this id is the id in the catalog
 wine_vars_to_include = c("country", "year", "color", "variety", "region", "province", "designation")
-price_vars_to_include = c("price_raw", "confidence", "type_new", "price_new", "cluster", "table","row", "column", "entry_id", "name_id", "price_new", "truth_entered_by", "col.header")
+price_vars_to_include = c("price_raw", "confidence", "type_new", "price_new", "cluster", "table","row", "column", "entry_id", "name_id", "price_true", "truth_entered_by", "col.header")
 
 PRICE_NAME = left_join(ENTRY_PRICE[,price_vars_to_include],
                         ENTRY_NAME[,c(text_vars_to_include, wine_vars_to_include)],
