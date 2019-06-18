@@ -1300,17 +1300,18 @@ create table jane.entry_price(
 "col.header" text,
 "price_center_x_orig" float,
 "price_center_y_orig" float,
-"text.true" text,
+"price_true" text,
 "truth_entered_by" text,
 "price_raw" text,
 "type_raw" text,
 "price_new" text,
 "type_new" text,
-"flag_year" boolean,
-"flag_amount" boolean,
-"flag_size" boolean,
-"flag_digit" boolean,
 "flag_order" boolean,
+"flag_ratio" boolean,
+"flag_amount" boolean,
+"flag_format" boolean,
+"flag_digit" boolean,
+"flag_raw_year" boolean,
 "flag_type_new" boolean,
 "sum_flag" integer
 );
@@ -1323,8 +1324,8 @@ create table jane.entry_price(
 
 
 #+BEGIN_SRC bash
-#base='io/sloan-ocr/D*'
-base='io/test'  # For tests w/ one-test
+  #base='io/sloan-ocr/D*'
+  base='io/test'  # For tests w/ one-test
   rm entry_price.csv
   for i in $(find $base -name ENTRY_PRICE.csv); do
     tail -n +2 $i >> entry_price.csv;
@@ -1341,6 +1342,7 @@ Then imported into the system:
 #+END_SRC
 
 #+RESULTS:
+: COPY 1620
 
 The next table, the entry_name is adds additional information from joining the
 entries with additional information from a wine database.
@@ -1380,6 +1382,7 @@ entries with additional information from a wine database.
     "inspect" text,
     "dictionary_hit" text,
     "any_hit" text,
+	  "name_trim" text,
     "table" text,
     "file" text,
     "file_id" text,
@@ -1398,11 +1401,12 @@ entries with additional information from a wine database.
 |--------------|
 | CREATE TABLE |
 
-
 I don't know why a small number have a 'text_conf' entry
 #+BEGIN_SRC bash
+  #base='io/sloan-ocr/D*'
+  base='io/test'  # For tests w/ one-test
   rm entry_name*.csv
-  for i in $(find io/sloan-ocr/D* -name ENTRY_NAME.csv); do
+  for i in $(find $base -name ENTRY_NAME.csv); do
     f=$(basename $(dirname $i));
     if (head -1 $i | grep -q text_conf); then
       tail -n +2 $i | sed -e 's/NULL/NA/g;' -e 's/"NA"/NA/g;' >> entry_name_with_conf.csv;
@@ -1414,7 +1418,9 @@ I don't know why a small number have a 'text_conf' entry
 #+END_SRC
 
 #+RESULTS:
-: 224174 entry_name_without_conf.csv
+|   89 | entry_name_with_conf.csv    |
+|  927 | entry_name_without_conf.csv |
+| 1016 | total                       |
 
 
 |   8712 | entry_name_with_conf.csv    |
@@ -1425,14 +1431,15 @@ Then imported into the system as one table.
 
 #+BEGIN_SRC bash
   psql service=sloan -c "truncate jane.entry_name;"
-  psql service=sloan -c "copy jane.entry_name (\"text\",\"text_raw\",\"text_conf\",\"name\",\"keywords\",\"upper_text\",\"lower_text\",\"brackets_text\",\"id\",\"year\",\"color\",\"province\",\"region\",\"producer\",\"designation\",\"variety\",\"country\",\"id_conf\",\"year_conf\",\"color_conf\",\"province_sim\",\"region_sim\",\"producer_sim\",\"designation_sim\",\"variety_sim\",\"brackets_conf\",\"upper_text_hit\",\"lower_text_hit\",\"brackets_text_hit\",\"inspect\",\"dictionary_hit\",\"any_hit\",\"table\",\"file\",\"file_id\",\"name_id\",\"l\",\"b\",\"r\",\"t\",\"name_center_x_orig\",\"name_center_y_orig\") from STDIN CSV NULL 'NA'" < entry_name_with_conf.csv
-  psql service=sloan -c "copy jane.entry_name (\"text\",\"text_raw\",\"name\",\"keywords\",\"upper_text\",\"lower_text\",\"brackets_text\",\"id\",\"year\",\"color\",\"province\",\"region\",\"producer\",\"designation\",\"variety\",\"country\",\"id_conf\",\"year_conf\",\"color_conf\",\"province_sim\",\"region_sim\",\"producer_sim\",\"designation_sim\",\"variety_sim\",\"brackets_conf\",\"upper_text_hit\",\"lower_text_hit\",\"brackets_text_hit\",\"inspect\",\"dictionary_hit\",\"any_hit\",\"table\",\"file\",\"file_id\",\"name_id\",\"l\",\"b\",\"r\",\"t\",\"name_center_x_orig\",\"name_center_y_orig\") from STDIN CSV NULL 'NA'" < entry_name_without_conf.csv
+  psql service=sloan -c "copy jane.entry_name (\"text\",\"text_raw\",\"text_conf\",\"name\",\"keywords\",\"upper_text\",\"lower_text\",\"brackets_text\",\"id\",\"year\",\"color\",\"province\",\"region\",\"producer\",\"designation\",\"variety\",\"country\",\"id_conf\",\"year_conf\",\"color_conf\",\"province_sim\",\"region_sim\",\"producer_sim\",\"designation_sim\",\"variety_sim\",\"brackets_conf\",\"upper_text_hit\",\"lower_text_hit\",\"brackets_text_hit\",\"inspect\",\"dictionary_hit\",\"any_hit\",\"name_trim\",\"table\",\"file\",\"file_id\",\"name_id\",\"l\",\"b\",\"r\",\"t\",\"name_center_x_orig\",\"name_center_y_orig\") from STDIN CSV NULL 'NA'" < entry_name_with_conf.csv
+  psql service=sloan -c "copy jane.entry_name (\"text\",\"text_raw\",\"name\",\"keywords\",\"upper_text\",\"lower_text\",\"brackets_text\",\"id\",\"year\",\"color\",\"province\",\"region\",\"producer\",\"designation\",\"variety\",\"country\",\"id_conf\",\"year_conf\",\"color_conf\",\"province_sim\",\"region_sim\",\"producer_sim\",\"designation_sim\",\"variety_sim\",\"brackets_conf\",\"upper_text_hit\",\"lower_text_hit\",\"brackets_text_hit\",\"inspect\",\"dictionary_hit\",\"any_hit\",\"name_trim\",\"table\",\"file\",\"file_id\",\"name_id\",\"l\",\"b\",\"r\",\"t\",\"name_center_x_orig\",\"name_center_y_orig\") from STDIN CSV NULL 'NA'" < entry_name_without_conf.csv
 #  psql service=sloan -c "update jane.entry_name set page_ark=split_part(file,'/',9)"
 #+END_SRC
 
 #+RESULTS:
-| TRUNCATE |  TABLE |
-| COPY     | 224174 |
+| TRUNCATE | TABLE |
+| COPY     |    88 |
+| COPY     |   927 |
 
 #+BEGIN_SRC sql
 drop table if exists jane.name_match;
@@ -1451,8 +1458,10 @@ drop table if exists jane.name_match;
 | CREATE TABLE |
 
 #+BEGIN_SRC bash
+  #base='io/sloan-ocr/D*'
+  base='io/test'  # For tests w/ one-test
   rm name_match.csv
-  for i in $(find io/sloan-ocr/D* -name NAME_MATCH.csv); do
+  for i in $(find $base -name NAME_MATCH.csv); do
     f=$(basename $(dirname $i));
     tail -n +2 $i | sed -e "s/$/,$f/" >> name_match.csv;
   done
@@ -1460,7 +1469,7 @@ drop table if exists jane.name_match;
 #+END_SRC
 
 #+RESULTS:
-: 1812020 name_match.csv
+: 7276 name_match.csv
 
 #+BEGIN_SRC bash
   psql service=sloan -c "truncate jane.name_match;"
@@ -1468,8 +1477,8 @@ drop table if exists jane.name_match;
 #+END_SRC
 
 #+RESULTS:
-| TRUNCATE |   TABLE |
-| COPY     | 1812020 |
+| TRUNCATE | TABLE |
+| COPY     |  7276 |
 
 
 #+BEGIN_SRC sql
@@ -1487,8 +1496,10 @@ create table jane.name_summary_global_stats (
 | CREATE TABLE |
 
 #+BEGIN_SRC bash
+  #base='io/sloan-ocr/D*'
+  base='io/test'  # For tests w/ one-test
   rm name_summary_global_stats.csv
-  for i in $(find io/sloan-ocr/D* -name name_summary_global_stats.csv); do
+  for i in $(find $base -name name_summary_global_stats.csv); do
     f=$(basename $(dirname $i));
     tail -n +2 $i | sed -e "s/$/,$f/" >> name_summary_global_stats.csv;
   done
@@ -1496,7 +1507,7 @@ create table jane.name_summary_global_stats (
 #+END_SRC
 
 #+RESULTS:
-: 131625 name_summary_global_stats.csv
+: 850 name_summary_global_stats.csv
 
 #+BEGIN_SRC bash
   psql service=sloan -c "truncate jane.name_summary_global_stats;"
@@ -1504,11 +1515,11 @@ create table jane.name_summary_global_stats (
 #+END_SRC
 
 #+RESULTS:
-| TRUNCATE |  TABLE |
-| COPY     | 131625 |
+| TRUNCATE | TABLE |
+| COPY     |   850 |
 
 #+BEGIN_SRC sql
-drop table if exists jane.price_name;
+drop table if exists jane.price_name cascade;
 create table jane.price_name (
   "price_raw" text,
   "confidence" float,
@@ -1517,14 +1528,15 @@ create table jane.price_name (
   "cluster" integer,
   "table" integer,
   "row" integer,
+  "column" integer,
   "entry_id" text,
   "name_id" text,
-  "text.true" text,
+  "price_true" text,
   "truth_entered_by" text,
   "col.header" text,
-  "text" text,
   "text_raw" text,
   "name" text,
+  "name_trim" text,
   "id" text,
   "file_id" text,
   "country" text,
@@ -1544,15 +1556,17 @@ create table jane.price_name (
 | CREATE TABLE |
 
 #+BEGIN_SRC bash
+  #base='io/sloan-ocr/D*'
+  base='io/test'  # For tests w/ one-test
   rm price_name.csv
-  for i in $(find io/sloan-ocr/D* -name PRICE_NAME.csv); do
+  for i in $(find $base -name PRICE_NAME.csv); do
        tail -n +2 $i | sed -e 's/NULL/NA/g;' -e 's/"NA"/NA/g;' >> price_name.csv;
   done
   wc -l price_name.csv
 #+END_SRC
 
 #+RESULTS:
-: 425836 price_name.csv
+: 1928 price_name.csv
 
 Then imported into the system
 #+BEGIN_SRC bash
@@ -1560,7 +1574,7 @@ Then imported into the system
 #+END_SRC
 
 #+RESULTS:
-: COPY 425836
+: COPY 1928
 
 *** Updated Prices
 
@@ -1758,15 +1772,16 @@ the table aggregating the prices together.  Also we'll get the UL of the entry
 name box, to compare to the marks.
 
 #+BEGIN_SRC sql
-drop materialized view if exists jane.entries cascade;
-create materialized view jane.entries as
+\set s eng_jane_sample
+drop materialized view if exists :s.entries cascade;
+create materialized view :s.entries as
 with a as (
  select
  name_id,
  array_agg(price_raw order by cluster ) as price_raw,
  array_agg(price_new order by cluster) as price_new,
  array_agg("col.header" order by cluster) as header
- from jane.entry_price
+ from :s.entry_price
  group by name_id
 )
 select
@@ -1783,13 +1798,13 @@ select
  a.price_raw,a.price_new,header,
  st_makePoint(l,-t) as ul,
  st_makeLine(st_makePoint(l,-t),st_makePoint(l,-b)) as left_side
-from a join jane.entry_name e using (name_id);
+from a join :s.entry_name e using (name_id);
 #+END_SRC
 
 #+RESULTS:
 | DROP MATERIALIZED VIEW |
 |------------------------|
-| SELECT 222786          |
+| SELECT 797             |
 
 
 To compare via names, we find the name_distance for every entry on the page, and pick the
@@ -1797,11 +1812,12 @@ closest one.  This shows the closest entry to every point that we have in the
 crowd source.
 
 #+BEGIN_SRC sql
+\set s eng_jane_sample
 with a as (
  select page_ark,xy,
  name_id,
  st_distance(st_makePoint(c.xy[1],c.xy[2]),e.left_side) as distance
- from jane.crowd_source c join jane.entries e using (page_ark)
+ from jane.crowd_source c join :s.entries e using (page_ark)
 ),
 b as (
  select *,
@@ -1813,11 +1829,34 @@ from b where distance=min;
 
 #+END_SRC
 
+#+RESULTS:
+| page_ark   | xy           | name_id        |         distance |
+|------------+--------------+----------------+------------------|
+| d79w2m-009 | {321,-2744}  | d79w2m-009_1_2 | 54.0370243444252 |
+| d79w2m-009 | {324,-4998}  | d79w2m-009_1_9 | 40.7921561087423 |
+| d79w2m-009 | {327,-4673}  | d79w2m-009_1_8 | 38.3275357934736 |
+| d79w2m-009 | {327,-4466}  | d79w2m-009_1_7 | 35.6931365951495 |
+| d79w2m-009 | {331,-4094}  | d79w2m-009_1_6 | 32.8937684067971 |
+| d79w2m-009 | {331,-3722}  | d79w2m-009_1_5 | 30.8706980808663 |
+| d79w2m-009 | {338,-3448}  | d79w2m-009_1_4 | 25.2388589282479 |
+| d79w2m-009 | {338,-3123}  | d79w2m-009_1_3 | 24.0831891575846 |
+| d79w2m-009 | {341,-2396}  | d79w2m-009_1_1 | 37.6430604494374 |
+| d79w2m-009 | {2116,-4814} | d79w2m-009_2_9 |                1 |
+| d79w2m-009 | {2116,-4606} | d79w2m-009_2_8 |                1 |
+| d79w2m-009 | {2116,-3846} | d79w2m-009_2_6 | 27.6586333718787 |
+| d79w2m-009 | {2119,-4161} | d79w2m-009_2_7 |                6 |
+| d79w2m-009 | {2119,-3495} | d79w2m-009_2_5 |               11 |
+| d79w2m-009 | {2122,-3163} | d79w2m-009_2_4 |               15 |
+| d79w2m-009 | {2126,-2925} | d79w2m-009_2_3 |               20 |
+| d79w2m-009 | {2129,-2664} | d79w2m-009_2_2 |               23 |
+| d79w2m-009 | {2133,-2359} | d79w2m-009_2_1 |               25 |
+
 Okay, so now we match names to our values, and when we have two matches on the
 same page, we pick the closest spatially.
 
 #+BEGIN_SRC sql
-create or replace view jane.vs_crowd_source as
+\set s eng_jane_sample
+create or replace view :s.vs_crowd_source as
 with a as (
  select
  e.name_id,
@@ -1835,7 +1874,7 @@ with a as (
  e.left_side as entry_left_side,
  datafest18.levenshtein(UPPER(substring(c.name,1,100)),UPPER(substring(e.name,1,100))) as name_dis
  from jane.crowd_source c
- join jane.entries e using (page_ark)
+ join :s.entries e using (page_ark)
  ),
  b as (
  select *,min(name_dis) over (partition by xy) as name_min
@@ -1888,8 +1927,8 @@ the price table.
 #+BEGIN_SRC sql
 select t.page_ark,t.cluster,t.row,t.text_true
  p."text.true",p.price_raw,p.type_new,p.price_new
-from jane.dsi_truth t
-left join jane.price_name p
+from :s.dsi_truth t
+left join :s.price_name p
 on (p.file_id=t.page_ark and p.cluster=t.cluster and p.row=t.row)
 order by page_ark,cluster,row;
 #+END_SRC
@@ -1908,4 +1947,27 @@ d7wg68-001 d7x30h-004 d7xw26-063 d7xw26-065 d7zc77-002'
 for i in $test; do
   echo $i
 done
+#+END_SRC
+
+In addition to that, Justin has a script that runs just the catalogs that have
+some PTV truth tables associated with them.  These are identified below, and can
+be extracted like:
+
+#+BEGIN_SRC bash
+catalog_test='D-202/d70w2t D-005/d79w2m D-005/d7ps3c D-005/d72013 D-005/d7z30t
+       D-005/d7v88n D-005/d7b01k D-005/d77p4p D-005/d73s33 D-005/d7mw2d
+       D-005/d7j01f D-005/d7k01r D-005/d7sg6b D-005/d73w2r D-005/d7101s
+       D-005/d76k5q D-005/d70597 D-005/d7f598 D-005/d78g6p D-005/d7c889
+       D-005/d7ms3r D-005/d7vc79 D-005/d7qp41 D-005/d7kw23 D-005/d7w88z
+       D-005/d7g59k D-005/d7pp4q D-005/d7s881 D-005/d7bc7n D-005/d7g01t
+       D-005/d72s3s D-005/d76p4c D-005/d7tg6n D-005/d7d59z D-005/d7h014
+       D-005/d74s3d D-005/d7b880 D-202/d7qs3p D-202/d7001g D-202/d7ds3w
+       D-202/d7ws37 D-202/d7pk52 D-202/d7388t D-202/d7988p D-202/d75k5d
+       D-202/d7h59w D-202/d7js34 D-202/d71s3g D-202/d7x30h D-202/d75p42
+       D-202/d7nk5'
+for i in catalog_test; do
+  [[ -d $i ]] || mkdir -p $i;
+  gsutil rsync -r gs://sloan-ocr/$i sloan-ocr/$i
+done
+
 #+END_SRC
