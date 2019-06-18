@@ -1145,6 +1145,13 @@ for i in $(find io/sloan-ocr/D* -name \*_data1.RDS); do
 done
 #+END_SRC
 
+rm io/test/data1.csv
+for i in $(find io/test -name \*_data1.RDS); do
+ n=${i%_data1.RDS}; b=$(basename $n); echo $b;
+ docker exec -i $(sloan-dc ps -q sloan) R --slave --vanilla <<<"write.csv(readRDS('/$i'),stdout())" |\
+ sed -e "s/^/$b,/" >> io/data1.csv ;
+done
+
 #+BEGIN_SRC sql
 	--	create schema jane;
 
@@ -1251,7 +1258,10 @@ create table jane.entry_page(
 |--------------|
 
 #+BEGIN_SRC bash
-for i in $(find io/sloan-ocr/D* -name ENTRY_PAGE.csv); do
+#base='io/sloan-ocr/D*'
+base='io/test'  # For tests w/ one-test
+rm entry_page.csv
+for i in $(find $base -name ENTRY_PAGE.csv); do
   f=$(basename $(dirname $i));
   tail -n +2 $i | sed -e "s/NA$/$f/" >> entry_page.csv;
 done
@@ -1259,7 +1269,7 @@ wc -l entry_page.csv
 #+END_SRC
 
 #+RESULTS:
-: 5266 entry_page.csv
+: 32 entry_page.csv
 
 Then imported into the system:
 #+BEGIN_SRC bash
@@ -1267,13 +1277,13 @@ Then imported into the system:
 #+END_SRC
 
 #+RESULTS:
-: COPY 5266
+: COPY 32
 
 The entry_price table is the collection of name and prices linked together.
 There are multiple
 
 #+BEGIN_SRC sql
-drop table if exists jane.entry_price;
+drop table if exists jane.entry_price cascade;
 create table jane.entry_price(
 "left" float,
 "bottom" float,
@@ -1283,6 +1293,7 @@ create table jane.entry_price(
 "cluster" integer,
 "table" integer,
 "row" integer,
+"column" integer,
 "file_id" text,
 "entry_id" text,
 "name_id" text,
@@ -1298,6 +1309,7 @@ create table jane.entry_price(
 "flag_year" boolean,
 "flag_amount" boolean,
 "flag_size" boolean,
+"flag_digit" boolean,
 "flag_order" boolean,
 "flag_type_new" boolean,
 "sum_flag" integer
@@ -1311,23 +1323,24 @@ create table jane.entry_price(
 
 
 #+BEGIN_SRC bash
+#base='io/sloan-ocr/D*'
+base='io/test'  # For tests w/ one-test
   rm entry_price.csv
-  for i in $(find io/sloan-ocr/D-* -name ENTRY_PRICE.csv); do
+  for i in $(find $base -name ENTRY_PRICE.csv); do
     tail -n +2 $i >> entry_price.csv;
   done
   wc -l entry_price.csv
 #+END_SRC
 
 #+RESULTS:
-: 425836 entry_price.csv
+: 1620 entry_price.csv
 
-Then imported into the system
+Then imported into the system:
 #+BEGIN_SRC bash
   psql service=sloan -c "truncate jane.entry_price;copy jane.entry_price from STDIN CSV NULL 'NA'" < entry_price.csv
 #+END_SRC
 
 #+RESULTS:
-: COPY 425836
 
 The next table, the entry_name is adds additional information from joining the
 entries with additional information from a wine database.
@@ -1879,4 +1892,20 @@ from jane.dsi_truth t
 left join jane.price_name p
 on (p.file_id=t.page_ark and p.cluster=t.cluster and p.row=t.row)
 order by page_ark,cluster,row;
+#+END_SRC
+
+I added in a program, test-one.sh, that will run the tests on a single page.
+This is a good way to test various pages.  To do all the pages with DSI truth,
+you can use the test below.   Jane updated the code, (and truth tables) to
+improve the comparison of these two.
+
+#+BEGIN_SRC bash
+test='d71s3g-002 d7259v-006 d7259v-012 d72g6t-006 d7301d-004 d7459g-022 d74k53-011
+d75c73-008 d76k5q-011 d79w2m-006 d79w2m-009 d79w2m-025 d7b01k-002 d7c01w-008 d7dk5k-026
+d7dw2j-007 d7js34-015 d7kk54-024 d7kk54-043 d7m59t-006 d7ms3r-025 d7nc7f-018 d7np4d-001
+d7p30b-005 d7p883-009 d7pp4q-040 d7ps3c-026 d7qp41-005 d7rg61-024 d7sg6b-006 d7tg71-011
+d7wg68-001 d7x30h-004 d7xw26-063 d7xw26-065 d7zc77-002'
+for i in $test; do
+  echo $i
+done
 #+END_SRC

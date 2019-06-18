@@ -46,7 +46,7 @@ if (length(args) >= 1) {
   args.default[which(!is.na(argnums))] =
     sapply(args, function(x) trimws(last(strsplit(x, "=")[[1]])) )[argnums[!is.na(argnums)]]
 
-# In is the pointer to the parse_folder_sample.RDS file.  OR whatever we rename it. 
+# In is the pointer to the parse_folder_sample.RDS file.  OR whatever we rename it.
   IN = args.default[1]
 	TRUTH.DIR= args.default[2]
   # flip.y argument for back-rotating image points, accounts for plotting images with y = 0 at top left instead of bottom left
@@ -88,7 +88,7 @@ TABLE.OUTPUT.DIR=OUTPUT.DIR;
 #     Load NAME data ----
 page_results_all = do.call("rbind", parsed_folder$page_results)
 dim(page_results_all) # a matrix
-colnames(page_results_all)
+#colnames(page_results_all)
 
 #     ENTRY_NAME ----
 
@@ -177,10 +177,10 @@ price_output = lapply(price_RDS_files, function(x) {
   col.header = rep(page.cols$price_cols$col.header[match.cluster.order],
                    times = sapply(page.cols$prices, nrow))
   prices = do.call("rbind", page.cols$prices)
-  
+
   #add in column variable which was already available in page.cols$price_cols
   prices = left_join(prices, page.cols$price_cols %>% select(c("table", "cluster", "column")), by = c("table", "cluster"))
-  
+
     prices = prices %>% mutate(
     file_id = tools::file_path_sans_ext(basename(x)),
     entry_id = paste(file_id, table, 1:nrow(prices), sep = "_"),
@@ -211,9 +211,9 @@ accurate_file = inner_join(ENTRY_PRICE %>% group_by(file_id) %>% summarize(n_tab
                 select(file_id)
 
 ENTRY_TRUTH$accurate_file = ENTRY_TRUTH$file_id %in% accurate_file$file_id
-
+#names(ENTRY_TRUTH)
 #     - Add truth to table ----
-ENTRY_PRICE = left_join(ENTRY_PRICE, ENTRY_TRUTH[ENTRY_TRUTH$accurate_file,c("price_new", "truth_entered_by", "file_id",
+ENTRY_PRICE = left_join(ENTRY_PRICE, ENTRY_TRUTH[ENTRY_TRUTH$accurate_file,c("price_true", "truth_entered_by", "file_id",
                                                   "table", "row", "cluster")],
                 by = c("file_id" = "file_id", "table" = "table", "row" = "row", "cluster" = "cluster"))
 
@@ -242,7 +242,7 @@ ENTRY_PRICE$flag_digit = digit_flag(ENTRY_PRICE$price_new, ratio = .04)
 ENTRY_PRICE$flag_raw_year = ENTRY_PRICE$type_raw == "year"
 ENTRY_PRICE$flag_type_new = ENTRY_PRICE$type_new!="TRUE"
 # Sum of flags is a placeholder for class detection until we develop a better model
-ENTRY_PRICE$sum_flag = rowSums(ENTRY_PRICE %>% select(contains("flag_")) %>% 
+ENTRY_PRICE$sum_flag = rowSums(ENTRY_PRICE %>% select(contains("flag_")) %>%
                                  select(-"flag_digit"), na.rm = T) #digit has too many false positives
 
 #table(ENTRY_PRICE$sum_flag)
@@ -282,6 +282,6 @@ PRICE_NAME = left_join(ENTRY_PRICE[,price_vars_to_include],
                         ENTRY_NAME[,c(text_vars_to_include, wine_vars_to_include)],
                         by = "name_id", suffix = c(".price", ".name"))
 
-names(PRICE_NAME)
+#names(PRICE_NAME)
 
 write.csv(PRICE_NAME, file.path(TABLE.OUTPUT.DIR, "PRICE_NAME.csv"), row.names = FALSE)

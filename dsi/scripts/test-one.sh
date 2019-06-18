@@ -7,7 +7,7 @@ declare -A WP=(
   [shoulder]=ark:/87287
   [dams]=https://digital.ucdavis.edu
   [script_dir]=/opt/dsi/scripts
-  [Rscript]=Rscript --vanilla
+  [Rscript]='Rscript --vanilla'
 );
 # Allow getopt to be somewhere else
 WP[getopt]=${FLAGS_GETOPT_CMD:-getopt}
@@ -64,7 +64,7 @@ function pages() {
     jpg=$i/$i.jpg
     bRDS=$i/${i}_data1.RDS
     dRDS=$i/$i.RDS
-    parsed=$i/parsed_items.RDS
+    parsed=$i/parsed_folder.RDS
     price=$i/PRICE_NAME.csv
     _http ${WP[dams]}/${WP[shoulder]}/$ark/media/images/$i.jpg/fcr:metadata;
     [[ -d $i ]] || mkdir $i;
@@ -87,7 +87,7 @@ function pages() {
     if [[ -f $price ]]; then
       echo $price exists;
     else
-      $R $s/run_wine_database_one_page.R truth.dir=/io/dsiData in=$parsed
+      $R $s/run_wine_database_one_page.R truth.dir=/opt/dsi/Data in=$parsed
     fi
   done
 }

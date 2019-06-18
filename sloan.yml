@@ -16,13 +16,9 @@ services:
     command: tail -f /dev/null
     volumes:
       - ./ark_87287:/home/work
-#  r-base:
-#    image: r-base
-#    command: tail -f /dev/null
-#    volumes:
-#      - ./io:/io
   sloan:
-    image: ucdlib/sloan-ocr
+#    image: ucdlib/sloan-ocr
+    build: ./dsi
     command: tail -f /dev/null
     volumes:
       - ./io:/io
