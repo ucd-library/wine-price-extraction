@@ -148,8 +148,9 @@ write.csv(ENTRY_NAME, file.path(TABLE.OUTPUT.DIR, "ENTRY_NAME.csv"), row.names =
 write.csv(name_summary_global_stats(ENTRY_NAME),  file.path(TABLE.OUTPUT.DIR, "name_summary_global_stats.csv"), row.names = TRUE)
 
 #     NAME_MATCH ----
-
+exclude1=c("text_conf","dictionary_hits","dictionary_hits_sim")
 NAME_MATCH = data.frame(page_results_all[,colnames(page_results_all) %in% exclude1])
+
 colnames(NAME_MATCH)
 #[1] "text_conf"           "dictionary_hits"     "dictionary_hits_sim"
 # ignoring dictionary hits tables for now <<- ADD
