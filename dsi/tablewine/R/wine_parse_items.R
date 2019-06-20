@@ -1030,7 +1030,7 @@ parseFolder = function(folder_path, pattern_threshold = 0.5, similarity_threshol
 
 #  files = list.files(path=folder_path, pattern="(?!data1).RDS", full.names=TRUE, recursive=TRUE);
   files = list.files(path=folder_path, pattern="RDS", full.names=TRUE, recursive=TRUE);
-  files = files[grepl(files, pattern="(?<!dat)\\.RDS", perl = TRUE)] #in case data1 objects in same folder
+  files = files[grepl(files, pattern="(?<!data1)\\.RDS", perl = TRUE)] #in case data1 objects in same folder
 
   page_results_list = lapply(files, function(x) {
     try({pageResults(x, pattern_threshold, similarity_threshold)})
