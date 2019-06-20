@@ -66,7 +66,7 @@ function pages() {
     dRDS=$i/$i.RDS
     parsed=$i/parsed_folder.RDS
     price=$i/PRICE_NAME.csv
-    _http ${WP[dams]}/${WP[shoulder]}/$ark/media/images/$i.jpg/fcr:metadata;
+#    _http ${WP[dams]}/${WP[shoulder]}/$ark/media/images/$i.jpg/fcr:metadata;
     [[ -d $i ]] || mkdir $i;
     if [[ ! -f $jpg ]]; then
       _http --output=$jpg ${WP[dams]}/${WP[shoulder]}/$ark/media/images/$i.jpg;
