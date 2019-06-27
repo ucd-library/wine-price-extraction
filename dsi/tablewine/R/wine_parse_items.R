@@ -188,7 +188,7 @@ clean_text_aggressive = function(text, two.char.whitelist = c("st", "de")) {
       # leave prices because they may seperate name from previuos name 
       # considered removing everything before price but price could also be right of the name
       # grepl(text_split, pattern = "[0-9]+\\.[0-9]{2}") |  #price
-      grepl(text_split, pattern = "[©€%]") |  #price  
+      grepl(text_split, pattern = "[©€%]") |  #special characters  
       grepl(text_split, pattern = "[AEIOUaeiou]{4}") # 4 vowels in a row
   )] 
   
