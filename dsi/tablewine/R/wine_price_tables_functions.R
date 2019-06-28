@@ -255,10 +255,10 @@ pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
                         (page.cols$price_cols$col.top - lead(page.cols$price_cols$col.bottom)) ) > 5 |
                           
                         #if further left than previous and bottom significantly lower
-                        lead( ( ( (page.cols$price_cols$col.right - lag(page.cols$price_cols$col.left, default = Inf) ) <
+                        lead( ( ( (page.cols$price_cols$col.right - dplyr::lag(page.cols$price_cols$col.left, default = Inf) ) <
                             2*med.pricecol.width ) &
-                          ( page.cols$price_cols$col.bottom - lag(page.cols$price_cols$col.bottom, default = Inf) ) >
-                        lag(page.cols$price_cols$col.top - page.cols$price_cols$col.bottom, default = Inf)/3 ))
+                          ( page.cols$price_cols$col.bottom - dplyr::lag(page.cols$price_cols$col.bottom, default = Inf) ) >
+                            dplyr::lag(page.cols$price_cols$col.top - page.cols$price_cols$col.bottom, default = Inf)/3 ))
                         
                         ) 
                       )[1:length(page.cols$prices)]
@@ -305,7 +305,7 @@ pageTables <- function(data1, page.cols, buffer = page.cols$charheight/3) {
   min.col.width = quantile(page.cols$price_cols$col.right - page.cols$price_cols$col.left, .5)/2 
   left.price_cols = page.cols$price_cols %>% arrange(table.row, table) %>% group_by(table.row)  %>%
     #to start use either the right point of the previous table (here we have only the leftmost column) or 0 for left margin
-    mutate(cpt.left = lag(col.right, default = 0))  %>% ungroup() %>% group_by(table) %>%  
+    mutate(cpt.left = dplyr::lag(col.right, default = 0))  %>% ungroup() %>% group_by(table) %>%  
     dplyr::filter(col.left == min(col.left))
 
   table.left = sapply(1:nrow(left.price_cols), function(x) {

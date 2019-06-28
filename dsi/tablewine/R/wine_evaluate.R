@@ -37,7 +37,7 @@ wine.evaluate <- function(test.prices) {
        table.ordering = lapply(test.prices, function(x) {
         lapply(x[[2]], function(y) {
           column.of.prices = (as.numeric(y$text.new))
-          column.of.diffs = (column.of.prices - lag(column.of.prices, default = 0) )[-1] 
+          column.of.diffs = (column.of.prices - dplyr::lag(column.of.prices, default = 0) )[-1] 
             c(n.unsorted = sum(column.of.diffs < 0, na.rm = T), 
               mean.unsorted = ifelse(sum(column.of.diffs < 0, na.rm = T) == 0, 0, 
                                   abs(round(mean(column.of.diffs[column.of.diffs < 0], na.rm = T), 2))))

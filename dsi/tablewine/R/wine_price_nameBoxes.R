@@ -58,7 +58,7 @@ nameBoxes <- function(data1, page.cols, prices = page.cols$prices, px , buffer =
       # Start by assuming the name is two lines tall
       rows.missing.ids = unique(tmp.prices$row [! tmp.prices$row %in% tmp.ids$row ])
       rows.add.to.ids = tmp.prices %>%
-        mutate(bottom = pmax(top - 2.5*page.cols$charheight, lag(top, default = min(top) - 2.5*page.cols$charheight))) %>%
+        mutate(bottom = pmax(top - 2.5*page.cols$charheight, dplyr::lag(top, default = min(top) - 2.5*page.cols$charheight))) %>%
         dplyr::filter(row %in% rows.missing.ids) %>% 
         arrange(row, !price, top) %>% 
         group_by(row) %>%summarize_all(first) %>% 
