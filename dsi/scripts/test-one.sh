@@ -60,18 +60,23 @@ function pages() {
   s=${WP[script_dir]}
   R=${WP[Rscript]}
   for i in $@; do
-    ark=${i%-*[0-9]};
-    jpg=$i/$i.jpg
-    bRDS=$i/${i}_data1.RDS
-    dRDS=$i/$i.RDS
+    b=$(basename $i);
+    ark=${b%-*[0-9]};
+    jpg=$i/$b.jpg
+    bRDS=$i/${b}_data1.RDS
+    dRDS=$i/$b.RDS
     parsed=$i/parsed_folder.RDS
     price=$i/PRICE_NAME.csv
-#    _http ${WP[dams]}/${WP[shoulder]}/$ark/media/images/$i.jpg/fcr:metadata;
-    [[ -d $i ]] || mkdir $i;
-    if [[ ! -f $jpg ]]; then
-      _http --output=$jpg ${WP[dams]}/${WP[shoulder]}/$ark/media/images/$i.jpg;
-    fi
+    [[ -d $i ]] || mkdir -p $i;
+      if [[ ! -f $jpg ]]; then
+        echo _http --output=$jpg ${WP[dams]}/${WP[shoulder]}/$ark/media/images/$b.jpg;
+        _http --output=$jpg ${WP[dams]}/${WP[shoulder]}/$ark/media/images/$b.jpg;
+      fi
     if [[ ! -f $bRDS ]]; then
+      # Only fetch jpg if we need the _data1.RDS file.
+      if [[ ! -f $jpg ]]; then
+        _http --output=$jpg ${WP[dams]}/${WP[shoulder]}/$ark/media/images/$i.jpg;
+      fi
       $R $s/run_wine_price_tables.R FILESET=$jpg DATA.OUTPUT.DIR=$i OCR.ONLY='true'
     fi
     if [[ -f $dRDS ]]; then

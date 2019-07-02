@@ -87,7 +87,7 @@ TABLE.OUTPUT.DIR=OUTPUT.DIR;
 
 #     Load NAME data ----
 page_results_all = do.call("rbind", parsed_folder$page_results)
-dim(page_results_all) # a matrix
+#dim(page_results_all) # a matrix
 #colnames(page_results_all)
 
 #     ENTRY_NAME ----
@@ -133,7 +133,13 @@ name_output =
     return(nameboxes)
   }))
 
+
 #check (may be off if different numbers of files)
+#'ENTRY_NAME'
+#ENTRY_NAME$name_id
+#'name_output'
+#name_output$name_id
+
 sum(ENTRY_NAME$name_id != name_output$name_id)
 
 ENTRY_NAME = left_join(ENTRY_NAME,

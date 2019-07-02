@@ -13,6 +13,8 @@ hocr jsonb
 --refresh materialized view line;
 --refresh materialized view words;
 
+--  refresh materialized view carea; refresh materialized view par; refresh materialized view line; refresh materialized view words;
+
 create materialized view carea as
 with a as ( select
  ark,rotation,
