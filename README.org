@@ -1463,7 +1463,6 @@ I don't know why a small number have a 'text_conf' entry
 | 220504 | entry_name_without_conf.csv |
 | 241226 | total                       |
 
-
 |   8712 | entry_name_with_conf.csv    |
 | 245431 | entry_name_without_conf.csv |
 | 254143 | total                       |
@@ -1827,40 +1826,47 @@ with a as (
  from :s.entry_price
  group by name_id
 ),
+n as (
+ select *,price_new::float as pf from :s.entry_price where isnumeric(price_new)
+),
 b as (
 select name_id,
- array_agg("col.header" order by price_new::float) as price_header,
- array_agg(price_new::float order by price_new::float) as price,
+ array_agg("col.header" order by pf) as price_header,
+ array_agg(pf order by pf) as price,
  min("left") as l,
  max("right") as r,
  max(top) as t,
  min(bottom) as b
-from :s.entry_price
-where isnumeric(price_new)
+from n
+where (pf > 0) and (pf < 10^5)
 group by name_id
 ),
 c as (
 select b.*,
-price[1] as perprice,
+price[1]::decimal(7,2) as perprice,
 case when (array_length(price,1)=1) then
- null
+ null::decimal(7,2)
 else
- price[array_length(price,1)]
+ price[array_length(price,1)]::decimal(7,2)
 end as caseprice,
 array_length(price,1) as price_cnt
 from b
 )
 select
  file_id as page_ark,
+ split_part(file_id,'-',1) as ark,
+ split_part(file_id,'-',2)::integer as page,
+ cat.year as year_published,
  name_id,
  e.name_trim as name,
  e.country,
  e.year as vintage,
  e.color,
- e.variety,
- e.region,
- e.province,
- e.designation,
+ regexp_replace(e.producer,'^list.*\s=\s.*"([^"]+)".*$','\1') as producer,
+ regexp_replace(e.variety,'^list.*\s=\s.*"([^"]+)".*$','\1') as variety,
+ regexp_replace(e.region,'^list.*\s=\s.*"([^"]+)".*$','\1') as region,
+ regexp_replace(e.province,'^list.*\s=\s.*"([^"]+)".*$','\1') as province,
+-- e.designation,
  c.perprice,c.caseprice,c.price_cnt,c.price_header,
  a.price_per_column,a.header_per_column,
  st_makePoint(least(e.l,c.l),greatest(-e.t,-c.t)) as ul,
@@ -1871,12 +1877,13 @@ select
                            st_makePoint(greatest(e.r,c.r),least(-e.b,-c.b))) as bbox
 from a join :s.entry_name e using (name_id)
 join c using (name_id)
+join catalogs.catalogs cat on (split_part(file_id,'-',1)=cat.ark)
 #+END_SRC
 
 #+RESULTS:
 | DROP MATERIALIZED VIEW |
 |------------------------|
-| SELECT 214018          |
+| SELECT 213816          |
 
 Now, we want a subset of that for our json file.
 
@@ -1885,10 +1892,9 @@ Now, we want a subset of that for our json file.
 \set s eng_jane
 create view :s.wine_search as
 with a as (
- select page_ark,
- split_part(page_ark,'-',1) as ark,
- split_part(page_ark,'-',2)::integer as page,
+ select page_ark,ark,page,
  name,
+ year_published,
  vintage,
  'wine' as type,
  color,
@@ -1967,8 +1973,106 @@ Okay, so now we match names to our values, and when we have two matches on the
 same page, we pick the closest spatially.
 
 #+BEGIN_SRC sql
+  \set s eng_jane
+  create or replace view :s.vs_crowd_source as
+  with a as (
+   select
+   c.page_ark,
+   c.catalog_no,
+   e.name_id,
+   c.xy,
+   c.section,
+   c.name,
+   c.vintage,
+   c.perprice::decimal(6,2),
+   c.caseprice::decimal(6,2),
+   c.bottle_type,
+   c.type,
+   c.wine_type,
+   c.color,
+   c.country,
+   e.name as entry_name,
+   e.header_per_column,
+   e.price_per_column,
+   e.perprice::decimal(6,2) as entry_perprice,
+   e.caseprice::decimal(6,2) as entry_caseprice,
+   e.country as entry_country,
+   e.vintage as entry_vintage,
+   e.color as entry_color,
+   e.producer as entry_producer,
+   e.variety as entry_variety,
+   e.region as entry_region,
+   e.province as entry_province,
+   e.left_side as entry_left_side,
+   abs(e.perprice-c.perprice)*10 as per_dis,
+   abs(e.perprice-c.perprice)*10 as case_dis,
+   st_distance(st_makePoint(xy[1],xy[2]),e.left_side) as xy_dis,
+   levenshtein(UPPER(substring(c.name,1,100)),UPPER(substring(e.name,1,100))) as name_dis,
+   abs(e.perprice-c.perprice)*10 + abs(e.perprice-c.perprice)*10 as score
+   from catalogs.crowd_source c
+   join :s.entries e using (page_ark)
+   ),
+  b as (
+   select name_id,xy,xy_dis,score,
+   min(xy_dis) OVER (partition by xy) as xy_min,
+   min(xy_dis) OVER (partition by name_id) as name_id_min
+   from a
+  ),
+  c as (
+   select b.*,
+   min(score) OVER (partition by name_id) as min_score
+   from b where xy_min=name_id_min and xy_dis=xy_min
+  ),
+  e as (
+  select
+ name_id,xy,page_ark,catalog_no,
+ section,name,vintage,perprice,caseprice,
+ bottle_type,type,wine_type,
+ color,country,
+ entry_name,
+ entry_perprice,entry_caseprice,
+ entry_country,entry_vintage,entry_color,
+ entry_variety,entry_region,entry_province,
+ name_dis::integer,a.xy_dis::integer,
+ score
+   from a join c using (name_id,xy,score)
+  )
+  select * from e;
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+#+BEGIN_SRC sql
+  \set s eng_jane
+  create or replace view :s.vs_crowd_source_summary as
+  with a as (
+   select name_id,
+   perprice=entry_perprice as per_match,
+   caseprice=entry_caseprice as case_match,
+   lower(name)=lower(entry_name) as name_match,
+   lower(country)=lower(entry_country) as country_match,
+   lower(color)=lower(entry_color) as color_match
+   from eng_jane.vs_crowd_source
+  )
+  select
+   (1.0*sum(case when (per_match) then 1 else 0 end)/count(*))::decimal(4,2) as per,
+   (1.0*sum(case when (case_match) then 1 else 0 end)/count(*))::decimal(4,2) as case,
+   (1.0*sum(case when (name_match) then 1 else 0 end)/count(*))::decimal(4,2) as name,
+   (1.0*sum(case when (country_match) then 1 else 0 end)/count(*))::decimal(4,2) as country,
+   (1.0*sum(case when (color_match) then 1 else 0 end)/count(*))::decimal(4,2) as color
+  from a
+
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+#+BEGIN_SRC sql
 \set s eng_jane
-create or replace view :s.vs_crowd_source as
+create or replace view :s.vs_crowd_source_old as
 with a as (
  select
  e.name_id,
@@ -1981,10 +2085,10 @@ with a as (
  e.country as entry_country,
  e.vintage as entry_vintage,
  e.color as entry_color,
+ e.producer as entry_producer,
  e.variety as entry_variety,
  e.region as entry_region,
  e.province as entry_province,
- e.designation as entry_designation,
  e.left_side as entry_left_side,
  levenshtein(UPPER(substring(c.name,1,100)),UPPER(substring(e.name,1,100))) as name_dis
  from catalogs.crowd_source c
@@ -2010,7 +2114,7 @@ select
  entry_name,
  entry_perprice,entry_caseprice,
  entry_country,entry_vintage,entry_color,
- entry_variety,entry_region,entry_province,entry_designation,
+ entry_variety,entry_region,entry_province,
  name_dis::integer,xy_dis::integer
  from d where xy_dis=xy_min
 ),
@@ -2023,11 +2127,30 @@ select
  group by name_id
 )
 select e.* from e join f on (e.name_id=f.name_id and e.xy_dis=f.name_xy_min );
+
+create or replace view :s.vs_crowd_source_summary_old as
+with a as (
+ select name_id,
+ perprice=entry_perprice as per_match,
+ caseprice=entry_caseprice as case_match,
+ lower(name)=lower(entry_name) as name_match,
+ lower(country)=lower(entry_country) as country_match,
+ lower(color)=lower(entry_color) as color_match
+ from eng_jane.vs_crowd_source_old
+)
+select
+ (1.0*sum(case when (per_match) then 1 else 0 end)/count(*))::decimal(4,2) as per,
+ (1.0*sum(case when (case_match) then 1 else 0 end)/count(*))::decimal(4,2) as case,
+ (1.0*sum(case when (name_match) then 1 else 0 end)/count(*))::decimal(4,2) as name,
+ (1.0*sum(case when (country_match) then 1 else 0 end)/count(*))::decimal(4,2) as country,
+ (1.0*sum(case when (color_match) then 1 else 0 end)/count(*))::decimal(4,2) as color
+from a;
 #+END_SRC
 
 #+RESULTS:
 | CREATE VIEW |
 |-------------|
+| CREATE VIEW |
 
 
 *** DSI Truth tables
@@ -2110,7 +2233,6 @@ CREATE OR REPLACE FUNCTION public.trim_space(text) RETURNS TEXT AS $$
 select regexp_replace(regexp_replace($1,'^\s*(.*?)\s*$','\1'),'\s+',' ','g');
 $$ STRICT LANGUAGE SQL IMMUTABLE
 
-
 ** Wine Functions
 
 #+BEGIN_SRC sql
@@ -2159,7 +2281,130 @@ $$ STRICT LANGUAGE sql IMMUTABLE;
 | CREATE FUNCTION |
 |-----------------|
 
+
+* Ancillary Datasets
+
+VIVC Varietals
+
+#+BEGIN_SRC sql
+create table ancil.vivc_color(
+code text,
+color text references catalogs.wine_color
+);
+
+insert into ancil.vivc_color(code,color)
+select * from
+(VALUES
+('B','White'),
+('N','Red'),
+('Rs','Rosé'),
+('R','Red'),
+('G','White'),
+('Rg','Red'),
+('RS','Rosé')
+) as c(code,color);
+#+END_SRC
+
+#+RESULTS:
+| INSERT 0 7 |
+|------------|
+
+#+BEGIN_SRC
+
+create table ancil.vivc (
+vivc_id serial primary key,
+country text,
+variety text,
+synonym text,
+vivc_code text,
+updated date
+);
+
+
+#+END_SRC
+
+#+RESULTS:
+| CREATE TABLE |
+|--------------|
+
+#+BEGIN_SRC sql
+\COPY ancil.vivc(country,variety,synonym,vivc_code,updated) from data/vivc-varietals.csv with csv header delimiter ';'
+
+#+END_SRC
+#+RESULTS:
+| COPY 13277 |
+|------------|
+
+#+BEGIN_SRC sql
+create view ancil.vivc_variety as
+with a as (
+ select vivc_id,regexp_match(variety,'(.*?)\s(B|N|Rs|R|G|Rg|RS)?\s*$') as w
+ from ancil.vivc
+),
+b as (
+ select w[1] as variety,w[2] as color,vivc_id
+ from a
+)
+select
+b.variety,
+array_agg(color) as colors,
+array_agg(country) as countries
+from b join ancil.vivc using (vivc_id)
+group by b.variety;
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+#+BEGIN_SRC sql
+create or replace view ancil.color_from_variety as
+with a as (
+ select variety,'white' as color
+ from ancil."in" where description ~* '\swhite(\swine|\.)'
+union all
+ select variety,'red' as color
+ from ancil."in" where description ~* '\sred(\swine|\.)'
+union all
+ select variety,'rose' as color
+ from ancil."in" where description ~* '\srose(\swine|\.)'
+ union all select variety,'rosé' as color
+ from ancil."in" where description ~* '\sRosé(\swine|\.)'),
+b as (
+ select variety,color,count(*)
+ from a group by 1,2
+ order by 1,2
+)
+select
+ variety,
+ array_agg(color order by count desc) as color
+from b
+group by variety;
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
 * Presentation Outputs
+** Example Page
+
+This is the example page for our champagne example
+
+#+BEGIN_SRC sql
+\COPY (select name,vintage,perprice::decimal(6,2),caseprice::decimal(6,2),producer,country from eng_jane.entries where page_ark='d7pp4q-023' and st_x(ul) < 1000 order by st_y(ul) desc limit 5) to champagne_example.csv with csv header
+#+END_SRC
+
+** Examples by Country
+
+Here we show the countries represented along with the missing ones.
+
+#+BEGIN_SRC sql
+\COPy (select country,count(*) from eng_jane.entries group by 1 order by count desc) to by_country.csv with csv header
+#+END_SRC
+
+
+** Whisker Plots
 
 #+BEGIN_SRC sql
 \set s eng_jane
@@ -2201,7 +2446,6 @@ select
 
 #+BEGIN_SRC sql
 \COPY (select * from eng_jane.yearly_whisker) to eng_jane.yearly_whisker.csv with csv header
-
 #+END_SRC
 
 #+RESULTS:
@@ -2238,3 +2482,141 @@ select
 #+END_SRC
 
 #+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+#+BEGIN_SRC sql
+\COPY (select * from eng_jane.yearly_combined_whisker) to eng_jane_yearly_combined_whisker.csv with csv header
+#+END_SRC
+
+#+RESULTS:
+| COPY 67 |
+|---------|
+
+
+** Flags
+
+Stan's code identifies a number of flags in his code.  We can extract those as;
+
+#+BEGIN_SRC sql
+\set s eng_jane
+create or replace view :s.sflags as
+with a as (
+ select name_id,trim(both from unnest(string_to_array(inspect,';'))) as flag from :s.entry_name
+)
+select name_id,regexp_replace(flag,'multiple countries.*','multiple countries') as flag
+from a
+where flag is not null and flag != ''
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+Jane's flags are in the entry_price table, and include:
+flag_order,flag_ratio,flag_amount,flag_format,flag_digit,flag_raw_year,flag_type_new from :s.entry_price ;
+
+#+BEGIN_SRC sql
+\set s eng_jane
+create or replace view :s.jflags as
+--select name_id,'Price order' as flag from :s.entry_price where flag_order is true
+--union
+select name_id,'Price format' as flag from :s.entry_price where flag_format is true
+union
+select name_id,'Price is year' as flag from :s.entry_price where flag_raw_year is true
+union
+select name_id,'Price type' as flag from :s.entry_price where flag_type_new is true;
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+My Flags include; too many columns, outlier prices, and case/per mismatch
+
+#+BEGIN_SRC sql
+\set s eng_jane
+create or replace view :s.qflags as
+with a as (
+ select name_id,caseprice/perprice as ratio
+ from :s.entries
+ where caseprice is not null
+)
+select name_id,'Price many columns'
+from :s.entries where array_length(price_per_column,1) > 2
+union
+select name_id,'Case price high' from a where ratio > 24
+union
+select name_id,'Case is split' from a where ratio <25 and ratio > 13
+union
+select name_id,'Case is magnum' from a where ratio < 7 and ratio > 4
+union
+select name_id,'Case price low' from a where ratio <4
+union
+select name_id,'Price per outlier (high)'
+from :s.entries e join :s.yearly_whisker w on (e.year_published=w.year) where perprice > w.per_qx
+union
+select name_id,'Price case outlier (high)'
+from :s.entries e join :s.yearly_whisker w on (e.year_published=w.year) where caseprice > w.case_qx
+union
+select name_id,'Price case outlier (low)'
+from :s.entries e join :s.yearly_whisker w on (e.year_published=w.year) where caseprice < w.case_q1;
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+#+BEGIN_SRC sql
+\set s eng_jane
+create materialized view :s.flags as
+select * from :s.jflags
+union
+select * from :s.sflags
+union
+select * from :s.qflags;
+#+END_SRC
+
+#+RESULTS:
+| SELECT 535313 |
+|---------------|
+
+#+BEGIN_SRC sql
+\set s eng_jane
+create or replace view :s.flag_score
+as select * from (VALUES
+('Case is magnum%',50),
+('Case is split%',50),
+('Case price high%',50),
+('Case price low%',50),
+('multiple countries%',10),
+('Price case outlier (high)%',50),
+('Price case outlier (low)%',50),
+('Price format%',20),
+('Price is year%',20),
+('Price many columns%',100),
+('Price order%',30),
+('Price per outlier (high)%',50),
+('Price type%',10),
+('producer (decent%',10),
+('producer (submatch%',20),
+('province (decent%',10),
+('province (submatch%',20),
+('region (decent%',10),
+('region (submatch%',20),
+('variety (decent%',10),
+('variety (submatch%',20)) as v(pat,score);
+
+#+END_SRC
+
+#+RESULTS:
+| CREATE VIEW |
+|-------------|
+
+#+BEGIN_SRC sql
+\COPY (with a as (select count(*) from eng_jane.entries),b as (select flag,count(*) from eng_jane.flags group by flag) select flag,(100*(1.0*b.count/a.count))::integer as percentage from a,b order by b.count desc) to flags.csv with csv header
+#+END_SRC
+
+#+RESULTS:
+| COPY 36 |
+|---------|
