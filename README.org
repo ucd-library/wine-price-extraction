@@ -1291,8 +1291,6 @@ from b;
 #+END_SRC
 
 #+RESULTS:
-| CREATE VIEW |
-|-------------|
 
 #+BEGIN_SRC bash
 #base='io/sloan-ocr/D*'
@@ -1306,6 +1304,8 @@ wc -l entry_page.csv
 #+END_SRC
 
 #+RESULTS:
+: 5492 entry_page.csv
+
 : 5084 entry_page.csv
 
 Then imported into the system:
@@ -1315,6 +1315,7 @@ Then imported into the system:
 #+END_SRC
 
 #+RESULTS:
+: COPY 5492
 : COPY 5084
 
 The entry_price table is the collection of name and prices linked together.
@@ -1373,6 +1374,8 @@ create table :s.entry_price(
 #+END_SRC
 
 #+RESULTS:
+: 449512 entry_price.csv
+- 06/28
 : 415582 entry_price.csv
 
 Then imported into the system:
@@ -1382,7 +1385,7 @@ Then imported into the system:
 #+END_SRC
 
 #+RESULTS:
-: COPY 415582
+: COPY 449512
 
 The next table, the entry_name is adds additional information from joining the
 entries with additional information from a wine database.
@@ -1459,13 +1462,14 @@ I don't know why a small number have a 'text_conf' entry
 #+END_SRC
 
 #+RESULTS:
+|  10822 | entry_name_with_conf.csv    |
+| 231405 | entry_name_without_conf.csv |
+| 242227 | total                       |
+
+06/28
 |  20722 | entry_name_with_conf.csv    |
 | 220504 | entry_name_without_conf.csv |
 | 241226 | total                       |
-
-|   8712 | entry_name_with_conf.csv    |
-| 245431 | entry_name_without_conf.csv |
-| 254143 | total                       |
 
 Then imported into the system as one table.
 
@@ -1479,8 +1483,8 @@ Then imported into the system as one table.
 
 #+RESULTS:
 | TRUNCATE |  TABLE |
-| COPY     |  15481 |
-| COPY     | 220504 |
+| COPY     |   7674 |
+| COPY     | 231405 |
 
 #+BEGIN_SRC sql
 \set s eng_jane
@@ -1511,6 +1515,9 @@ drop table if exists :s.name_match;
 #+END_SRC
 
 #+RESULTS:
+: 1961056 name_match.csv
+
+-06/28
 : 3352336 name_match.csv
 
 #+BEGIN_SRC bash
@@ -1521,7 +1528,7 @@ drop table if exists :s.name_match;
 
 #+RESULTS:
 | TRUNCATE |   TABLE |
-| COPY     | 3352336 |
+| COPY     | 1961056 |
 
 
 #+BEGIN_SRC sql
@@ -1551,6 +1558,9 @@ create table :s.name_summary_global_stats (
 #+END_SRC
 
 #+RESULTS:
+: 137300 name_summary_global_stats.csv
+
+-06/28
 : 127050 name_summary_global_stats.csv
 
 #+BEGIN_SRC bash
@@ -1561,7 +1571,7 @@ create table :s.name_summary_global_stats (
 
 #+RESULTS:
 | TRUNCATE |  TABLE |
-| COPY     | 127050 |
+| COPY     | 137300 |
 
 #+BEGIN_SRC sql
 \set s eng_jane
@@ -1612,6 +1622,9 @@ create table :s.price_name (
 #+END_SRC
 
 #+RESULTS:
+: 449513 price_name.csv
+
+-06/28
 : 415580 price_name.csv
 
 Then imported into the system
@@ -1621,7 +1634,7 @@ Then imported into the system
 #+END_SRC
 
 #+RESULTS:
-: COPY 415580
+: COPY 449513
 
 *** Updated Prices
 
@@ -1656,6 +1669,12 @@ where name not in ( '9.99','FALSE')
 #+END_SRC
 
 #+RESULTS:
+| name     | type_new | price_new |   price |
+|----------+----------+-----------+---------|
+| 9.99[.,] | price*   |     0.98. |    0.98 |
+| 9.99[.,] | price*   |  1595.60. | 1595.60 |
+| 9.99[.,] | price*   |     7.39. |    7.39 |
+| 9.99[.,] | price*   |    95.24. |   95.24 |
 
 ** Getting Data From Google Cloud
 
@@ -1794,7 +1813,6 @@ xy integer[2]
 | CREATE TABLE |
 
 #+BEGIN_SRC sql
-\set s eng_jane
 \COPY catalogs.crowd_source from csv/crowd_source.csv with csv header
 alter table catalogs.crowd_source drop column mark_id;
 alter table catalogs.crowd_source drop column file_id;
@@ -1882,6 +1900,10 @@ join catalogs.catalogs cat on (split_part(file_id,'-',1)=cat.ark)
 
 #+RESULTS:
 | DROP MATERIALIZED VIEW |
+|------------------------|
+| SELECT 235601          |
+
+-06/28
 |------------------------|
 | SELECT 213816          |
 
@@ -2263,6 +2285,11 @@ from a group by name_id;
 #+END_SRC
 
 #+RESULTS:
+| SELECT 96233 |
+|--------------|
+| SELECT 16346 |
+
+06/28
 | SELECT 87633 |
 |--------------|
 | SELECT 38042 |
@@ -2374,7 +2401,7 @@ b as (
  select variety,color,count(*)
  from a group by 1,2
  order by 1,2
-)
+%)
 select
  variety,
  array_agg(color order by count desc) as color
@@ -2387,6 +2414,8 @@ group by variety;
 |-------------|
 
 * Presentation Outputs
+
+
 ** Example Page
 
 This is the example page for our champagne example
@@ -2395,6 +2424,31 @@ This is the example page for our champagne example
 \COPY (select name,vintage,perprice::decimal(6,2),caseprice::decimal(6,2),producer,country from eng_jane.entries where page_ark='d7pp4q-023' and st_x(ul) < 1000 order by st_y(ul) desc limit 5) to champagne_example.csv with csv header
 #+END_SRC
 
+#+RESULTS:
+| COPY 5 |
+|--------|
+
+** Count Summary
+#+BEGIN_SRC sql
+select 'country' as type,count(*) from (select distinct country from eng_jane.entries) as c
+union
+select 'province' as type,count(*) from (select distinct province from eng_jane.entries) as c
+union
+select 'region' as type,count(*) from (select distinct region from eng_jane.entries) as c
+union
+select 'variety' as type,count(*) from (select distinct country from eng_jane.entries) as c
+order by 2 asc;
+#+END_SRC
+
+#+RESULTS:
+| type     | count |
+|----------+-------|
+| variety  |    32 |
+| country  |    32 |
+| province |   138 |
+| region   |   509 |
+
+
 ** Examples by Country
 
 Here we show the countries represented along with the missing ones.
@@ -2402,6 +2456,10 @@ Here we show the countries represented along with the missing ones.
 #+BEGIN_SRC sql
 \COPy (select country,count(*) from eng_jane.entries group by 1 order by count desc) to by_country.csv with csv header
 #+END_SRC
+
+#+RESULTS:
+| COPY 32 |
+|---------|
 
 
 ** Whisker Plots
@@ -2445,7 +2503,7 @@ select
 |-------------|
 
 #+BEGIN_SRC sql
-\COPY (select * from eng_jane.yearly_whisker) to eng_jane.yearly_whisker.csv with csv header
+\COPY (select * from eng_jane.yearly_whisker) to eng_jane_yearly_whisker.csv with csv header
 #+END_SRC
 
 #+RESULTS:
@@ -2578,7 +2636,7 @@ select * from :s.qflags;
 #+END_SRC
 
 #+RESULTS:
-| SELECT 535313 |
+| SELECT 317089 |
 |---------------|
 
 #+BEGIN_SRC sql
